@@ -169,7 +169,11 @@ class Korail:
         if payload.get("strResult") != "SUCC" or not idx or not key:
             raise LoginFailedError("비밀번호 암호화 키를 발급받지 못했습니다", payload.get("h_msg_cd"))
 
-        self._idx = idx
+        # ``idx`` 는 로그인 폼에 문자열로 실려 나갑니다. 서버가 숫자로 내려보내도
+        # 폼 인코딩 결과는 같지만, ``_idx`` 의 타입(``str | None``)이 거짓말이
+        # 되지 않게 여기서 확정합니다. 형식을 이유로 거부하지는 않습니다 —
+        # 관측한 적 없는 형태 하나로 로그인을 통째로 막는 쪽이 더 위험합니다.
+        self._idx = str(idx)
         try:
             return encrypt_password(password, key)
         except (AttributeError, TypeError, ValueError) as exc:
@@ -229,11 +233,17 @@ class Korail:
         account = self._api.account
 
         if payload.get("strResult") == "SUCC" and payload.get("strMbCrdNo"):
+            # 프로필 필드는 날로 인덱싱하지 않습니다. 서버가 이름·이메일·번호 중
+            # 하나를 빼먹으면 ``account.logined = True`` 를 이미 세운 뒤 KeyError 가
+            # 터져, 반쯤 갱신된 계정과 "로그인 실패는 전부 LoginFailedError" 라는
+            # 계약이 함께 깨집니다. 서버는 SUCC 와 회원번호를 줬고 세션 쿠키도
+            # 받았으니 로그인은 성공한 것입니다 — 표시용 필드가 비었다고 실패로
+            # 뒤집으면 서버는 로그인 상태인데 클라이언트만 아니라고 우기게 됩니다.
             account.logined = True
             account.membership_number = payload["strMbCrdNo"]
-            account.name = payload["strCustNm"]
-            account.email = payload["strEmailAdr"]
-            account.phone_number = payload["strCpNo"]
+            account.name = payload.get("strCustNm")
+            account.email = payload.get("strEmailAdr")
+            account.phone_number = payload.get("strCpNo")
             return
 
         account.clear()

@@ -7,7 +7,16 @@ import pytest
 from pykorail.client import Korail
 from pykorail.constants import API_ENDPOINTS
 from pykorail.exceptions import LoginFailedError
-from tests.payloads import CIPHER_PAYLOAD, LOGIN_FAIL, LOGIN_OK
+from tests.payloads import (
+    CIPHER_PAYLOAD,
+    LOGIN_FAIL,
+    LOGIN_OK,
+    LOGIN_OK_WITHOUT_PROFILE,
+    NUMERIC_IDX_CIPHER_PAYLOAD,
+    PARTIAL_CIPHER_INFOS,
+    UNUSABLE_CIPHER_PAYLOAD,
+    cipher_response,
+)
 
 
 class TestConstruction:
@@ -166,20 +175,11 @@ class TestLogin:
         with pytest.raises(LoginFailedError):
             client.login("me@example.com", "pw")
 
-    @pytest.mark.parametrize(
-        "cipher_info",
-        [
-            pytest.param({"idx": "7"}, id="key-missing"),
-            pytest.param({"key": "0" * 32}, id="idx-missing"),
-            pytest.param({"idx": "7", "key": ""}, id="key-empty"),
-            pytest.param({}, id="both-missing"),
-            pytest.param("", id="not-a-dict"),
-        ],
-    )
+    @pytest.mark.parametrize("cipher_info", PARTIAL_CIPHER_INFOS)
     def test_partial_cipher_key_raises_login_failed(self, make_korail, cipher_info: object) -> None:
         """SUCC 여도 키가 덜 오면 KeyError 가 아니라 LoginFailedError 여야 합니다."""
         # given
-        client, _ = make_korail({"code": {"strResult": "SUCC", "app.login.cphd": cipher_info}})
+        client, _ = make_korail({"code": cipher_response(cipher_info)})
 
         # when & then
         with pytest.raises(LoginFailedError, match="암호화 키"):
@@ -188,11 +188,34 @@ class TestLogin:
     def test_unusable_cipher_key_raises_login_failed(self, make_korail) -> None:
         """AES 키 길이가 안 맞으면 pycryptodome 의 ValueError 가 새어 나가면 안 됩니다."""
         # given
-        client, _ = make_korail({"code": {"strResult": "SUCC", "app.login.cphd": {"idx": "7", "key": "short"}}})
+        client, _ = make_korail({"code": UNUSABLE_CIPHER_PAYLOAD})
 
         # when & then
         with pytest.raises(LoginFailedError, match="쓸 수 없습니다"):
             client.login("me@example.com", "pw")
+
+    def test_numeric_idx_is_sent_as_a_string(self, make_korail) -> None:
+        """``_idx`` 는 ``str | None`` 입니다 — 서버가 숫자로 줘도 폼에는 문자열로 나갑니다."""
+        # given
+        client, session = make_korail({"code": NUMERIC_IDX_CIPHER_PAYLOAD, "login": LOGIN_OK})
+
+        # when
+        client.login("me@example.com", "pw")
+
+        # then
+        assert session.kwargs_for("login")["data"]["idx"] == "7"
+
+    def test_login_survives_a_response_without_profile_fields(self, make_korail) -> None:
+        """SUCC 와 회원번호를 받았으면 로그인은 된 것입니다 — 이름이 없다고 KeyError 로 죽으면 안 됩니다."""
+        # given
+        client, _ = make_korail({"code": CIPHER_PAYLOAD, "login": LOGIN_OK_WITHOUT_PROFILE})
+
+        # when
+        client.login("me@example.com", "pw")
+
+        # then
+        assert (client.logined, client.membership_number) == (True, "1234567890")
+        assert (client.name, client.email, client.phone_number) == (None, None, None)
 
     def test_login_returns_nothing(self, make_korail) -> None:
         """성공 여부를 반환하지 않는 것이 이 메서드의 계약입니다."""
