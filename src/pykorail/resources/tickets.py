@@ -32,19 +32,29 @@ class TicketResource(Resource):
                 "hiduserYn": "Y",
             },
         )
+        # "승차권이 없다" 로 해석해도 되는 것은 **목록 응답**의 NoResults 뿐입니다.
+        # 아래 상세 조회까지 이 try 로 감싸면 좌석 조회 한 건이 실패했을 때 이미
+        # 읽어 둔 승차권까지 통째로 사라져, 사용자에게는 "승차권 없음" 으로 보입니다.
         try:
             self._api.check(payload)
-
-            tickets: list[Ticket] = []
-            for entry in payload.get("reservation_list", []):
-                raw = entry["ticket_list"][0]["train_info"][0]
-                tickets.append(Ticket.from_response(raw, seat_no=self._seat_no(raw)))
-            return tickets
         except NoResultsError:
             return []
 
+        tickets: list[Ticket] = []
+        for entry in payload.get("reservation_list", []):
+            raw = entry["ticket_list"][0]["train_info"][0]
+            tickets.append(Ticket.from_response(raw, seat_no=self._seat_no(raw)))
+        return tickets
+
     def _seat_no(self, raw: dict[str, Any]) -> str | None:
-        """승차권 상세 조회로 실제 좌석번호를 확인합니다. 없으면 ``None``."""
+        """승차권 상세 조회로 실제 좌석번호를 확인합니다. 없으면 ``None``.
+
+        상세 조회는 목록 응답을 **보강할 뿐**이라, 결과가 없어도 승차권 자체는
+        유효합니다. 그래서 NoResults 는 밖으로 내보내지 않고 ``None`` 으로 접어
+        목록 응답의 좌석번호로 되돌아갑니다 — 승차권 한 장의 상세가 비었다고 목록
+        전체가 비어 보이면 안 됩니다. 그 밖의 실패(만료된 세션 등)는 진짜 문제이므로
+        그대로 올립니다.
+        """
         payload = self._api.get(
             API_ENDPOINTS["myticketseat"],
             params={
@@ -55,7 +65,10 @@ class TicketResource(Resource):
                 "h_orgtk_ret_pwd": raw.get("h_orgtk_ret_pwd"),
             },
         )
-        self._api.check(payload)
+        try:
+            self._api.check(payload)
+        except NoResultsError:
+            return None
 
         ticket_info = payload.get("ticket_infos", {}).get("ticket_info", [{}])[0]
         seat = ticket_info.get("tk_seat_info", [{}])[0]

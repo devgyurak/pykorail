@@ -71,6 +71,7 @@ search(
     passengers: list[Passenger] | None = None,
     include_no_seats: bool = False,
     include_waiting_list: bool = False,
+    include_nearby_stations: bool = False,
 ) -> list[Train]
 ```
 
@@ -82,6 +83,7 @@ search(
 | `passengers` | 생략 시 어른 1명. 인원수는 좌석 가용 판단에 영향을 줍니다. |
 | `include_no_seats` | 매진 열차도 포함 — 사실상 **전부 보기**입니다. |
 | `include_waiting_list` | 예약대기 가능 열차도 포함. |
+| `include_nearby_stations` | **인근역** 출발·도착 열차도 함께 봅니다 (앱의 "인접역"). 아래 참고. |
 
 조건에 맞는 열차가 없으면 `NoResultsError` 를 던집니다 (빈 리스트가 아닙니다).
 
@@ -108,6 +110,39 @@ trains = korail.trains.search("서울", "동대구", train_type=TrainType.KTX, i
 # 예약대기라도 잡고 싶을 때
 trains = korail.trains.search("서울", "부산", include_waiting_list=True)
 ```
+
+#### 인근역 포함 조회
+
+`include_nearby_stations=True` 는 앱의 **"인접역"** 옵션과 같습니다. 요청한 역만이
+아니라 같은 권역의 인근역에서 출발하거나 인근역에 도착하는 열차까지 후보에 넣습니다.
+용산 → 대전을 찾으면 서울 → 대전 · 용산 → 서대전 편이 함께 나옵니다.
+
+```python
+trains = korail.trains.search("용산", "대전", include_nearby_stations=True)
+
+for train in trains:
+    print(train.dep_name, train.arr_name)  # 서울 대전 / 용산 서대전 / 서울 서대전 …
+```
+
+어떤 역인지는 응답에 따로 표시되지 않습니다. `dep_name`·`arr_name` 이 **요청한 역과
+다를 수 있다**는 것이 이 옵션의 전부이고, 열차 한 편의 모양은 그대로입니다.
+
+서버에는 "출발역만 인근역 허용" 같은 세부 선택이 없습니다 — 플래그 하나로 출발·도착
+양쪽이 함께 열립니다. 한쪽만 원한다면 결과에서 고르세요.
+
+```python
+from_yongsan = [t for t in trains if t.dep_name == "용산"]
+```
+
+> [!WARNING]
+> 결과가 **더해지는 것이 아니라 후보가 넓어지는 것**입니다. 서버가 주는 한 페이지
+> 안에서 인근역 편이 시간순으로 끼어들기 때문에, 켜면 원래 보이던 뒤쪽 직통편이
+> 밀려날 수 있습니다. 기본값이 꺼짐인 이유입니다.
+
+반대로 직통이 없는 구간은 이 옵션 없이는 조회할 방법이 없습니다. 용산 → 대전을 끄고
+조회하면 서버가 `WRD000061`("직통열차는 없지만, 환승으로 조회 가능합니다")로 응답해
+`NoResultsError` 가 됩니다. 켠다고 결과가 보장되는 것은 아니고 — 인근역 편도 없으면
+그대로 `NoResultsError` 입니다 — 인근역 편이 있다면 그때 내려옵니다.
 
 > [!TIP]
 > `depart_after` 는 실행 머신의 로컬 타임존과 무관하게 항상 KST 로 해석됩니다.
