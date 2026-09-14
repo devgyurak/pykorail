@@ -57,6 +57,25 @@ SOLD_OUT_INFO = {
 
 SEARCH_PAYLOAD = {"strResult": "SUCC", "trn_infos": {"trn_info": [TRAIN_INFO, SOLD_OUT_INFO]}}
 
+# 인접역(``adjStnScdlOfrFlg=Y``) 조회 결과. 요청한 역이 아니라 **인근역**이 출발·도착역
+# 으로 내려오는 것이 이 옵션의 전부입니다 — 별도 표시 필드는 없고 열차 한 편의 모양은
+# 그대로입니다. 역 코드는 역 마스터 실측값입니다 (용산 0104 · 서대전 0025).
+NEARBY_TRAIN_INFO = {
+    **TRAIN_INFO,
+    "h_trn_no": "451",
+    "h_dpt_rs_stn_nm": "용산",
+    "h_dpt_rs_stn_cd": "0104",
+    "h_dpt_tm": "093000",
+    "h_arv_rs_stn_nm": "서대전",
+    "h_arv_rs_stn_cd": "0025",
+    "h_arv_tm": "110000",
+}
+
+NEARBY_SEARCH_PAYLOAD = {
+    "strResult": "SUCC",
+    "trn_infos": {"trn_info": [TRAIN_INFO, NEARBY_TRAIN_INFO]},
+}
+
 RESERVATION_INFO = {
     **TRAIN_INFO,
     "h_pnr_no": "1234567890",

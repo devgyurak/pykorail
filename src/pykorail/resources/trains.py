@@ -66,6 +66,7 @@ class TrainResource(Resource):
         passengers: Sequence[Passenger] | None = None,
         include_no_seats: bool = False,
         include_waiting_list: bool = False,
+        include_nearby_stations: bool = False,
     ) -> list[Train]:
         """열차를 조회합니다.
 
@@ -80,6 +81,10 @@ class TrainResource(Resource):
             passengers: 생략하면 어른 1명.
             include_no_seats: 매진 열차도 포함합니다.
             include_waiting_list: 예약대기 가능 열차도 포함합니다.
+            include_nearby_stations: 인근역 출발·도착 열차도 함께 봅니다 (앱의
+                "인접역"). ``dep_name``/``arr_name`` 이 요청한 역과 달라질 수 있습니다.
+                결과가 더해지는 것이 아니라 후보가 넓어지는 것이라 켜면 뒤쪽 직통편이
+                밀려날 수 있어 기본값은 꺼짐입니다 — 자세한 것은 ``docs/reference.md``.
 
         Raises:
             StationNotFoundError: ``dep``/``arr`` 이 역 마스터에 없습니다.
@@ -122,7 +127,7 @@ class TrainResource(Resource):
             "ebizCrossCheck": "N",
             "srtCheckYn": "N",  # SRT 함께 보기
             "rtYn": "N",  # 왕복
-            "adjStnScdlOfrFlg": "N",  # 인접역 보기
+            "adjStnScdlOfrFlg": "Y" if include_nearby_stations else "N",  # 인접역 보기
             "mbCrdNo": self._api.account.membership_number,
         }
 
