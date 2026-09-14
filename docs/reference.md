@@ -28,7 +28,7 @@ Korail(
 | 메서드 · 속성 | 반환 | 설명 |
 | --- | --- | --- |
 | `Korail.logged_in(id, pw, *, verbose=False, device_profile=None, validate_stations=True)` | `Korail` | 생성 + 로그인. 실패하면 연결을 닫고 예외를 던집니다. |
-| `login(korail_id, korail_pw)` | `bool` | 성공 `True`, 자격증명 불일치 `False`. |
+| `login(korail_id, korail_pw)` | `None` | 실패는 전부 `LoginFailedError`. 성공 여부를 반환하지 않습니다. |
 | `logout()` | `None` | **서버 세션만** 끊습니다. HTTP 연결은 살아 있어 재로그인할 수 있습니다. |
 | `close()` | `None` | HTTP 연결 정리. `with` 문이 자동 호출합니다. |
 | `logined` | `bool` | 로그인 상태. |
@@ -153,7 +153,7 @@ from_yongsan = [t for t in trains if t.dep_name == "용산"]
 | 메서드 | 반환 | 설명 |
 | --- | --- | --- |
 | `all()` | `list[Reservation]` | 결제 전 예약 전체. 좌석 상세까지 채워 옵니다. |
-| `find(rsv_id)` | `Reservation \| None` | 예약번호로 하나. |
+| `find(rsv_id)` | `Reservation \| None` | 예약번호로 하나. 찾으면 요청 **2회**(목록 + 그 예약의 좌석), 목록에 없으면 1회, `rsv_id` 가 비어 있으면 0회. |
 | `create(train, passengers=None, option=GENERAL_FIRST)` | `Reservation` | 예매. 좌석이 없고 예약대기가 열려 있으면 대기를 겁니다. |
 | `seats(rsv_id)` | `tuple[list[Seat], str \| None]` | 좌석 상세와 발매창구 번호. |
 | `pay(reservation, card)` | `None` | 카드 결제. |
@@ -162,6 +162,8 @@ from_yongsan = [t for t in trains if t.dep_name == "용산"]
 > [!IMPORTANT]
 > `all()` 은 예약 하나마다 좌석 상세를 추가 조회합니다. 예약이 N개면 요청이 N+1회
 > 나가니, 반복문 안에서 부르지 말고 한 번 받아 재사용하세요.
+> **예약 하나만 필요하면 `find()`** 를 쓰세요 — 일치하는 예약이 있으면 목록 1회 + 그 예약의
+> 좌석 1회로 끝나고, 없으면 목록 조회 1회에서 멈춥니다.
 
 `create()` 는 예매 직후 예약을 다시 조회해 돌려줍니다 — 반환된 `Reservation` 은
 `seats` 와 `wct_no` 가 채워져 있어 바로 `pay()` 에 넘길 수 있습니다.
@@ -358,7 +360,7 @@ PykorailError
 │   ├── NeedToLoginError   P058
 │   ├── NoResultsError     P100 · WRG000000 · WRD000061 · WRT300005
 │   ├── SoldOutError       IRT010110 · ERR211161
-│   └── LoginFailedError   자격증명 누락 / 암호화 키 발급 실패
+│   └── LoginFailedError   로그인 실패 전부 — 자격증명 누락 · 키 발급 실패 · 서버 거부
 ├── NetFunnelError         대기열 게이트 실패
 ├── StationNotFoundError   요청 전 클라이언트 검증 — 역 이름이 없음
 ├── PastDepartureError     요청 전 클라이언트 검증 — 이미 지난 시각

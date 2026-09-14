@@ -32,12 +32,19 @@ class SoldOutError(KorailError):
 
 
 class LoginFailedError(KorailError):
-    """로그인 준비 단계(비밀번호 암호화 키 발급)가 실패했습니다.
+    """로그인에 실패했습니다.
 
-    응답 코드로 승격되는 타입이 아니라 클라이언트가 직접 던집니다.
+    입력 검증(빈 자격증명·하이픈 없는 번호), 준비 단계(암호화 키 발급), 서버의
+    자격증명 거부를 **모두** 이 타입 하나로 올립니다 —
+    :meth:`~pykorail.client.Korail.login` 이 성공 여부를 반환하지 않으므로,
+    "로그인이 안 됐다" 를 잡는 지점이 여기 하나입니다.
+
+    서버가 거부한 경우에는 응답의 ``h_msg_txt``·``h_msg_cd`` 가 :attr:`msg`·
+    :attr:`code` 에 실립니다. ``codes`` 로 자동 승격되는 타입이 아니라 클라이언트가
+    직접 던집니다.
     """
 
-    default_msg = "Failed to fetch the password encryption key"
+    default_msg = "Login failed"
 
 
 def _coded_subclasses(root: type[KorailError]) -> list[type[KorailError]]:

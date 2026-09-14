@@ -90,6 +90,30 @@ RESERVATION_LIST_PAYLOAD = {
     "jrny_infos": {"jrny_info": [{"train_infos": {"train_info": [RESERVATION_INFO]}}]},
 }
 
+#: 찾는 예약(1234567890) 하나가 다른 예약 셋 사이에 섞여 있는 목록.
+#: 좌석 상세를 몇 번 조회하는지 세려면 예약이 여럿이어야 합니다.
+MANY_RESERVATIONS_PAYLOAD = {
+    "strResult": "SUCC",
+    "jrny_infos": {
+        "jrny_info": [
+            {
+                "train_infos": {
+                    "train_info": [
+                        *({**RESERVATION_INFO, "h_pnr_no": f"999999999{i}"} for i in range(3)),
+                        RESERVATION_INFO,
+                    ]
+                }
+            }
+        ]
+    },
+}
+
+#: 위 목록에 담긴 예약번호 — 목록 응답 순서 그대로입니다.
+MANY_RESERVATION_IDS = ("9999999990", "9999999991", "9999999992", "1234567890")
+
+#: 예매(``reserve``) 성공 응답.
+RESERVE_OK = {"strResult": "SUCC", "h_pnr_no": "1234567890"}
+
 SEAT_INFO = {
     "h_srcar_no": "3",
     "h_seat_no": "5A",
@@ -155,6 +179,32 @@ LOGIN_OK = {
     "strEmailAdr": "me@example.com",
     "strCpNo": "010-1234-5678",
 }
+
+#: ``strResult`` 는 SUCC 인데 ``app.login.cphd`` 가 덜 온 응답들. 서버가 실제로
+#: 이렇게 보낸 적이 있어서가 아니라, 날 인덱싱이 KeyError 로 새는 것을 막기 위한
+#: 경계 입력입니다.
+PARTIAL_CIPHER_INFOS = (
+    {"idx": "7"},
+    {"key": "0123456789abcdef0123456789abcdef"},
+    {"idx": "7", "key": ""},
+    {},
+    "",
+)
+
+
+def cipher_response(cipher_info: object) -> dict[str, object]:
+    """``app.login.cphd`` 자리에 임의의 값을 끼운 ``code`` 응답."""
+    return {"strResult": "SUCC", "app.login.cphd": cipher_info}
+
+
+#: AES 규격(16·24·32바이트)에 안 맞는 키. pycryptodome 의 ValueError 를 부릅니다.
+UNUSABLE_CIPHER_PAYLOAD = cipher_response({"idx": "7", "key": "short"})
+
+#: ``idx`` 가 문자열이 아닌 응답. 폼에는 문자열로 나가야 합니다.
+NUMERIC_IDX_CIPHER_PAYLOAD = cipher_response({"idx": 7, "key": "0123456789abcdef0123456789abcdef"})
+
+#: 로그인은 됐는데(SUCC + 회원번호) 표시용 프로필 필드가 빠진 응답.
+LOGIN_OK_WITHOUT_PROFILE = {"strResult": "SUCC", "strMbCrdNo": "1234567890"}
 
 LOGIN_FAIL = {"strResult": "FAIL", "h_msg_cd": "WRC000000", "h_msg_txt": "비밀번호가 틀렸습니다"}
 
