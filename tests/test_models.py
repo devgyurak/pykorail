@@ -9,7 +9,7 @@ import dataclasses
 
 import pytest
 
-from pykorail.models import Reservation, Schedule, Seat, Station, Ticket, Train, parse_stations
+from pykorail.models import Reservation, Schedule, Seat, Station, Ticket, Train, parse_stations, train_info_of
 from pykorail.models.schedule import WAITING_NOT_APPLICABLE, format_duration
 from tests.payloads import RESERVATION_INFO, SEAT_INFO, TICKET_RAW, TRAIN_INFO
 
@@ -280,9 +280,37 @@ class TestTicket:
         ticket = Ticket.from_ticket_list(entry)
 
         # then
+        assert ticket is not None
         assert ticket.seat_no == "5A"
         assert ticket.price == 119600
         assert ticket.seat_no_count == 2
+
+    @pytest.mark.parametrize(
+        ("entry", "reason"),
+        [
+            ({}, "ticket_list 자체가 없음"),
+            ({"ticket_list": []}, "빈 리스트"),
+            ({"ticket_list": [{}]}, "train_info 가 없음"),
+            ({"ticket_list": [{"train_info": []}]}, "빈 train_info"),
+            ({"ticket_list": [{"train_info": [{}]}]}, "빈 dict — 유령 승차권이 됩니다"),
+            ({"ticket_list": "0"}, "리스트가 아닌 값"),
+            ({"ticket_list": [{"train_info": ["0"]}]}, "dict 가 아닌 항목"),
+        ],
+    )
+    def test_incomplete_entries_unwrap_to_none(self, entry: dict, reason: str) -> None:
+        """코레일은 필드를 빼먹고 보냅니다 — 항목 하나에 목록 전체가 터지면 안 됩니다."""
+        # when
+        unwrapped = train_info_of(entry)
+
+        # then
+        assert unwrapped is None, reason
+
+    def test_from_ticket_list_returns_none_for_an_empty_entry(self) -> None:
+        # when
+        ticket = Ticket.from_ticket_list({"ticket_list": []})
+
+        # then
+        assert ticket is None
 
     def test_composes_a_train_rather_than_inheriting(self) -> None:
         # when

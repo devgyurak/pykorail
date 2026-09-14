@@ -8,6 +8,31 @@ from typing import Any
 from pykorail.models.parsing import integer, text
 from pykorail.models.schedule import Train
 
+#: ``MyTicketList`` 응답의 ``reservation_list`` 항목 안에서 ``train_info`` 까지 가는 경로.
+#: 각 단계가 리스트이고 첫 항목만 씁니다 — 앱도 그렇게 읽습니다.
+TRAIN_INFO_PATH = ("ticket_list", "train_info")
+
+
+def train_info_of(entry: dict[str, Any]) -> dict[str, Any] | None:
+    """``reservation_list`` 항목 하나에서 ``train_info`` dict 를 꺼냅니다. 못 찾으면 ``None``.
+
+    중간 단계가 빠지거나 빈 리스트로 오면 ``None`` 을 돌려줍니다. 날 인덱싱
+    (``entry["ticket_list"][0]["train_info"][0]``)은 응답이 조금만 달라져도
+    ``KeyError``/``IndexError`` 로 죽는데, 코레일은 필드를 빼먹고 보내는 서버라
+    승차권 한 항목 때문에 목록 전체가 터지면 안 됩니다.
+
+    **빈 dict 도 읽을 수 없는 항목으로 봅니다.** 구조만 있고 내용이 없으면
+    승차권번호도 좌석도 금액도 없는 유령 승차권이 만들어져 목록에 섞입니다 —
+    관용적으로 읽는 것과 없는 것을 지어내는 것은 다릅니다.
+    """
+    node: Any = entry
+    for key in TRAIN_INFO_PATH:
+        branch = node.get(key) if isinstance(node, dict) else None
+        if not isinstance(branch, list) or not branch:
+            return None
+        node = branch[0]
+    return node if isinstance(node, dict) and node else None
+
 
 @dataclass(frozen=True)
 class Ticket:
@@ -61,9 +86,14 @@ class Ticket:
         )
 
     @classmethod
-    def from_ticket_list(cls, entry: dict[str, Any], *, seat_no: str | None = None) -> Ticket:
-        """``MyTicketList`` 응답의 ``reservation_list`` 항목 하나를 풀어 승차권을 만듭니다."""
-        return cls.from_response(entry["ticket_list"][0]["train_info"][0], seat_no=seat_no)
+    def from_ticket_list(cls, entry: dict[str, Any], *, seat_no: str | None = None) -> Ticket | None:
+        """``MyTicketList`` 응답의 ``reservation_list`` 항목 하나를 풀어 승차권을 만듭니다.
+
+        항목에서 ``train_info`` 를 찾지 못하면 ``None`` 입니다 — 읽을 것이 없는
+        항목은 예외가 아니라 건너뛸 대상입니다.
+        """
+        raw = train_info_of(entry)
+        return None if raw is None else cls.from_response(raw, seat_no=seat_no)
 
     @property
     def ticket_no(self) -> str:

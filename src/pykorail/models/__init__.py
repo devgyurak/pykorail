@@ -27,7 +27,7 @@ from pykorail.models.reservation import Reservation
 from pykorail.models.schedule import Schedule, Train
 from pykorail.models.seat import Seat
 from pykorail.models.station import Station, parse_stations
-from pykorail.models.ticket import Ticket
+from pykorail.models.ticket import Ticket, train_info_of
 
 __all__ = [
     "AdultPassenger",
@@ -46,4 +46,5 @@ __all__ = [
     "ToddlerPassenger",
     "Train",
     "parse_stations",
+    "train_info_of",
 ]

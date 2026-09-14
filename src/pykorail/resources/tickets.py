@@ -7,8 +7,11 @@ from typing import Any
 from pykorail.constants import API_ENDPOINTS
 from pykorail.exceptions import NoResultsError
 from pykorail.models.refund import RefundFee
-from pykorail.models.ticket import Ticket
+from pykorail.models.ticket import Ticket, train_info_of
 from pykorail.resources.base import Resource
+
+#: 좌석 상세 조회에 되돌려 줘야 하는 원권(原券) 식별자. 하나도 없으면 조회할 근거가 없습니다.
+_ORIGINAL_TICKET_KEYS = ("h_orgtk_wct_no", "h_orgtk_ret_sale_dt", "h_orgtk_sale_sqno", "h_orgtk_ret_pwd")
 
 
 class TicketResource(Resource):
@@ -40,11 +43,10 @@ class TicketResource(Resource):
         except NoResultsError:
             return []
 
-        tickets: list[Ticket] = []
-        for entry in payload.get("reservation_list", []):
-            raw = entry["ticket_list"][0]["train_info"][0]
-            tickets.append(Ticket.from_response(raw, seat_no=self._seat_no(raw)))
-        return tickets
+        # 좌석 상세 조회에 원본 dict 가 필요해서 Ticket.from_ticket_list() 가 아니라
+        # 언래핑 헬퍼를 직접 씁니다 — 둘 다 같은 train_info_of() 위에 서 있습니다.
+        raws = [train_info_of(entry) for entry in payload.get("reservation_list", [])]
+        return [Ticket.from_response(raw, seat_no=self._seat_no(raw)) for raw in raws if raw is not None]
 
     def _seat_no(self, raw: dict[str, Any]) -> str | None:
         """승차권 상세 조회로 실제 좌석번호를 확인합니다. 없으면 ``None``.
@@ -54,7 +56,15 @@ class TicketResource(Resource):
         목록 응답의 좌석번호로 되돌아갑니다 — 승차권 한 장의 상세가 비었다고 목록
         전체가 비어 보이면 안 됩니다. 그 밖의 실패(만료된 세션 등)는 진짜 문제이므로
         그대로 올립니다.
+
+        원권 식별자가 하나도 없으면 요청 자체를 보내지 않습니다 — 네 값이 전부
+        ``None`` 인 조회는 서버가 돌려줄 것이 없는데 요청만 축냅니다. 하나라도
+        있으면 예전처럼 그대로 실어 보냅니다(부분 응답에도 조회가 되던 경로를
+        막지 않으려는 것입니다).
         """
+        if not any(raw.get(key) for key in _ORIGINAL_TICKET_KEYS):
+            return None
+
         payload = self._api.get(
             API_ENDPOINTS["myticketseat"],
             params={
