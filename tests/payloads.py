@@ -90,6 +90,30 @@ RESERVATION_LIST_PAYLOAD = {
     "jrny_infos": {"jrny_info": [{"train_infos": {"train_info": [RESERVATION_INFO]}}]},
 }
 
+#: 찾는 예약(1234567890) 하나가 다른 예약 셋 사이에 섞여 있는 목록.
+#: 좌석 상세를 몇 번 조회하는지 세려면 예약이 여럿이어야 합니다.
+MANY_RESERVATIONS_PAYLOAD = {
+    "strResult": "SUCC",
+    "jrny_infos": {
+        "jrny_info": [
+            {
+                "train_infos": {
+                    "train_info": [
+                        *({**RESERVATION_INFO, "h_pnr_no": f"999999999{i}"} for i in range(3)),
+                        RESERVATION_INFO,
+                    ]
+                }
+            }
+        ]
+    },
+}
+
+#: 위 목록에 담긴 예약번호 — 목록 응답 순서 그대로입니다.
+MANY_RESERVATION_IDS = ("9999999990", "9999999991", "9999999992", "1234567890")
+
+#: 예매(``reserve``) 성공 응답.
+RESERVE_OK = {"strResult": "SUCC", "h_pnr_no": "1234567890"}
+
 SEAT_INFO = {
     "h_srcar_no": "3",
     "h_seat_no": "5A",

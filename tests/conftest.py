@@ -60,6 +60,15 @@ class FakeSession:
         url = API_ENDPOINTS[endpoint]
         return next(kwargs for _, called, kwargs in reversed(self.calls) if called == url)
 
+    def all_kwargs_for(self, endpoint: str) -> list[dict[str, Any]]:
+        """해당 엔드포인트로 나간 **모든** 요청의 인자를 보낸 순서대로.
+
+        호출 횟수만 세면 같은 대상을 N번 조회해도 통과합니다 — 무엇을 조회했는지
+        확인하려면 요청 하나하나가 필요합니다.
+        """
+        url = API_ENDPOINTS[endpoint]
+        return [kwargs for _, called, kwargs in self.calls if called == url]
+
 
 @pytest.fixture
 def make_korail(monkeypatch: pytest.MonkeyPatch):
