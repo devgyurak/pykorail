@@ -17,6 +17,7 @@ from pykorail.exceptions import (
 from pykorail.models import AdultPassenger, Card, ChildPassenger, Reservation, Seat, Ticket
 from pykorail.resources.trains import KST, PAST_TOLERANCE, to_kst
 from tests.payloads import (
+    NEARBY_SEARCH_PAYLOAD,
     NO_RESULTS,
     REFUND_FEE_PAYLOAD,
     SEARCH_PAYLOAD,
@@ -379,6 +380,61 @@ class TestTrainSearch:
         params = session.kwargs_for("search_schedule")["params"]
         assert params["Sid"] == ""
         assert "Key" not in params
+
+
+class TestNearbyStations:
+    """인접역 조회 (``adjStnScdlOfrFlg``)."""
+
+    def test_is_off_by_default(self, korail) -> None:
+        """켜면 직통편이 밀려날 수 있으므로 기본값은 꺼짐이어야 합니다."""
+        # given
+        client, session = korail
+
+        # when
+        client.trains.search("서울", "부산")
+
+        # then
+        assert session.kwargs_for("search_schedule")["params"]["adjStnScdlOfrFlg"] == "N"
+
+    @pytest.mark.parametrize(("include", "expected"), [(False, "N"), (True, "Y")])
+    def test_sends_the_flag(self, korail, include: bool, expected: str) -> None:
+        """철자나 값이 틀리면 서버는 에러 대신 인접역 없는 결과를 조용히 돌려줍니다."""
+        # given
+        client, session = korail
+
+        # when
+        client.trains.search("서울", "부산", include_nearby_stations=include)
+
+        # then
+        assert session.kwargs_for("search_schedule")["params"]["adjStnScdlOfrFlg"] == expected
+
+    def test_does_not_disturb_the_rest_of_the_payload(self, korail) -> None:
+        """이 플래그 하나만 달라져야 합니다 — 다른 필드가 흔들리면 로그인·조회가 막힙니다."""
+        # given — 출발 시각을 고정합니다. 생략하면 호출마다 now() 를 다시 계산해서
+        # 초가 넘어가는 순간 txtGoHour 까지 달라집니다.
+        client, session = korail
+        client.trains.search("서울", "부산", depart_after=FUTURE)
+        before = dict(session.kwargs_for("search_schedule")["params"])
+
+        # when
+        client.trains.search("서울", "부산", depart_after=FUTURE, include_nearby_stations=True)
+
+        # then
+        after = dict(session.kwargs_for("search_schedule")["params"])
+        assert {k: v for k, v in after.items() if k != "adjStnScdlOfrFlg"} == {
+            k: v for k, v in before.items() if k != "adjStnScdlOfrFlg"
+        }
+
+    def test_returns_trains_from_other_stations(self, make_korail) -> None:
+        """인접역 편은 요청한 역이 아닌 출발·도착역으로 내려옵니다."""
+        # given
+        client, _ = make_korail({"stationdata": STATION_PAYLOAD, "search_schedule": NEARBY_SEARCH_PAYLOAD})
+
+        # when
+        trains = client.trains.search("서울", "부산", include_nearby_stations=True)
+
+        # then
+        assert [(t.dep_name, t.arr_name) for t in trains] == [("서울", "부산"), ("용산", "서대전")]
 
 
 class TestReservations:

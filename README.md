@@ -108,6 +108,28 @@ assert reservation.is_waiting
 </details>
 
 <details>
+<summary><b>인근역에서 출발·도착하는 열차까지 보기</b></summary>
+
+앱의 "인접역" 옵션입니다. 용산 → 대전을 찾으면 서울 → 대전 · 용산 → 서대전 편도
+함께 나옵니다. 직통이 없는 구간은 이걸 켜지 않으면 조회할 방법이 없습니다.
+
+```python
+trains = korail.trains.search("용산", "대전", include_nearby_stations=True)
+
+for train in trains:
+    print(train.dep_name, "→", train.arr_name)
+# 서울 → 대전 / 용산 → 서대전 / 서울 → 서대전 …
+
+# 출발은 용산에서만 하고 싶다면 결과에서 고르면 됩니다
+from_yongsan = [t for t in trains if t.dep_name == "용산"]
+```
+
+결과가 **더해지는** 것이 아니라 후보가 넓어지는 것이라, 켜면 인근역 편이 시간순으로
+끼어들며 뒤쪽 직통편을 밀어낼 수 있습니다. 그래서 기본값은 꺼짐입니다.
+
+</details>
+
+<details>
 <summary><b>내 예약·승차권 보기</b></summary>
 
 ```python
