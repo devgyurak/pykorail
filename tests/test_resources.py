@@ -11,9 +11,11 @@ from pykorail.exceptions import KorailError, NoResultsError, PastDepartureError,
 from pykorail.models import AdultPassenger, Card, ChildPassenger, Reservation, Seat, Ticket
 from pykorail.resources.trains import KST, PAST_TOLERANCE, to_kst
 from tests.payloads import (
+    MANY_RESERVATION_IDS,
+    MANY_RESERVATIONS_PAYLOAD,
     NO_RESULTS,
     REFUND_FEE_PAYLOAD,
-    RESERVATION_INFO,
+    RESERVE_OK,
     SEARCH_PAYLOAD,
     SEAT_DETAIL_PAYLOAD,
     STATION_PAYLOAD,
@@ -21,24 +23,9 @@ from tests.payloads import (
     TICKET_SEAT_PAYLOAD,
 )
 
-#: 찾는 예약(1234567890) 하나가 다른 예약 셋 사이에 섞여 있는 목록. 좌석 상세를
-#: 몇 번 조회하는지 세려면 예약이 여럿이어야 합니다.
+#: 예약이 여럿인 목록에 좌석 상세를 얹은 라우트. 응답 자체는 payloads 에 있습니다.
 MANY_RESERVATIONS_ROUTES = {
-    "myreservationview": {
-        "strResult": "SUCC",
-        "jrny_infos": {
-            "jrny_info": [
-                {
-                    "train_infos": {
-                        "train_info": [
-                            *({**RESERVATION_INFO, "h_pnr_no": f"999999999{i}"} for i in range(3)),
-                            RESERVATION_INFO,
-                        ]
-                    }
-                }
-            ]
-        },
-    },
+    "myreservationview": MANY_RESERVATIONS_PAYLOAD,
     "myreservationlist": SEAT_DETAIL_PAYLOAD,
 }
 
@@ -46,7 +33,7 @@ MANY_RESERVATIONS_ROUTES = {
 SEARCHABLE_ROUTES = {
     "stationdata": STATION_PAYLOAD,
     "search_schedule": SEARCH_PAYLOAD,
-    "reserve": {"strResult": "SUCC", "h_pnr_no": "1234567890"},
+    "reserve": RESERVE_OK,
 }
 
 #: 과거 조회 가드에 걸리지 않도록 넉넉히 미래인 기준 시각. 초까지 고정해야
@@ -515,8 +502,10 @@ class TestReservations:
         reservations = client.reservations.all()
 
         # then
-        assert len(reservations) == 4
-        assert session.urls().count(API_ENDPOINTS["myreservationlist"]) == 4
+        assert [r.rsv_id for r in reservations] == list(MANY_RESERVATION_IDS)
+        assert [kw["params"]["hidPnrNo"] for kw in session.all_kwargs_for("myreservationlist")] == list(
+            MANY_RESERVATION_IDS
+        ), "횟수만 세면 같은 예약을 네 번 조회해도 통과합니다"
 
     def test_find_missing_id_does_not_fetch_seats(self, make_korail) -> None:
         # given
