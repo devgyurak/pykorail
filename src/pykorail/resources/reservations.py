@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pykorail.constants import API_ENDPOINTS
 from pykorail.exceptions import KorailError, NoResultsError
 from pykorail.models.card import Card
+from pykorail.models.parsing import text
 from pykorail.models.passenger import AdultPassenger, Passenger
 from pykorail.models.reservation import Reservation
 from pykorail.models.seat import Seat
@@ -43,26 +44,45 @@ class ReservationResource(Resource):
         """결제 전 예약 목록. 없으면 빈 리스트.
 
         각 예약의 좌석 상세까지 채워서 돌려주므로 예약 수만큼 추가 요청이 나갑니다.
+        하나만 필요하면 :meth:`find` 를 쓰세요 — 그쪽은 2회로 끝납니다.
         """
+        return [self._complete(entry) for entry in self._entries()]
+
+    def find(self, rsv_id: str | None) -> Reservation | None:
+        """``rsv_id`` 와 일치하는 예약 하나. 없으면 ``None``.
+
+        목록을 전부 조립하지 않고 **일치하는 예약의 좌석만** 조회합니다. 예약이
+        N건이어도 찾았을 때 요청은 2회(목록 + 그 예약의 좌석)이고, 목록에 없으면
+        1회에서 멈춥니다 — 전에는 모든 예약의 좌석 상세를 긁은 뒤 하나만 골라
+        버려서, 예매 한 번에 요청이 N+2회 나갔습니다.
+        """
+        if not rsv_id:
+            return None
+        matched = next((entry for entry in self._entries() if text(entry, "h_pnr_no") == rsv_id), None)
+        return None if matched is None else self._complete(matched)
+
+    def _entries(self) -> list[dict[str, Any]]:
+        """예약 목록 응답에서 예약 항목들을 평평하게 꺼냅니다. 없으면 빈 리스트."""
         payload = self._api.get(API_ENDPOINTS["myreservationview"], params=self._api.base_payload())
         try:
             self._api.check(payload)
         except NoResultsError:
             return []
 
-        reserves: list[Reservation] = []
-        for journey in payload.get("jrny_infos", {}).get("jrny_info", []):
-            for train_info in journey.get("train_infos", {}).get("train_info", []):
-                rsv_id = train_info.get("h_pnr_no")
-                seats, wct_no = self.seats(rsv_id)
-                reserves.append(Reservation.from_response(train_info, seats=tuple(seats), wct_no=wct_no))
-        return reserves
+        return [
+            train_info
+            for journey in payload.get("jrny_infos", {}).get("jrny_info", [])
+            for train_info in journey.get("train_infos", {}).get("train_info", [])
+        ]
 
-    def find(self, rsv_id: str | None) -> Reservation | None:
-        """``rsv_id`` 와 일치하는 예약 하나. 없으면 ``None``."""
-        if not rsv_id:
-            return None
-        return next((rsv for rsv in self.all() if rsv.rsv_id == rsv_id), None)
+    def _complete(self, entry: dict[str, Any]) -> Reservation:
+        """예약 항목 하나에 좌석 상세를 붙여 완성합니다 (요청 1회).
+
+        좌석을 나중에 주입하지 않고 여기서 미리 조회해 생성자에 넘깁니다 —
+        반쯤 채워진 예약이 돌아다니면 안 됩니다 (AGENTS.md §2-3).
+        """
+        seats, wct_no = self.seats(entry.get("h_pnr_no"))
+        return Reservation.from_response(entry, seats=tuple(seats), wct_no=wct_no)
 
     def seats(self, rsv_id: str | None = None) -> tuple[list[Seat], str | None]:
         """예약의 좌석 상세와 발매창구 번호(``wct_no``).

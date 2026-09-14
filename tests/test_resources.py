@@ -17,14 +17,31 @@ from pykorail.exceptions import (
 from pykorail.models import AdultPassenger, Card, ChildPassenger, Reservation, Seat, Ticket
 from pykorail.resources.trains import KST, PAST_TOLERANCE, to_kst
 from tests.payloads import (
+    MANY_RESERVATION_IDS,
+    MANY_RESERVATIONS_PAYLOAD,
     NEARBY_SEARCH_PAYLOAD,
     NO_RESULTS,
     REFUND_FEE_PAYLOAD,
+    RESERVE_OK,
     SEARCH_PAYLOAD,
+    SEAT_DETAIL_PAYLOAD,
     STATION_PAYLOAD,
     TICKET_LIST_PAYLOAD,
     TICKET_SEAT_PAYLOAD,
 )
+
+#: 예약이 여럿인 목록에 좌석 상세를 얹은 라우트. 응답 자체는 payloads 에 있습니다.
+MANY_RESERVATIONS_ROUTES = {
+    "myreservationview": MANY_RESERVATIONS_PAYLOAD,
+    "myreservationlist": SEAT_DETAIL_PAYLOAD,
+}
+
+#: 위 목록에 열차 조회·예매를 얹어 create() 까지 돌릴 수 있게 하는 라우트.
+SEARCHABLE_ROUTES = {
+    "stationdata": STATION_PAYLOAD,
+    "search_schedule": SEARCH_PAYLOAD,
+    "reserve": RESERVE_OK,
+}
 
 #: 과거 조회 가드에 걸리지 않도록 넉넉히 미래인 기준 시각. 초까지 고정해야
 #: 전송값을 정확히 단언할 수 있습니다.
@@ -507,6 +524,61 @@ class TestReservations:
         assert found is not None
         assert missing is None
         assert empty is None
+
+    def test_find_fetches_seats_only_for_the_match(self, make_korail) -> None:
+        """예약이 N건이어도 좌석 조회는 1회여야 합니다 — 나머지는 어차피 버립니다."""
+        # given
+        client, session = make_korail(MANY_RESERVATIONS_ROUTES)
+
+        # when
+        found = client.reservations.find("1234567890")
+
+        # then
+        assert found is not None
+        assert session.urls().count(API_ENDPOINTS["myreservationlist"]) == 1
+        assert session.kwargs_for("myreservationlist")["params"]["hidPnrNo"] == "1234567890", (
+            "횟수만 세면 엉뚱한 예약의 좌석을 1회 조회해도 통과합니다"
+        )
+
+    def test_create_does_not_walk_every_reservation(self, make_korail) -> None:
+        """예매 한 번에 남의 예약 좌석까지 긁어 오면 계정 제재로 가는 길입니다."""
+        # given
+        client, session = make_korail({**MANY_RESERVATIONS_ROUTES, **SEARCHABLE_ROUTES})
+        train = client.trains.search("서울", "부산")[0]
+
+        # when
+        reservation = client.reservations.create(train)
+
+        # then
+        assert reservation.rsv_id == "1234567890"
+        assert session.urls().count(API_ENDPOINTS["myreservationlist"]) == 1
+        assert session.kwargs_for("myreservationlist")["params"]["hidPnrNo"] == "1234567890"
+        assert len(session.calls) == 5, "역 마스터 · 조회 · 예매 · 예약목록 · 좌석 각 1회"
+
+    def test_all_still_fills_every_reservation(self, make_korail) -> None:
+        """find 와 달리 all 은 전부 채워야 하므로 예약 수만큼 조회하는 게 맞습니다."""
+        # given
+        client, session = make_korail(MANY_RESERVATIONS_ROUTES)
+
+        # when
+        reservations = client.reservations.all()
+
+        # then
+        assert [r.rsv_id for r in reservations] == list(MANY_RESERVATION_IDS)
+        assert [kw["params"]["hidPnrNo"] for kw in session.all_kwargs_for("myreservationlist")] == list(
+            MANY_RESERVATION_IDS
+        ), "횟수만 세면 같은 예약을 네 번 조회해도 통과합니다"
+
+    def test_find_missing_id_does_not_fetch_seats(self, make_korail) -> None:
+        # given
+        client, session = make_korail(MANY_RESERVATIONS_ROUTES)
+
+        # when
+        found = client.reservations.find("0000000000")
+
+        # then
+        assert found is None
+        assert API_ENDPOINTS["myreservationlist"] not in session.urls()
 
     def test_create_returns_the_reservation(self, korail) -> None:
         # given
