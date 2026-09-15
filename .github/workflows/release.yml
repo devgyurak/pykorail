@@ -7,7 +7,7 @@ name: Release
 # PyPI 업로드는 API 토큰이 아니라 **Trusted Publishing(OIDC)** 을 씁니다.
 # 최초 1회 PyPI 에서 설정해야 합니다:
 #   PyPI → pykorail → Publishing → Add a new pending publisher
-#     Owner: leegyurak / Repository: pykorail
+#     Owner: devgyurak / Repository: pykorail
 #     Workflow: release.yml / Environment: pypi
 # 설정 전에는 publish 잡이 실패합니다 (그 앞 단계는 정상 동작).
 

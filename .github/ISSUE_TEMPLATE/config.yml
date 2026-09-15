@@ -3,11 +3,11 @@ blank_issues_enabled: false
 
 contact_links:
   - name: 💬 질문 · 사용법
-    url: https://github.com/leegyurak/pykorail/discussions
+    url: https://github.com/devgyurak/pykorail/discussions
     about: 버그가 아니라 "어떻게 쓰나요?" 라면 Discussions 에 올려 주세요.
 
   - name: 🔐 보안 취약점
-    url: https://github.com/leegyurak/pykorail/security/advisories/new
+    url: https://github.com/devgyurak/pykorail/security/advisories/new
     about: 취약점은 공개 이슈가 아니라 비공개 보안 권고로 신고해 주세요.
 
   - name: 🚄 코레일 공식 고객센터 (1544-7788)

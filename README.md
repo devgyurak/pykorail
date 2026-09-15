@@ -6,7 +6,7 @@
 
 코레일 스마트 예매(코레일톡) API 를 감싼 비공식 클라이언트
 
-[![CI](https://github.com/leegyurak/pykorail/actions/workflows/ci.yml/badge.svg)](https://github.com/leegyurak/pykorail/actions/workflows/ci.yml)
+[![CI](https://github.com/devgyurak/pykorail/actions/workflows/ci.yml/badge.svg)](https://github.com/devgyurak/pykorail/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/pykorail?color=3775A9&logo=pypi&logoColor=white&cacheSeconds=10800)](https://pypi.org/project/pykorail/)
 [![Python](https://img.shields.io/pypi/pyversions/pykorail?color=3776AB&logo=python&logoColor=white&cacheSeconds=10800)](https://pypi.org/project/pykorail/)
 [![License](https://img.shields.io/pypi/l/pykorail?color=green&cacheSeconds=10800)](LICENSE)
@@ -232,7 +232,7 @@ except KorailError as exc:
 <summary><b>어제까지 되던 게 오늘 안 됩니다</b></summary>
 
 코레일이 서버를 바꿨을 수 있습니다.
-[API 변경 이슈](https://github.com/leegyurak/pykorail/issues/new?template=external_api_change.yml)
+[API 변경 이슈](https://github.com/devgyurak/pykorail/issues/new?template=external_api_change.yml)
 로 알려주시면 대응하겠습니다. **가장 도움이 되는 기여입니다.**
 
 </details>

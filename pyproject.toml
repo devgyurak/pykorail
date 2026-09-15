@@ -8,7 +8,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 license-files = ["LICENSE"]
-authors = [{ name = "leegyurak", email = "devgyurak@gmail.com" }]
+authors = [{ name = "devgyurak", email = "devgyurak@gmail.com" }]
 keywords = ["korail", "ktx", "letskorail", "train", "reservation", "korea"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -36,9 +36,9 @@ dependencies = [
 fallback = ["requests>=2.31.0"]
 
 [project.urls]
-Homepage = "https://github.com/leegyurak/pykorail"
-Repository = "https://github.com/leegyurak/pykorail"
-Issues = "https://github.com/leegyurak/pykorail/issues"
+Homepage = "https://github.com/devgyurak/pykorail"
+Repository = "https://github.com/devgyurak/pykorail"
+Issues = "https://github.com/devgyurak/pykorail/issues"
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]

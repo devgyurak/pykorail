@@ -30,7 +30,7 @@ pykorail 에 관심 가져 주셔서 고맙습니다. 버그 신고 한 줄부�
 
 ### 🐛 버그 신고
 
-[버그 신고 템플릿](https://github.com/leegyurak/pykorail/issues/new?template=bug_report.yml)
+[버그 신고 템플릿](https://github.com/devgyurak/pykorail/issues/new?template=bug_report.yml)
 
 > [!CAUTION]
 > **아이디·비밀번호·카드번호를 붙여넣지 마세요.** 로그와 응답 본문에는 이름·이메일·
@@ -40,7 +40,7 @@ pykorail 에 관심 가져 주셔서 고맙습니다. 버그 신고 한 줄부�
 
 **가장 도움이 되는 기여입니다.** 서버가 바뀌면 저희가 먼저 알기 어렵습니다.
 
-[API 변경 템플릿](https://github.com/leegyurak/pykorail/issues/new?template=external_api_change.yml)
+[API 변경 템플릿](https://github.com/devgyurak/pykorail/issues/new?template=external_api_change.yml)
 
 공식 앱에서는 되는데 라이브러리에서만 안 된다면, 응답 원문(개인정보 가린 것)과
 마지막으로 정상 동작한 날짜를 알려 주시면 원인을 크게 좁힐 수 있습니다.
@@ -55,7 +55,7 @@ pykorail 에 관심 가져 주셔서 고맙습니다. 버그 신고 한 줄부�
 
 ### ✨ 기능 제안
 
-[기능 제안 템플릿](https://github.com/leegyurak/pykorail/issues/new?template=feature_request.yml)
+[기능 제안 템플릿](https://github.com/devgyurak/pykorail/issues/new?template=feature_request.yml)
 
 **해결책보다 문제를 먼저** 적어 주세요. 지금 어떻게 우회하고 있는지 알려 주시면
 더 나은 설계를 찾는 데 도움이 됩니다.
@@ -73,7 +73,7 @@ pykorail 에 관심 가져 주셔서 고맙습니다. 버그 신고 한 줄부�
 마세요 — 잠긴 의존성과 어긋납니다.
 
 ```bash
-git clone https://github.com/leegyurak/pykorail
+git clone https://github.com/devgyurak/pykorail
 cd pykorail
 uv sync --all-extras
 ```
@@ -329,7 +329,7 @@ Trivy 보안 스캔. 전부 우분투에서 돕니다.
 
 ### 8. 머지
 
-`main` 은 보호돼 있습니다. **@leegyurak 의 승인**과 **CI(`ci-ok`) 통과** 후에만
+`main` 은 보호돼 있습니다. **@devgyurak 의 승인**과 **CI(`ci-ok`) 통과** 후에만
 머지되고, 리뷰 코멘트가 남아 있으면 머지 버튼이 잠깁니다. 새 커밋을 올리면 기존
 승인이 무효화되니, 리뷰 반영 후 다시 승인을 요청해 주세요.
 
@@ -349,7 +349,7 @@ Trivy 보안 스캔. 전부 우분투에서 돕니다.
 
 ## 저장소 설정 (메인테이너용)
 
-`main` 은 보호돼 있습니다 — **직접 푸시할 수 없고, 코드 소유자(@leegyurak) 승인
+`main` 은 보호돼 있습니다 — **직접 푸시할 수 없고, 코드 소유자(@devgyurak) 승인
 없이는 머지되지 않습니다.**
 
 저장소 파일만으로는 강제되지 않습니다. 브랜치 보호는 GitHub 설정이라 한 번 켜 줘야
@@ -371,7 +371,7 @@ Trivy 보안 스캔. 전부 우분투에서 돕니다.
 적용 후 확인:
 
 ```bash
-gh api repos/leegyurak/pykorail/rulesets --jq '.[] | "\(.id) \(.name) \(.enforcement)"'
+gh api repos/devgyurak/pykorail/rulesets --jq '.[] | "\(.id) \(.name) \(.enforcement)"'
 git push origin main   # 거부되면 정상
 ```
 
