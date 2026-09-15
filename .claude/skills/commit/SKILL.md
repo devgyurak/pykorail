@@ -178,7 +178,7 @@ upt/curl-cffi
 > (`ADD:` + `feature` + `external-api`)은 ✨ 가 아니라 🚄 에 실립니다.
 >
 > 카테고리를 새로 넣거나 순서를 바꿀 때 이 점을 잊지 마세요. 확인은
-> `gh api repos/leegyurak/pykorail/releases/generate-notes -f tag_name=probe
+> `gh api repos/devgyurak/pykorail/releases/generate-notes -f tag_name=probe
 > -f previous_tag_name=<직전태그>` 로 — 릴리스를 만들지 않고 분류 결과만 돌려줍니다.
 
 ## 7. 커밋 전 점검

@@ -2,7 +2,7 @@
 
 ## 취약점 신고
 
-**공개 이슈로 올리지 마세요.** [비공개 보안 권고](https://github.com/leegyurak/pykorail/security/advisories/new)
+**공개 이슈로 올리지 마세요.** [비공개 보안 권고](https://github.com/devgyurak/pykorail/security/advisories/new)
 로 알려 주세요 — GitHub 이 비공개로 처리하고, 수정 뒤 함께 공개할 수 있습니다.
 
 알려 주시면 좋은 것:

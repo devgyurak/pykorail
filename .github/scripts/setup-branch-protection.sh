@@ -48,7 +48,7 @@ apply_ruleset "$RULESETS_DIR/tag-protection.json"
 echo
 echo "main 브랜치:"
 echo "  · main 은 PR 로만 변경 가능 (직접 푸시 금지)"
-echo "  · 승인 1개 이상 + CODEOWNERS(@leegyurak) 승인 필수"
+echo "  · 승인 1개 이상 + CODEOWNERS(@devgyurak) 승인 필수"
 echo "  · 새 커밋이 올라오면 기존 승인 무효화"
 echo "  · 마지막 푸시한 사람 외의 승인 필요"
 echo "  · 리뷰 코멘트 전부 해결해야 머지 가능"
