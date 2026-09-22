@@ -7,8 +7,11 @@ changelog:
       - ignore-for-release
       - duplicate
       - invalid
+    # dependabot 은 **일부러 빼지 않았습니다.** 저자 제외는 라벨 분류보다 먼저
+    # 걸리므로, 여기에 넣으면 아래 📦 의존성 카테고리가 영원히 빕니다.
+    # `curl-cffi` 나 `pycryptodome` 범프는 이 패키지를 설치하는 사람에게 실제로
+    # 의미 있는 정보입니다 — 릴리스 노트에 실려야 합니다.
     authors:
-      - dependabot
       - github-actions
 
   categories:

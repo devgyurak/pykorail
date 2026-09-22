@@ -250,6 +250,9 @@ def test_individual_by_default(self) -> None:
   (`request_changes_workflow: false`). 설정에 경로별 리뷰 지침이 들어 있고,
   `knowledge_base.code_guidelines` 로 이 파일과 `CONTRIBUTING.md`·스킬을 리뷰
   기준으로 읽습니다 — **규범을 고치면 리뷰 기준도 함께 바뀝니다.**
+- **Dependabot** (`.github/dependabot.yml`) — 액션과 `uv` 의존성을 주 1회(월요일)
+  범프합니다. 워크플로가 아니라 GitHub 기능이고, **여기서 오는 PR 도 `ci-ok` 를
+  통과해야 머지됩니다.**
 - **Release** (`.github/workflows/release.yml`) — `v*` 태그에서 동작. 태그와 패키지
   버전을 대조하고, 전 버전 게이트를 다시 돌린 뒤 PyPI(Trusted Publishing)에 올리고
   릴리스 노트를 자동 생성합니다.
@@ -269,6 +272,13 @@ def test_individual_by_default(self) -> None:
   ```
 - **Trivy 가 HIGH/CRITICAL 에서 빌드를 막습니다.** 취약점이 뜨면 의존성을 올리세요.
   무시가 정당하면 `.trivyignore` 에 **만료일과 이유**를 함께 적으세요.
+- **Dependabot PR 이 빨간 것은 대개 정상 신호입니다.** `ruff` 범프는 새 포맷·린트
+  규칙을 들고 오고, `ty` 는 아직 0.x 베타라 범프마다 진단이 늘어납니다. 게이트를 낮추거나
+  범프를 되돌리지 말고 **그 PR 안에서 코드를 고치세요** — 그게 이 PR 의 목적입니다.
+- **런타임 의존성의 하한을 손으로 올리지 마세요.** 라이브러리라
+  `versioning-strategy: increase-if-necessary` 로 고정해 뒀습니다 — 평소에는
+  `uv.lock` 만 움직이고 `pyproject.toml` 의 `>=` 는 그대로입니다. 하한을 올리는
+  것은 사용자 환경을 좁히는 결정이라 근거(실제 필요한 최소 버전)가 있을 때만.
 - 커버리지 게이트를 CI 에서만 끄는 식의 우회를 만들지 마세요.
 
 ---

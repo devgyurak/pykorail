@@ -82,6 +82,10 @@ git diff --staged   # 스테이지 후
 
 **다만 `.github/workflows/` 는 코드로 봅니다** — 실제로 실행되고 결과가 바뀌니까요.
 새 워크플로 추가는 `ADD:`, 동작을 바꾸면 `ADD:`/`FIX:`, 구조만 정리하면 `REF:`.
+같은 이유로 `.github/dependabot.yml` · `.github/release.yml` · `.github/rulesets/`
+도 코드입니다 — PR 을 열고 머지를 막고 릴리스 노트를 만듭니다. `CODEOWNERS` 역시
+ruleset 의 `require_code_owner_review` 가 읽으니 코드입니다. `.github/` 안에서
+문서인 것은 이슈·PR 템플릿뿐입니다.
 
 **5. 테스트만 추가했다면 `ADD:` 입니다.**
 
@@ -197,10 +201,18 @@ CI 가 커밋 메시지 형식을 검사하지는 않습니다. 사람 기여자
 `CONTRIBUTING.md` 에 같은 내용이 안내로 적혀 있고, 형식이 틀렸다고 PR 을
 돌려보내지 않습니다 — 메인테이너가 고칩니다.
 
-**dependabot PR 은 이 규약 밖입니다.** 제목이 `Bump …` 형태로 오고, 게다가
-`.github/release.yml` 의 `exclude.authors` 에 `dependabot` 이 있어 릴리스 노트
-분류 전에 아예 제외됩니다. 지금은 `.github/dependabot.yml` 이 없어 문제가 되지
-않지만, 나중에 켜면 📦 의존성 항목이 조용히 빕니다 — 그때 사람이 여는 `UPT:` PR
-만 거기 실린다는 것을 기억하세요.
+**dependabot PR 은 규약을 절반만 지킵니다.** `.github/dependabot.yml` 에
+`commit-message.prefix: "UPT:"` 를 넣어 뒀으니 커밋 요약과 PR 제목은
+`UPT: bump …` 로 옵니다. 하지만 **브랜치 이름은 기본값인 `dependabot/…` 형식**이라
+`<접두사 소문자>/<요약-kebab>` 과 어긋납니다. 이것 때문에 PR 을 돌려보내지 마세요.
+
+`pull-request-branch-name.prefix` 로 바꿀 수는 있습니다 (`prefix: upt` → `upt/uv/…`).
+기본값을 그대로 둔 것은 선택입니다 — 브랜치 이름만 보고 이 PR 이 사람이 아니라 봇에서
+나왔다는 것을 알 수 있는 편이 낫다고 봤습니다. 규약 통일이 더 중요하다고 판단되면
+그 한 줄을 추가하면 됩니다.
+
+릴리스 노트에는 실립니다. `exclude.authors` 에서 `dependabot` 을 **일부러
+뺐습니다** — 저자 제외가 라벨 분류보다 먼저 걸려서, 넣으면 📦 의존성 카테고리가
+영원히 비기 때문입니다. `dependencies` 라벨은 dependabot 이 자동으로 붙입니다.
 
 에이전트는 지키세요. 히스토리를 읽는 비용이 곧 다음 작업의 비용입니다.
