@@ -273,7 +273,7 @@ def test_individual_by_default(self) -> None:
 - **Trivy 가 HIGH/CRITICAL 에서 빌드를 막습니다.** 취약점이 뜨면 의존성을 올리세요.
   무시가 정당하면 `.trivyignore` 에 **만료일과 이유**를 함께 적으세요.
 - **Dependabot PR 이 빨간 것은 대개 정상 신호입니다.** `ruff` 범프는 새 포맷·린트
-  규칙을 들고 오고, `ty` 는 알파라 범프마다 진단이 늘어납니다. 게이트를 낮추거나
+  규칙을 들고 오고, `ty` 는 아직 0.x 베타라 범프마다 진단이 늘어납니다. 게이트를 낮추거나
   범프를 되돌리지 말고 **그 PR 안에서 코드를 고치세요** — 그게 이 PR 의 목적입니다.
 - **런타임 의존성의 하한을 손으로 올리지 마세요.** 라이브러리라
   `versioning-strategy: increase-if-necessary` 로 고정해 뒀습니다 — 평소에는
