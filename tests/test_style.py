@@ -30,6 +30,8 @@ import pytest
 
 TESTS_DIR = Path(__file__).parent
 ROOT = TESTS_DIR.parent
+# 분기·반복 금지는 테스트 시나리오에 적용합니다. 역디코더·동기화 같은 지원 도구는
+# 별도 모듈에 두며, 이들도 ruff·ty와 아래 SOURCE_FILES의 I/O 규칙 검사를 받습니다.
 TEST_FILES = sorted(TESTS_DIR.rglob("test_*.py"))
 BANNED = (ast.If, ast.For, ast.While, ast.AsyncFor)
 

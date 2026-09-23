@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import random
 import string
-from time import time
 from typing import TYPE_CHECKING
 
 from pykorail.auth.dynapath import DynaPathMasterEngine
@@ -45,7 +44,6 @@ class RequestSigner:
         if not any(path in url for path in DYNAPATH_PATHS):
             return {}, None
 
-        ts = int(time() * 1000)
         nonce = "".join(random.choices(_NONCE_ALPHABET, k=4))
-        token = self._engine.generate_token(self._device_id, ts, nonce)
+        token, ts = self._engine.generate_token_with_timestamp(self._device_id, nonce)
         return {"x-dynapath-m-token": token}, encrypt_sid(self._device, ts, self._sid_key)

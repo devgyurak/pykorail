@@ -1,8 +1,8 @@
 """DynaPath 요청 서명 (``x-dynapath-m-token``).
 
-코레일 앱이 예매 계열 엔드포인트에 붙이는 무결성 토큰을 재현합니다. 알고리즘은
-앱에서 그대로 옮긴 것이라 **바이트 단위로 같아야** 서버가 받아 줍니다 — 변수
-이름은 읽기 좋게 바꿨지만 연산 순서·상수는 손대지 마세요.
+Korail+ 7.0.8에서 관찰한 SDK v1.0.3의 필드·시간 이력·직렬화를 재현합니다.
+서버의 검증 정책과 수용 여부는 APK 분석만으로 확인할 수 없습니다.
+인코딩 원시연산의 순서·상수는 알고리즘의 일부이므로 유지합니다.
 
 토큰이 광고하는 기기(``os=``·``dm=``)는 User-Agent 가 광고하는 기기와 반드시
 같아야 합니다. :class:`~pykorail.client.Korail` 이 같은 프로파일로 둘 다 채웁니다.
@@ -11,7 +11,10 @@
 from __future__ import annotations
 
 import time
+from collections import deque
+from threading import Lock
 from typing import TYPE_CHECKING, ClassVar, Final
+from urllib.parse import quote_plus
 
 if TYPE_CHECKING:
     from pykorail.device import DeviceProfileLike
@@ -32,14 +35,17 @@ class DynaPathMasterEngine:
     """
 
     APP_ID: ClassVar[str] = "com.korail.talk"
-    AS_VALUE: ClassVar[str] = "%5B38ff229cb34c7dda8e28220a2d750cce%5D"
+    AS_VALUE: ClassVar[str] = "[38ff229cb34c7dda8e28220a2d750cce]"
     DEVICE_MODEL: ClassVar[str] = "SM-S928N"
     OS_VERSION: ClassVar[str] = "13"
     OS_TYPE: ClassVar[str] = "Android"
-    SDK_VERSION: ClassVar[str] = "v1"
+    SDK_VERSION: ClassVar[str] = "v1.0.3"
 
     def __init__(self, device_model: str | None = None, os_version: str | None = None) -> None:
         self.app_start_ts = str(int(time.time() * 1000))
+        self._last_ts = int(self.app_start_ts)
+        self._recent_intervals: deque[int] = deque(maxlen=5)
+        self._lock = Lock()
         # 기본값을 클래스 상수와 같게 둬 미주입 시 서명이 바이트 단위로 동일합니다.
         self.device_model = device_model or self.DEVICE_MODEL
         self.os_version = os_version or self.OS_VERSION
@@ -161,19 +167,55 @@ class DynaPathMasterEngine:
     def generate_token(self, device_id: str, ts: int, rand: str) -> str:
         """``x-dynapath-m-token`` 헤더 값을 만듭니다.
 
+        호출마다 시간 이력이 갱신됩니다. 같은 입력으로 재호출해도 토큰은 달라질
+        수 있습니다. 명시적 ``ts`` 를 받는 기존 API이며 호출자가 시각 순서를
+        책임집니다. 실제 요청에는 시각 채취까지 잠그는 ``generate_token_with_timestamp``
+        를 사용합니다. 실제 시계 역행에 따른 음수 간격은 SDK처럼 그대로 둡니다.
+
         Args:
             device_id: 앱이 들고 다니는 기기 식별자.
             ts: 요청 시각 (epoch 밀리초).
             rand: 요청마다 새로 뽑는 4자 영대문자·숫자 논스.
         """
-        payload = (
-            f"ai={self.APP_ID}&di={device_id}&as={self.AS_VALUE}&"
-            f"su=false&dbg=false&emu=false&hk=false&it={self.app_start_ts}&"
-            f"ts={ts}&rt=0&os={self.os_version}&dm={self.device_model}&st={self.OS_TYPE}&sv={self.SDK_VERSION}"
-        )
+        with self._lock:
+            return self._generate_token_locked(device_id, ts, rand)
 
+    def generate_token_with_timestamp(self, device_id: str, rand: str) -> tuple[str, int]:
+        """잠금 안에서 현재 시각과 토큰을 함께 만들고 Sid에 쓸 시각을 반환합니다."""
+        with self._lock:
+            ts = int(time.time() * 1000)
+            return self._generate_token_locked(device_id, ts, rand), ts
+
+    def _generate_token_locked(self, device_id: str, ts: int, rand: str) -> str:
+        """호출자가 잠금을 보유한 상태에서만 시간 이력을 갱신하고 직렬화합니다."""
+        self._recent_intervals.append(ts - self._last_ts)
+        self._last_ts = ts
+        fields = [
+            ("ai", self.APP_ID),
+            ("di", device_id),
+            ("as", self.AS_VALUE),
+            # 기존 포트의 고정 가정이며 Android 환경을 측정한 결과가 아닙니다.
+            ("su", "false"),
+            ("dbg", "false"),
+            ("emu", "false"),
+            ("hk", "false"),
+            ("it", self.app_start_ts),
+            ("ts", str(ts)),
+            *(("rt", str(delta)) for delta in self._recent_intervals),
+            ("os", self.os_version),
+            ("dm", self.device_model),
+            ("st", self.OS_TYPE),
+            ("sv", self.SDK_VERSION),
+        ]
+        # Java URLEncoder는 공백을 '+', '~'를 '%7E'로 바꾸고 '*'는 보존합니다.
+        payload = "&".join(f"{_url_encode(key)}={_url_encode(value)}" for key, value in fields)
         dyn_key = f"{self.SDK_VERSION}+{rand}+{ts}"
         key_part = self._encode(dyn_key, _TABLE)
         custom_table = self._build_table(self._derive_key(dyn_key), _MODULUS, _TABLE)
         body_part = self._encode(payload, custom_table)
         return f"bEeEP{_TABLE[len(key_part)]}{key_part}{body_part}"
+
+
+def _url_encode(value: str) -> str:
+    """UTF-8 폼 인코딩을 적용하고 고립된 서로게이트는 '?'(%3F)로 대체합니다."""
+    return quote_plus(value, safe="*", encoding="utf-8", errors="replace").replace("~", "%7E")
