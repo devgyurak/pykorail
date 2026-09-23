@@ -244,8 +244,10 @@ class TestTransfers:
         assert transfers == []
 ```
 
-**모든 테스트는 `# given` / `# when` / `# then` 으로 경계를 나눕니다** —
-`tests/test_style.py` 가 강제합니다.
+**`# when` 과 `# then` 은 필수, `# given` 은 준비 코드가 있을 때만 씁니다** —
+`tests/test_style.py` 가 강제합니다. 픽스처나 `parametrize` 입력만 받고 바로
+실행하는 테스트에 빈 Given 을 얹지 마세요. 그건 규약 준수가 아니라 잡음입니다
+(AGENTS.md §5.2).
 
 `set(params)` 로 **전체 필드 집합**을 고정하는 테스트를 꼭 하나 넣으세요 — 나중에
 누가 필드를 지우거나 이름을 바꾸면 그때 잡힙니다.
