@@ -314,8 +314,8 @@ PR 템플릿에 들어 있습니다. 특히:
 
 ### 7. CI
 
-PR 을 열면 자동으로 돕니다 — 린트 · 타입 검사 · Python 3.10–3.14 테스트 · 빌드 ·
-Trivy 보안 스캔. 전부 우분투에서 돕니다.
+PR 을 열면 자동으로 돕니다 — 린트 · 타입 검사 · 워크플로 린트(actionlint) ·
+Python 3.10–3.14 테스트 · 빌드 · Trivy 보안 스캔. 전부 우분투에서 돕니다.
 
 여기에 더해 **main 으로 가는 PR** 에는 **CodeRabbit** 이 리뷰 코멘트를 답니다
 (설정은 [`.coderabbit.yaml`](.coderabbit.yaml)). 초안(draft) PR 은 건너뜁니다.

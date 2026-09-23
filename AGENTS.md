@@ -268,8 +268,16 @@ def test_individual_by_default(self) -> None:
   `tests/test_packaging.py` 가 앞의 셋을 강제합니다.
 - **워크플로를 수정했으면 `actionlint` 로 검증하세요** (shellcheck 도 함께 돕니다):
   ```bash
-  uvx --from actionlint-py actionlint .github/workflows/*.yml
+  uv run actionlint .github/workflows/*.yml
   ```
+  `uvx` 로 즉석 실행하지 않고 dev 의존성으로 잠가 둔 것은 의도입니다 — 필수 체크가
+  걸리는 도구의 버전이 안 잠겨 있으면 서드파티의 새 릴리스가 무관한 PR 을 빨갛게
+  만듭니다. CI 의 린트 잡이 같은 명령을 돌리므로 빠뜨려도 PR 에서 걸립니다.
+  `release.yml` 은 태그에서만 돌아 일반 CI 가 **실행으로는** 검증하지 못합니다.
+  그쪽에 걸리는 것은 정적 검사 둘입니다 — actionlint 가 구문·스키마를,
+  `tests/test_packaging.py` 가 `fetch-depth` 와 파이썬 매트릭스를 봅니다.
+  둘 다 파일을 읽을 뿐이라 실행 시점의 실패(액션 입력 변경, 업로드·다운로드
+  아티팩트 짝이 안 맞는 경우 등)는 여전히 실제 릴리스에서만 드러납니다.
 - **Trivy 가 HIGH/CRITICAL 에서 빌드를 막습니다.** 취약점이 뜨면 의존성을 올리세요.
   무시가 정당하면 `.trivyignore` 에 **만료일과 이유**를 함께 적으세요.
 - **Dependabot PR 이 빨간 것은 대개 정상 신호입니다.** `ruff` 범프는 새 포맷·린트

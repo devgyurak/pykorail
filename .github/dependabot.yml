@@ -53,13 +53,13 @@ updates:
       # 진단이 늘어나는 것이 정상입니다 — 게이트를 낮추지 말고 코드를 고치세요.
       # 목록은 pyproject 의 [dependency-groups] dev 와 맞춰야 합니다.
       dev-tools:
-        patterns: [ruff, ty, "pytest*"]
+        patterns: [ruff, ty, "pytest*", "actionlint*"]
       # 나머지 전부. `patterns: ["*"]` 로 받아 두는 것이 핵심입니다 — 여기에
       # 이름을 나열하면 나중에 추가한 의존성이 어느 그룹에도 안 들어가
       # 혼자 PR 을 열고, 그걸 알아채는 사람이 없습니다.
       runtime:
         patterns: ["*"]
-        exclude-patterns: [ruff, ty, "pytest*"]
+        exclude-patterns: [ruff, ty, "pytest*", "actionlint*"]
     commit-message:
       prefix: "UPT:"
     labels: [dependencies]

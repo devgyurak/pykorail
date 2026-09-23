@@ -56,6 +56,15 @@ jobs:
       - name: ty check
         run: uv run ty check
 
+      - name: 워크플로 린트 (actionlint)
+        # "워크플로를 고쳤으면 actionlint 를 돌려라"(AGENTS.md §6)는 사람에게만
+        # 통하는 규칙입니다. Dependabot 은 그 문장을 읽지 않고 두 워크플로의 액션
+        # 버전을 계속 바꿉니다. 특히 release.yml 은 `v*` 태그에서만 돌아서 CI 가
+        # 실행으로는 절대 못 잡습니다 — 릴리스 당일에야 드러나고, 그때는 되돌리기
+        # 어렵습니다. 그래서 구문·스키마만이라도 여기서 강제합니다.
+        # 러너에 shellcheck 가 깔려 있어 `run:` 블록까지 함께 검사됩니다.
+        run: uv run actionlint .github/workflows/*.yml
+
   test:
     name: 테스트 (${{ matrix.python }})
     runs-on: ubuntu-latest

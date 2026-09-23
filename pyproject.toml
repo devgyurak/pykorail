@@ -61,6 +61,11 @@ include = ["src/pykorail", "tests", "README.md", "docs", "LICENSE"]
 
 [dependency-groups]
 dev = [
+    # 워크플로 린터. uvx 로 즉석 실행하지 않고 여기에 잠그는 이유는, CI 의 필수
+    # 체크(`ci-ok`)가 이 도구에 걸리기 때문입니다 — 버전을 안 잠그면 서드파티의
+    # 새 릴리스가 무관한 PR 을 빨갛게 만듭니다. 잠가 두면 그 변화가 Dependabot
+    # PR 로 먼저 오고, 거기서 한 번에 고칩니다.
+    "actionlint-py>=1.7.12",
     "pytest>=8.0.0",
     "pytest-cov>=5.0.0",
     "ruff>=0.14.0",
