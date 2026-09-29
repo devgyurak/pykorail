@@ -145,9 +145,10 @@ jobs:
         env:
           # 콤마로 나열한 순서대로 시도합니다 (Trivy 의 db-repository 는 단일 값이
           # 아니라 "OCI repository(ies) ... in order of priority" 입니다). 한 곳을
-          # 지정하면 그 한 곳이 죽었을 때 스캔 자체가 FATAL 로 끝나고, 필수 체크인
-          # `ci-ok` 가 딸려 실패해 **열려 있는 모든 PR 이 빨개집니다.** 실제로
-          # public.ecr.aws 가 TOOMANYREQUESTS 를 내면서 그 일이 있었습니다.
+          # 지정하면 그 한 곳이 죽었을 때 스캔 자체가 FATAL 로 끝나고, `build` 가
+          # `security` 를 needs 로 걸고 있어 **릴리스가 통째로 멈춥니다.** 태그는
+          # 이미 밀린 뒤라 수습이 가장 성가신 시점입니다. 실제로 public.ecr.aws 가
+          # TOOMANYREQUESTS 를 내서 CI 쪽에서 그 일이 있었습니다.
           # 뒤의 두 개는 Trivy 가 원래 쓰는 기본값이라, 우리가 새 공급원을
           # 고르는 게 아니라 껐던 폴백을 되살리는 것입니다.
           TRIVY_DB_REPOSITORY: >-
