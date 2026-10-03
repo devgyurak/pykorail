@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from pykorail.exceptions import (
+    HttpStatusError,
     KorailError,
     NeedToLoginError,
     NetFunnelError,
@@ -19,7 +20,7 @@ from pykorail.exceptions import (
 class TestHierarchy:
     @pytest.mark.parametrize(
         "error_type",
-        [KorailError, NeedToLoginError, NoResultsError, SoldOutError, NetFunnelError, TransportError],
+        [KorailError, NeedToLoginError, NoResultsError, SoldOutError, NetFunnelError, TransportError, HttpStatusError],
     )
     def test_everything_is_a_pykorail_error(self, error_type: type[Exception]) -> None:
         """호출부가 except PykorailError 하나로 라이브러리 실패를 다 잡을 수 있어야 합니다."""

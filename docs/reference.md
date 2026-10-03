@@ -369,6 +369,7 @@ PykorailError
 ├── StationNotFoundError   요청 전 클라이언트 검증 — 역 이름이 없음
 ├── PastDepartureError     요청 전 클라이언트 검증 — 이미 지난 시각
 └── TransportError         세션 생성 실패 / 비 JSON 응답
+    └── HttpStatusError    코레일 형식이 아닌 HTTP 4xx·5xx — 403 이용제한 등
 ```
 
 `except PykorailError` 하나로 라이브러리 유래 실패를 전부 잡을 수 있습니다.
@@ -383,6 +384,20 @@ except SoldOutError:
     ...  # 매진 — 다음 열차로
 except KorailError as exc:
     print(exc.msg, exc.code)  # 서버 메시지와 h_msg_cd
+```
+
+`HttpStatusError` 는 서버가 요청 자체를 거절했다는 뜻입니다 — 비밀번호 오류나
+"열차 없음" 이 아닙니다. 상태 코드(`status_code`)와 서버가 준 `code` · `message`
+(`msg`)를 그대로 담습니다. 실행 환경 검증에 걸리면 403 과 `code=-2000` 이용제한
+안내가 옵니다. 이때는 같은 요청을 곧바로 반복하지 마세요.
+
+```python
+from pykorail import HttpStatusError
+
+try:
+    korail.login(korail_id, korail_pw)
+except HttpStatusError as exc:
+    print(exc.status_code, exc.code, exc.msg)  # 403 -2000 원활한 서비스를 위해 ...
 ```
 
 `PastDepartureError` 는 요청 시각(`requested`)과 판정 기준 시각(`now`)을 함께

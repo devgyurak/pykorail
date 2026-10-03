@@ -13,9 +13,11 @@ from Crypto.Util.Padding import unpad
 from pykorail.client import Korail
 from pykorail.constants import API_ENDPOINTS
 from pykorail.device import DEVICE_PROFILES
-from pykorail.exceptions import LoginFailedError
+from pykorail.exceptions import HttpStatusError, LoginFailedError
+from tests.conftest import Reply
 from tests.dynapath_decoder import decode_token
 from tests.payloads import (
+    ACCESS_RESTRICTED,
     CIPHER_PAYLOAD,
     LOGIN_FAIL,
     LOGIN_FORM_GOLDEN,
@@ -218,6 +220,18 @@ class TestLogin:
 
         # then
         assert exc.value.msg == "아이디 또는 비밀번호가 올바르지 않습니다"
+
+    def test_access_restriction_is_not_reported_as_bad_password(self, make_korail) -> None:
+        """403 이용제한을 비밀번호 오류로 바꾸면 사용자가 엉뚱한 것을 고칩니다 (이슈 #27)."""
+        # given
+        client, _ = make_korail({"code": CIPHER_PAYLOAD, "login": Reply(403, ACCESS_RESTRICTED)})
+
+        # when
+        with pytest.raises(HttpStatusError) as exc:
+            client.login("me@example.com", "pw")
+
+        # then
+        assert (exc.value.status_code, exc.value.code) == (403, "-2000")
 
     @pytest.mark.parametrize(
         ("korail_id", "expected_flag"),

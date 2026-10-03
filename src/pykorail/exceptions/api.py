@@ -42,6 +42,10 @@ class LoginFailedError(KorailError):
     서버가 거부한 경우에는 응답의 ``h_msg_txt``·``h_msg_cd`` 가 :attr:`msg`·
     :attr:`code` 에 실립니다. ``codes`` 로 자동 승격되는 타입이 아니라 클라이언트가
     직접 던집니다.
+
+    HTTP 4xx·5xx 로 요청 자체가 거절된 경우(403 이용제한 등)는 자격증명을 판정한
+    결과가 아니므로 이 타입이 아니라
+    :class:`~pykorail.exceptions.network.HttpStatusError` 로 올라옵니다.
     """
 
     default_msg = "Login failed"

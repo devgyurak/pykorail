@@ -8,6 +8,7 @@ import pytest
 
 from pykorail.constants import API_ENDPOINTS
 from pykorail.exceptions import (
+    HttpStatusError,
     KorailError,
     NeedToLoginError,
     NoResultsError,
@@ -16,7 +17,9 @@ from pykorail.exceptions import (
 )
 from pykorail.models import AdultPassenger, Card, ChildPassenger, Reservation, Seat, Ticket
 from pykorail.resources.trains import KST, PAST_TOLERANCE, to_kst
+from tests.conftest import Reply
 from tests.payloads import (
+    ACCESS_RESTRICTED,
     MANY_RESERVATION_IDS,
     MANY_RESERVATIONS_PAYLOAD,
     NEARBY_SEARCH_PAYLOAD,
@@ -340,6 +343,18 @@ class TestTrainSearch:
         # when & then
         with pytest.raises(NoResultsError):
             client.trains.search("서울", "부산")
+
+    def test_access_restriction_is_not_reported_as_no_results(self, make_korail) -> None:
+        """403 이용제한을 "열차 없음" 으로 바꾸면 대기 루프가 원인을 모른 채 계속 돕니다 (이슈 #27)."""
+        # given
+        client, _ = make_korail({"stationdata": STATION_PAYLOAD, "search_schedule": Reply(403, ACCESS_RESTRICTED)})
+
+        # when
+        with pytest.raises(HttpStatusError) as exc:
+            client.trains.search("서울", "부산")
+
+        # then
+        assert (exc.value.status_code, exc.value.code) == (403, "-2000")
 
     def test_sends_departure_time_in_kst(self, korail) -> None:
         # given
