@@ -34,8 +34,10 @@ class RequestSigner:
     ) -> None:
         self._engine = DynaPathMasterEngine.from_profile(profile)
         self._device = device
-        # 명시적 오버라이드는 기존 서명 API를 유지합니다. 외부 프로파일의
-        # 선택 필드를 getattr로 읽어 3필드 DeviceProfileLike와도 호환됩니다.
+        # 명시적 device_id는 검증하지 않는 저수준 오버라이드입니다 — 기존 서명
+        # API를 유지하려는 것이며, 형식 검증은 Korail(android_id=...)이 먼저
+        # 합니다. 외부 프로파일의 선택 필드는 getattr로 읽어 3필드
+        # DeviceProfileLike와도 호환됩니다.
         profile_id = getattr(profile, "android_id", None)
         if device_id is not None:
             self._device_id = device_id

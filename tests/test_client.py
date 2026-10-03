@@ -347,6 +347,8 @@ class TestLogin:
 
 
 class TestPhoneNormalization:
+    """두 휴대폰 입력 형식을 앱의 숫자 전용 폼으로 정규화합니다."""
+
     @pytest.mark.parametrize("identity", ["031-123-4567", "0311234567", "010-12-3456", "010123456"])
     def test_nonmobile_shapes_are_not_classified_as_mobile(self, make_korail, identity: str) -> None:
         # given
@@ -359,8 +361,6 @@ class TestPhoneNormalization:
         form = session.kwargs_for("login")["data"]
         assert form["txtInputFlg"] == "2"
         assert form["txtMemberNo"] == identity
-
-    """두 휴대폰 입력 형식을 앱의 숫자 전용 폼으로 정규화합니다."""
 
     @pytest.mark.parametrize(
         "korail_id",

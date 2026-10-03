@@ -34,7 +34,7 @@ class SoldOutError(KorailError):
 class LoginFailedError(KorailError):
     """로그인에 실패했습니다.
 
-    입력 검증(빈 자격증명·하이픈 없는 번호), 준비 단계(암호화 키 발급), 서버의
+    입력 검증(빈 자격증명), 준비 단계(암호화 키 발급), 서버의
     자격증명 거부를 **모두** 이 타입 하나로 올립니다 —
     :meth:`~pykorail.client.Korail.login` 이 성공 여부를 반환하지 않으므로,
     "로그인이 안 됐다" 를 잡는 지점이 여기 하나입니다.

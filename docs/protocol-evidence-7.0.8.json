@@ -142,7 +142,8 @@
     },
     "limitations": [
       "No assertion about why the backend rejects the existing hardcoded ID.",
-      "No arbitrary or newly generated device IDs tested.",
+      "Ablation compared only the existing hardcoded ID and the observed device ID; no newly generated ID was part of this matrix.",
+      "Newly generated IDs were tested separately with a single synthetic ID (see synthetic_id.live_result); arbitrary IDs and many generated IDs were not tested.",
       "Earlier form/header/version changes held fixed; necessity not isolated here.",
       "Results apply to this account, time and proxy route."
     ]
