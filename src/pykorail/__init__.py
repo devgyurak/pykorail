@@ -5,7 +5,7 @@
     from pykorail import AdultPassenger, ChildPassenger, Korail
     from pykorail.device import profile_by_id, random_profile
 
-    profile = profile_by_id(saved_id) or random_profile()
+    profile = profile_by_id(saved_id, android_id=saved_android_id) or random_profile()
     with Korail.logged_in("me@example.com", "password", device_profile=profile) as korail:
         trains = korail.trains.search("서울", "부산", passengers=[AdultPassenger(2), ChildPassenger(1)])
         reservation = korail.reservations.create(trains[0])

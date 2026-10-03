@@ -99,7 +99,9 @@ def create_session(headers: Mapping[str, str] | None = None, impersonate: str = 
     session: HttpSession
     if curl_cffi is not None:
         ca_bundle = resolve_ca_bundle()
-        kwargs: dict[str, Any] = {"impersonate": impersonate}
+        # 앱의 UA만 덮어쓰면 Chrome 탐색용 Sec-Fetch/Client-Hint 헤더가 섞입니다.
+        # TLS 설정과 별개로 HTTP 헤더는 호출자가 지정한 앱 헤더만 사용합니다.
+        kwargs: dict[str, Any] = {"impersonate": impersonate, "default_headers": False}
         if ca_bundle:
             kwargs["verify"] = ca_bundle
         session = cast("HttpSession", curl_cffi.Session(**kwargs))

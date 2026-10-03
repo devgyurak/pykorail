@@ -54,9 +54,9 @@ class ApiClient:
         self.account = Account()
 
     # ------------------------------------------------------------------- 전송
-    def sign(self, url: str) -> tuple[dict[str, str], str | None]:
+    def sign(self, url: str, *, include_sid: bool = True) -> tuple[dict[str, str], str | None]:
         """``url`` 에 필요한 ``(헤더, Sid)``. 서명 대상이 아니면 ``({}, None)``."""
-        return self._signer.sign(url)
+        return self._signer.sign(url, include_sid=include_sid)
 
     def get(
         self,

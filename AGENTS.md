@@ -98,15 +98,22 @@ client.py  (Korail — 로그인/로그아웃/연결 수명만)
 지문·서명을 교차 검증하므로, 아래를 건드리면 조용히 로그인이 막힙니다.
 
 - **작동하는 값을 근거 없이 바꾸지 마세요**: `constants.py` 의 `USER_AGENT`,
-  `APP_VERSION`, `API_KEY`, `SID_KEY`, `DEVICE_ID`, `IMPERSONATE`, 그리고
+  `APP_VERSION`, `API_KEY`, `SID_KEY`, `IMPERSONATE`, 그리고
   `auth/dynapath.py` 의 인코딩 테이블·상수(`_TABLE`, `_RADIX`, `_MODULUS`, `_CHUNK`).
 - **폼 필드를 정리하지 마세요.** 빈 문자열로 보내는 필드(`txtChgFlg2` 등)나 조회
   엔드포인트만 `Key` 없이 빈 `Sid` 를 보내는 것은 앱 동작을 그대로 옮긴 것입니다.
   "안 쓰는 것 같으니 지운다" 는 회귀입니다.
-- **UA 와 서명은 같은 기기를 가리켜야 합니다.** `device_profile` 이 User-Agent 와
-  DynaPath 서명(`os=`·`dm=`)을 함께 바꿉니다. 한쪽만 바꾸면 그 불일치가 탐지 신호입니다.
+- **UA는 앱 공통값, 기기 신원은 프로파일입니다.** User-Agent는 프로파일과 무관하게
+  `korailtalk` 입니다. 프로파일은 DynaPath의 `di`·`os`·`dm`만 지정합니다.
+  공유 하드코딩 ID를 재도입하지 마세요. 기본 생성 ID도 `Korail.android_id`로 저장하고
+  `Korail(android_id=...)`로 복원할 수 있어야 합니다.
 - **암호화 형태를 "고치지" 마세요.** 이중 base64, `Sid` 끝의 개행, 키를 IV 로 재사용
   하는 AES-CBC — 전부 서버가 그 모양을 기대합니다.
+  로그인 비밀번호는 안쪽 NO_WRAP(2), 바깥쪽 URL_SAFE(8)의 76자 LF 래핑을 지킵니다.
+
+현재 7.0.8 기준의 APK·캡처 근거, 변경별 검증 범위와 한계는
+`docs/protocol-evidence-7.0.8.json`에 있습니다. 비밀번호 골든 벡터는 AOSP Java
+인코더로 생성했고, 로그인 폼 전체는 `tests/payloads.py::LOGIN_FORM_GOLDEN`과 비교합니다.
 
 리팩터링으로 이 영역을 건드렸다면, **요청 페이로드가 그대로인지 증명**하세요.
 가짜 세션으로 요청 kwargs 를 캡처해 변경 전후를 dict 단위로 비교하는 테스트를 쓰면 됩니다

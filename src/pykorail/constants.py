@@ -11,21 +11,18 @@ import re
 from typing import Final
 
 EMAIL_REGEX: Final = re.compile(r"[^@]+@[^@]+\.[^@]+")
-PHONE_NUMBER_REGEX: Final = re.compile(r"(\d{3})-(\d{3,4})-(\d{4})")
+PHONE_NUMBER_REGEX: Final = re.compile(r"01[016789]-\d{3,4}-\d{4}")
 
-#: 하이픈이 빠진 휴대폰 번호. 서버는 하이픈이 있는 형태만 휴대폰으로 인식하므로,
-#: 이 형태가 들어오면 회원번호로 잘못 조회돼 "비밀번호가 틀렸다"는 엉뚱한 응답이
-#: 옵니다. 요청을 보내기 전에 걸러 알려 주려고 따로 둡니다.
+#: 하이픈 없는 번호도 txtInputFlg=4로 분류해 회원번호와 구분합니다.
 HYPHENLESS_PHONE_REGEX: Final = re.compile(r"^01[016789]\d{7,8}$")
 
 API_HOST: Final = "smart.letskorail.com"
 
-#: 기기 프로파일을 주입하지 않았을 때 쓰는 기본 User-Agent.
-#: :func:`~pykorail.device.dalvik_user_agent` 로 프로파일별 렌더가 가능합니다.
-USER_AGENT: Final = "Dalvik/2.1.0 (Linux; U; Android 13; SM-S928N Build/UP1A.231005.007)"
+#: 스마트 앱 API의 공통 User-Agent. 기기 프로파일도 이 값을 바꾸지 않습니다.
+USER_AGENT: Final = "korailtalk"
 
 DEFAULT_HEADERS: Final[dict[str, str]] = {
-    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    "Content-Type": "application/x-www-form-urlencoded",
     "User-Agent": USER_AGENT,
     "Host": API_HOST,
     "Connection": "Keep-Alive",
@@ -34,7 +31,7 @@ DEFAULT_HEADERS: Final[dict[str, str]] = {
 
 KORAIL_MOBILE: Final = f"https://{API_HOST}:443/classes/com.korail.mobile"
 
-#: DynaPath 서명(``x-dynapath-m-token``)과 ``Sid`` 를 요구하는 경로들.
+#: DynaPath 서명(``x-dynapath-m-token``) 대상 경로. Sid 전송 여부는 각 호출에서 결정합니다.
 DYNAPATH_PATHS: Final[tuple[str, ...]] = (
     "/classes/com.korail.mobile.certification.TicketReservation",
     "/classes/com.korail.mobile.nonMember.NonMemTicket",
@@ -65,13 +62,13 @@ API_ENDPOINTS: Final[dict[str, str]] = {
 
 # --------------------------------------------------------------- 앱 신원값
 DEVICE: Final = "AD"
-APP_VERSION: Final = "250601002"
+APP_VERSION: Final = "250722001"
+#: API의 Version과 별개인 공식 앱 표시 버전입니다.
+APP_DISPLAY_VERSION: Final = "7.0.8"
 API_KEY: Final = "korail1234567890"
 SID_KEY: Final = b"2485dd54d9deaa36"
-DEVICE_ID: Final = "558a4f02041657ea"
 
-#: curl_cffi 임퍼소네이션 타깃. 안드로이드 크롬 계열이라 Dalvik UA 와 함께 써도
-#: TLS 지문이 안드로이드 기기로 일관되게 보입니다.
+#: curl_cffi의 기존 TLS 타깃입니다. HTTP 헤더는 앱 기준으로 별도 지정합니다.
 IMPERSONATE: Final = "chrome131_android"
 
 #: 한국 표준시(UTC+9). 코레일 API 의 모든 날짜·시각은 KST 기준입니다.

@@ -16,18 +16,22 @@ Korail(
     verbose: bool = False,
     device_profile: DeviceProfileLike | None = None,
     validate_stations: bool = True,
+    *,
+    android_id: str | None = None,
 )
 ```
 
 | 인자 | 설명 |
 | --- | --- |
 | `verbose` | 요청·응답 본문을 `DEBUG` 로그로 남깁니다. **개인정보가 찍히니 운영에서 켜지 마세요.** |
-| `device_profile` | User-Agent 와 DynaPath 서명을 함께 바꿉니다. [기기 프로파일](#기기-프로파일) 참조. |
+| `device_profile` | DynaPath의 ID·모델·OS를 지정합니다. UA는 `korailtalk`으로 고정됩니다. [기기 프로파일](#기기-프로파일) 참조. |
+| `android_id` | 저장한 ID를 복원합니다. 프로파일에도 ID가 있으면 같은 값이어야 하며, 형식 오류·충돌 시 세션 생성 전에 `ValueError`가 납니다. |
 | `validate_stations` | `trains.search` 전에 역 이름을 검증합니다. 끄면 역 마스터 조회 1회를 아낍니다. |
 
 | 메서드 · 속성 | 반환 | 설명 |
 | --- | --- | --- |
-| `Korail.logged_in(id, pw, *, verbose=False, device_profile=None, validate_stations=True)` | `Korail` | 생성 + 로그인. 실패하면 연결을 닫고 예외를 던집니다. |
+| `Korail.logged_in(id, pw, *, verbose=False, device_profile=None, validate_stations=True, android_id=None)` | `Korail` | 생성 + 로그인. ID 검증 오류는 `ValueError`, 로그인 실패는 `LoginFailedError`입니다. |
+| `android_id` | `str` | 실제 서명에 사용하는 ID. 프로파일이 없어도 저장할 수 있는 읽기 전용 속성입니다. |
 | `login(korail_id, korail_pw)` | `None` | 실패는 전부 `LoginFailedError`. 성공 여부를 반환하지 않습니다. |
 | `logout()` | `None` | **서버 세션만** 끊습니다. HTTP 연결은 살아 있어 재로그인할 수 있습니다. |
 | `close()` | `None` | HTTP 연결 정리. `with` 문이 자동 호출합니다. |
@@ -396,23 +400,23 @@ korail.trains.search("서울역", "부산")
 
 ## 기기 프로파일
 
-User-Agent 와 DynaPath 서명이 **같은 기기**를 가리켜야 합니다. 한쪽만 바꾸면 그
-불일치 자체가 탐지 신호가 되므로, 프로파일을 통째로 주입해 함께 바뀌게 하세요.
+User-Agent는 프로파일 유무와 무관하게 `korailtalk`입니다. 프로파일은
+DynaPath의 기기 ID(`di`)·OS(`os`)·모델(`dm`)을 지정합니다.
 
 ```python
 from pykorail import Korail
 from pykorail.device import profile_by_id, random_profile
 
-# 최초 1회만 뽑아 id 를 저장하고, 그 뒤로는 계속 같은 프로파일을 씁니다.
-profile = profile_by_id(saved_id) or random_profile()
-save(profile.id)
+# 두 ID를 함께 저장해야 재시작 후에도 같은 기기 ID를 씁니다.
+profile = profile_by_id(saved_id, android_id=saved_android_id) or random_profile()
+save(profile.id, profile.android_id)
 
 korail = Korail(device_profile=profile)
 ```
 
 > [!IMPORTANT]
 > **한 프로파일 = 폰 한 대.** 실행할 때마다 다른 기기인 척하는 것이 오히려
-> 부자연스럽습니다. 한 번 뽑은 `profile.id` 를 저장해 재사용하세요.
+> 부자연스럽습니다. `profile.id`와 `profile.android_id`를 함께 저장해 재사용하세요.
 
 카탈로그에는 실재하는 (모델 × 안드로이드 버전) 조합 **100개**가 결정적으로 전개돼
 있습니다. 전부 소스로 확인된 한국 자급제(`SM-…N`) 모델이고, 안드로이드 버전과
@@ -428,6 +432,22 @@ DEVICE_PROFILES[0]
 
 `model` · `android` · `build_id` 세 필드만 있으면 직접 만든 객체도 주입됩니다
 (`DeviceProfileLike` 프로토콜).
+선택적으로 `android_id` 필드를 제공하면 서명에도 그 값을 사용합니다. 없으면
+클라이언트 생성 시 한 번 합성 ID를 생성합니다. 기본 `DeviceProfile`에는 이 필드가
+자동으로 채워지며, `repr`에서는 숨겨집니다. `dataclasses.asdict(profile)`로 전체를
+저장하고 `DeviceProfile(**saved_data)`로 복원할 수도 있습니다.
+
+합성 ID는 Android 14의 `SettingsProvider.generateSsaidLocked`와 같이 임의
+32바이트 사용자 키와 코레일 앱의 공개 서명 인증서로 HMAC-SHA256을 계산해 만듭니다.
+실제 Android에서 발급받은 값은 아닙니다. 프로파일의 `id`만 저장하면 모델·OS는
+복원되지만 `android_id`는 다음 프로세스에서 달라집니다. 라이브러리는 자동 파일
+저장을 하지 않습니다.
+
+프로파일 없이 사용할 때도 `client.android_id`를 저장하고
+`Korail(android_id=saved_android_id)` 또는 `Korail.logged_in(..., android_id=saved_android_id)`로
+복원할 수 있습니다. `android_id`는 프로파일 동등성·해시에 포함되므로 같은 모델·OS라도
+ID가 다르면 서로 다른 가상 기기입니다. `DeviceProfile(...)`과 `profile_by_id(..., android_id=...)`는
+ID 형식이 잘못되면 `ValueError`를 발생시킵니다. 후자는 프로파일을 찾은 경우에만 검증합니다.
 
 ## NetFunnel 대기열
 

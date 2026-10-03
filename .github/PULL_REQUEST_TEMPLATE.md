@@ -64,8 +64,9 @@ constants.py · auth/ · crypto.py · 리소스의 폼 필드를 건드렸다면
 -->
 
 - [ ] 서버로 나가는 **요청 페이로드가 그대로**임을 확인했습니다
-- [ ] 앱 신원값(`USER_AGENT` · `APP_VERSION` · `API_KEY` · `SID_KEY` · `DEVICE_ID`)을
-      바꾸지 않았습니다
+- [ ] 앱 신원값(`USER_AGENT` · `APP_VERSION` · `APP_DISPLAY_VERSION` · `API_KEY` ·
+      `SID_KEY`)을 바꾸지 않았습니다. 바꿨다면 APK·캡처 근거를
+      `docs/protocol-evidence-7.0.8.json` 형식으로 남겼습니다
 - [ ] DynaPath의 새 엔진 첫 토큰 골든(`test_first_token_matches_v1_0_3_golden`)과
       독립 역디코더·시간 이력 검증이 통과합니다 (`tests/test_dynapath.py`)
 - [ ] 골든 변경 시 입력·변경 근거를 설명했습니다. 회귀 검증과 서버 수용 여부를
