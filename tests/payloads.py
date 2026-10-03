@@ -224,3 +224,16 @@ LOGIN_FAIL = {"strResult": "FAIL", "h_msg_cd": "WRC000000", "h_msg_txt": "비밀
 NO_RESULTS = {"strResult": "FAIL", "h_msg_cd": "P100", "h_msg_txt": "결과 없음"}
 
 OK = {"strResult": "SUCC"}
+
+#: HTTP 403 과 함께 온 이용제한 응답 (이슈 #27 의 실서버 보고). 코레일 형식이 아니라
+#: ``code``·``id``·``message`` 세 필드뿐입니다. ``id`` 는 보고자가 가린 값이라 자리표시자이고,
+#: ``code`` 는 보고에서 문자열로 옮겨 적은 것이라 원래 타입(숫자/문자열)은 확인하지 못했습니다.
+ACCESS_RESTRICTED = {
+    "code": "-2000",
+    "id": "redacted-trace-id",
+    "message": (
+        "원활한 서비스를 위해 안정적인 환경에서 앱을 이용해 주시기 바랍니다. "
+        "매크로 등 미허가 도구 사용 시 이용이 제한될 수 있습니다."
+        "정상적인 환경임에도 이용이 제한되는 경우 앱을 완전히 종료한 후 다시 실행해 주시기 바랍니다."
+    ),
+}

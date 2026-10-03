@@ -13,7 +13,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from pykorail.constants import API_KEY, APP_VERSION, DEVICE
-from pykorail.exceptions import TransportError, error_for_code
+from pykorail.exceptions import HttpStatusError, TransportError, error_for_code
+from pykorail.models.parsing import text
 
 if TYPE_CHECKING:
     from pykorail.auth.signer import RequestSigner
@@ -94,10 +95,20 @@ class ApiClient:
     def _parse(self, response: Response) -> dict[str, Any]:
         if self.verbose:
             logger.debug("%s", response.text)
+        status = response.status_code
         try:
             parsed = json.loads(response.text)
         except json.JSONDecodeError as exc:
+            if status >= 400:
+                raise HttpStatusError(status, response.text[:200] or None) from exc
             raise TransportError(f"코레일 응답을 JSON 으로 읽지 못했습니다: {response.text[:200]!r}") from exc
+        # 4xx·5xx 라도 코레일 형식(strResult)이면 h_msg_cd 매핑을 그대로 탑니다.
+        # 그 밖의 거절 본문(403 이용제한의 code·message 등)을 통과시키면 호출부가
+        # strResult 부재를 "비밀번호 오류"·"결과 없음" 으로 읽어 원인이 사라집니다.
+        if status >= 400 and not (isinstance(parsed, dict) and "strResult" in parsed):
+            body = parsed if isinstance(parsed, dict) else {}
+            # ``id`` 는 요청 추적값일 수 있어 예외 메시지에 싣지 않습니다.
+            raise HttpStatusError(status, text(body, "message") or None, text(body, "code") or None)
         if not isinstance(parsed, dict):
             raise TransportError(f"코레일 응답이 객체가 아닙니다: {type(parsed).__name__}")
         return parsed

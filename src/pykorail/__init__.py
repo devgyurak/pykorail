@@ -32,6 +32,7 @@ from pykorail.auth import NetFunnelHelper
 from pykorail.client import Korail
 from pykorail.device import DeviceProfile, DeviceProfileLike, profile_by_id, random_profile
 from pykorail.exceptions import (
+    HttpStatusError,
     KorailError,
     LoginFailedError,
     NeedToLoginError,
@@ -94,6 +95,7 @@ __all__ = [
     "DeviceProfileLike",
     "Disability1To3Passenger",
     "Disability4To6Passenger",
+    "HttpStatusError",
     "Korail",
     "KorailError",
     "LoginFailedError",

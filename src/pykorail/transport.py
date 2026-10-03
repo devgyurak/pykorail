@@ -36,6 +36,9 @@ class Response(Protocol):
     """curl_cffi 와 requests 응답 객체의 공통 최소 표면."""
 
     @property
+    def status_code(self) -> int: ...
+
+    @property
     def text(self) -> str: ...
 
 

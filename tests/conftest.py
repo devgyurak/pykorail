@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from typing import Any
 
 import pytest
@@ -21,9 +22,23 @@ from tests.payloads import (
 )
 
 
+@dataclass(frozen=True)
+class Reply:
+    """상태 코드나 원문 본문을 지정해야 하는 라우트 응답.
+
+    ``body`` 가 ``str`` 이면 그대로, 아니면 JSON 으로 실립니다. 라우트에 dict 만
+    두면 HTTP 200 JSON 응답입니다.
+    """
+
+    status_code: int
+    body: Any
+
+
 class FakeResponse:
     def __init__(self, payload: Any) -> None:
-        self.text = json.dumps(payload)
+        reply = payload if isinstance(payload, Reply) else Reply(200, payload)
+        self.status_code = reply.status_code
+        self.text = reply.body if isinstance(reply.body, str) else json.dumps(reply.body)
 
 
 class FakeSession:
