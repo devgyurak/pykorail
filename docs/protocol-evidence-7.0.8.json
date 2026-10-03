@@ -1,0 +1,222 @@
+{
+  "app": {
+    "package": "com.korail.talk",
+    "version": "7.0.8",
+    "apk_sha256": "1660796d747b1bfc3f1c57895f8faf84bc987100a04cd6927e0ccdb0b20719cb"
+  },
+  "capture_date": "2026-10-03",
+  "scope": "사용자가 허가한 본인 계정의 Android 에뮬레이터 로그인·열차검색 비교. 예약·결제 검증 아님.",
+  "wire_changes": [
+    {
+      "field": "User-Agent",
+      "value": "korailtalk",
+      "basis": "7.0.8 로그인·검색 성공 캡처. 클라이언트 공통 헤더 정책으로 통일. 기기 프로파일은 UA를 변경하지 않음."
+    },
+    {
+      "field": "Content-Type",
+      "value": "application/x-www-form-urlencoded",
+      "basis": "동일 캡처의 헤더. charset 없는 앱 형식."
+    },
+    {
+      "field": "Version",
+      "value": "250722001",
+      "basis": "동일 캡처의 초기화·로그인·검색 폼."
+    },
+    {
+      "field": "AppVersion",
+      "value": "7.0.8",
+      "basis": "로그인 성공 캡처. 검색 폼에는 추가하지 않음."
+    },
+    {
+      "field": "checkValidPw",
+      "value": "Y",
+      "basis": "로그인 성공 캡처."
+    },
+    {
+      "field": "login Sid",
+      "value": "absent",
+      "basis": "로그인 성공 캡처. 다른 엔드포인트의 기존 Sid 정책은 유지."
+    },
+    {
+      "field": "txtPwd",
+      "basis": "APK AESCrypto.encrypt: Base64.encodeToString(ciphertext,2); LoginRepositoryImpl.login: Base64.encodeToString(inner UTF-8 bytes,8). AppSuitLinker2의 디스패치가 android.util.Base64.encodeToString으로 연결됨."
+    },
+    {
+      "field": "txtMemberNo",
+      "basis": "캡처의 성공 휴대폰 폼은 하이픈 없는 값과 txtInputFlg=4. 두 사용자 입력 형태를 같은 폼으로 정규화. 하이픈 원문 전송의 필수성은 주장하지 않음."
+    },
+    {
+      "field": "nonce alphabet",
+      "value": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+      "basis": "APK a.b.a()의 난수 문자 집합. 소문자 없이도 성공했으므로 성공 필수 조건이라는 주장은 하지 않음."
+    },
+    {
+      "field": "di",
+      "basis": "아래 8조합 비교와 반복 검증. 공유 하드코딩 ID는 실패, 관측 ID 및 신규 합성 ID는 성공. 서버 내부 차단 정책은 미확인."
+    },
+    {
+      "field": "default_headers",
+      "value": false,
+      "basis": "curl_cffi가 추가하던 Chrome Sec-Fetch/Client-Hint 헤더를 로컬 수신기로 확인. 앱 캡처에는 없어서 제거."
+    },
+    {
+      "field": "default DynaPath os",
+      "value": "14",
+      "basis": "성공 앱 캡처 OS=14. 프로파일 지정 시 해당 프로파일의 OS를 사용."
+    }
+  ],
+  "ablation": {
+    "login_trials": 11,
+    "successes": 6,
+    "failures": 5,
+    "matrix": [
+      {
+        "variant": "all_default",
+        "observed_device_id": false,
+        "observed_model": false,
+        "emulator": false,
+        "login_success": false
+      },
+      {
+        "variant": "only_model",
+        "observed_device_id": false,
+        "observed_model": true,
+        "emulator": false,
+        "login_success": false
+      },
+      {
+        "variant": "only_emulator",
+        "observed_device_id": false,
+        "observed_model": false,
+        "emulator": true,
+        "login_success": false
+      },
+      {
+        "variant": "without_device_id",
+        "observed_device_id": false,
+        "observed_model": true,
+        "emulator": true,
+        "login_success": false
+      },
+      {
+        "variant": "only_device_id",
+        "observed_device_id": true,
+        "observed_model": false,
+        "emulator": false,
+        "login_success": true
+      },
+      {
+        "variant": "without_emulator",
+        "observed_device_id": true,
+        "observed_model": true,
+        "emulator": false,
+        "login_success": true
+      },
+      {
+        "variant": "without_model",
+        "observed_device_id": true,
+        "observed_model": false,
+        "emulator": true,
+        "login_success": true
+      },
+      {
+        "variant": "all_observed",
+        "observed_device_id": true,
+        "observed_model": true,
+        "emulator": true,
+        "login_success": true
+      }
+    ],
+    "replication": {
+      "default_device_id_failed_again": true,
+      "observed_id_only_succeeded_again": true,
+      "uppercase_only_nonce_succeeded": true
+    },
+    "final_search": {
+      "success": true,
+      "route": [
+        "광명",
+        "동대구"
+      ],
+      "train_count": 10
+    },
+    "limitations": [
+      "No assertion about why the backend rejects the existing hardcoded ID.",
+      "Ablation compared only the existing hardcoded ID and the observed device ID; no newly generated ID was part of this matrix.",
+      "Newly generated IDs were tested separately with a single synthetic ID (see synthetic_id.live_result); arbitrary IDs and many generated IDs were not tested.",
+      "Earlier form/header/version changes held fixed; necessity not isolated here.",
+      "Results apply to this account, time and proxy route."
+    ]
+  },
+  "synthetic_id": {
+    "algorithm": "Android 14 SettingsProvider: fresh 32-byte user key; HMAC-SHA256 over uint32 big-endian cert length + signer certificate DER; first 8 bytes as lowercase hex",
+    "reference": "https://android.googlesource.com/platform/frameworks/base/+/refs/tags/android-14.0.0_r1/packages/SettingsProvider/src/com/android/providers/settings/SettingsProvider.java",
+    "certificate_sha256": "38ff229cb34c7dda8e28220a2d750cceec28db661a36d95ad92d82f6d3c618f9",
+    "live_result": "새 합성 ID 1개로 로그인과 광명→동대구 열차 10건 조회 성공. 실제 Android 발급 ID가 아님.",
+    "identity_semantics": "android_id를 포함한 필드로 동등성을 판정. 모델·OS가 같아도 ID가 다르면 다른 가상 기기."
+  },
+  "password_vectors": {
+    "fixture": "tests/password_vectors.json",
+    "generator": "tests/reference/PasswordVectors.java",
+    "reference": "https://android.googlesource.com/platform/frameworks/base/+/refs/tags/android-14.0.0_r1/core/java/android/util/Base64.java",
+    "source_sha256": "bd7b1e83953dda51fda1b96b5211cf43e375105db8f7f5a6dd678efb57fb3364",
+    "inner_flags": 2,
+    "outer_flags": 8,
+    "cipher": "Java AES/CBC/PKCS5Padding; fixed synthetic 32-byte key; first 16 key bytes as IV",
+    "coverage": "UTF-8 lengths 0,1,15,16,31,32,64; Korean and emoji at 30 and 40 bytes",
+    "reproduce": [
+      "Download the reference Base64.java with ?format=TEXT and base64-decode it to a temporary Base64.java.",
+      "javac -encoding UTF-8 -d <temporary classes directory> <temporary Base64.java> tests/reference/UnsupportedAppUsage.java tests/reference/PasswordVectors.java",
+      "java -cp <temporary classes directory> PasswordVectors > <temporary vectors.json>; compare parsed JSON with tests/password_vectors.json."
+    ],
+    "note": "AOSP source is unmodified. Only UnsupportedAppUsage annotation is stubbed. Python implementation is not used to generate expected ciphertexts."
+  },
+  "removed_experiments": [
+    "전체 앱 설정 초기화 및 에뮬레이터 화면·API레벨 고정값",
+    "is_emulator 주입 옵션"
+  ],
+  "limits": [
+    "각 헤더·폼 변경의 독립적인 필수성은 검증하지 않음.",
+    "ID 비교는 동일 계정·시점·프록시 경로에서 수행.",
+    "긴 비밀번호 벡터는 오프라인 앱 인코딩 일치 검증이며 서버의 비밀번호 길이 허용 정책 검증이 아님.",
+    "원본 캡처와 실제 계정·기기 ID는 저장소에 포함하지 않음."
+  ],
+  "review_followup_validation": [
+    {
+      "case": "profile with hyphenated phone input",
+      "login_success": true,
+      "search_success": true,
+      "train_count": 10,
+      "route": [
+        "광명",
+        "동대구"
+      ],
+      "user_agent": "korailtalk",
+      "token_matches_public_android_id": true,
+      "login_sid_present": false,
+      "observed_at_kst": "2026-10-03T10:14:45.865405+09:00",
+      "note": "observed_at_kst is requested train departure time (current time + 2 minutes)"
+    },
+    {
+      "case": "default ID restored through public API",
+      "login_success": true,
+      "search_success": true,
+      "train_count": 10,
+      "route": [
+        "광명",
+        "동대구"
+      ],
+      "user_agent": "korailtalk",
+      "token_matches_public_android_id": true,
+      "login_sid_present": false,
+      "observed_at_kst": "2026-10-03T10:15:01.365924+09:00",
+      "note": "observed_at_kst is requested train departure time (current time + 2 minutes)"
+    }
+  ],
+  "catalog_generation_cost": {
+    "measurement": "3 repeats of 10 catalog builds, best per-build time on the development machine",
+    "milliseconds_per_100_profiles": 0.47734,
+    "entropy_bytes_per_catalog": 3200,
+    "decision": "현재 생성 방식을 유지. 성능 보장이 아닌 단일 개발 환경의 참고 측정."
+  }
+}

@@ -167,6 +167,19 @@ TICKET_SEAT_PAYLOAD = {
     "ticket_infos": {"ticket_info": [{"tk_seat_info": [{"h_seat_no": "7C"}]}]},
 }
 
+#: 승인된 7.0.8 로그인 폼. 동적 암호문과 키 발급 인덱스만 정규화합니다.
+LOGIN_FORM_GOLDEN = {
+    "Device": "AD",
+    "Version": "250722001",
+    "AppVersion": "7.0.8",
+    "Key": "korail1234567890",
+    "txtInputFlg": "4",
+    "txtMemberNo": "01012345678",
+    "txtPwd": "<encrypted>",
+    "checkValidPw": "Y",
+    "idx": "<issued>",
+}
+
 CIPHER_PAYLOAD = {
     "strResult": "SUCC",
     "app.login.cphd": {"idx": "7", "key": "0123456789abcdef0123456789abcdef"},

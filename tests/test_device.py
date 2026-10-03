@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import random
 import re
+from dataclasses import asdict, replace
+from unittest.mock import Mock
 
 import pytest
 
@@ -13,12 +15,49 @@ from pykorail.device import (
     DEVICE_PROFILES,
     DeviceProfile,
     dalvik_user_agent,
+    generate_android_id,
     profile_by_id,
     random_profile,
 )
 
 #: 안드로이드 버전 → 빌드ID 첫 글자. 어긋나면 실재하지 않는 조합입니다.
 BUILD_PREFIX = {13: "T", 14: "U", 15: "A", 16: "B"}
+
+
+class TestAndroidId:
+    def test_matches_android14_hmac_vector(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # given: 추출한 APK 인증서와 별도 PyCryptodome HMAC 계산으로 확인한 벡터입니다.
+        entropy = Mock(return_value=bytes(range(32)))
+        monkeypatch.setattr("pykorail.device.android_id._token_bytes", entropy)
+
+        # when
+        android_id = generate_android_id()
+
+        # then
+        assert android_id == "1d3e4cc39288a9b6"
+        entropy.assert_called_once_with(32)
+
+    def test_saved_profile_restores_without_new_entropy(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # given
+        profile = DEVICE_PROFILES[0]
+        saved = asdict(profile)
+        entropy = Mock(side_effect=AssertionError("복원 시 ID를 새로 생성하면 안 됩니다"))
+        monkeypatch.setattr("pykorail.device.android_id._token_bytes", entropy)
+
+        # when
+        restored = DeviceProfile(**saved)
+
+        # then
+        assert restored == profile
+        assert restored.android_id == saved["android_id"]
+        assert restored.android_id not in repr(restored)
+        entropy.assert_not_called()
+
+    @pytest.mark.parametrize("value", ["", "abcd", "g" * 16, "A" * 16, "1" * 17])
+    def test_rejects_malformed_saved_id(self, value: str) -> None:
+        # when & then
+        with pytest.raises(ValueError, match="android_id"):
+            profile_by_id(DEVICE_PROFILES[0].id, android_id=value)
 
 
 class TestCatalog:
@@ -67,7 +106,7 @@ class TestCatalog:
         # then
         assert len(models) == 38, "라운드로빈이라 모든 모델이 최소 1개씩 나와야 합니다"
 
-    def test_catalog_is_deterministic(self) -> None:
+    def test_catalog_model_definitions_are_deterministic(self) -> None:
         # given
         from pykorail.device.catalog import _build_catalog
 
@@ -75,10 +114,46 @@ class TestCatalog:
         rebuilt = _build_catalog()
 
         # then
-        assert rebuilt == DEVICE_PROFILES
+        assert [(p.id, p.marketing, p.model, p.android, p.build_id) for p in rebuilt] == [
+            (p.id, p.marketing, p.model, p.android, p.build_id) for p in DEVICE_PROFILES
+        ]
+
+    def test_android_ids_are_distinct_and_valid(self) -> None:
+        # when
+        ids = [profile.android_id for profile in DEVICE_PROFILES]
+
+        # then
+        assert len(set(ids)) == CATALOG_SIZE
+        assert [value for value in ids if re.fullmatch(r"[0-9a-f]{16}", value) is None] == []
 
 
 class TestLookup:
+    def test_android_id_participates_in_device_identity(self) -> None:
+        # given
+        original = replace(DEVICE_PROFILES[0], android_id="0123456789abcdef")
+
+        # when
+        another_device = replace(original, android_id="fedcba9876543210")
+
+        # then
+        assert original != another_device
+        assert len({original, another_device}) == 2
+
+    def test_restores_android_id_without_mutating_catalog(self) -> None:
+        # given
+        original = DEVICE_PROFILES[0]
+        original_id = original.android_id
+
+        # when
+        restored = profile_by_id(original.id, android_id="0123456789abcdef")
+
+        # then
+        assert restored is not None
+        assert restored.android_id == "0123456789abcdef"
+        assert restored.model == original.model
+        assert original.android_id == original_id
+        assert profile_by_id(original.id) is original
+
     def test_finds_by_id(self) -> None:
         # given
         target = DEVICE_PROFILES[0]

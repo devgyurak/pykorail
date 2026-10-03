@@ -4,8 +4,8 @@ Korail+ 7.0.8에서 관찰한 SDK v1.0.3의 필드·시간 이력·직렬화를 
 서버의 검증 정책과 수용 여부는 APK 분석만으로 확인할 수 없습니다.
 인코딩 원시연산의 순서·상수는 알고리즘의 일부이므로 유지합니다.
 
-토큰이 광고하는 기기(``os=``·``dm=``)는 User-Agent 가 광고하는 기기와 반드시
-같아야 합니다. :class:`~pykorail.client.Korail` 이 같은 프로파일로 둘 다 채웁니다.
+토큰의 기기 정보(``di=``·``os=``·``dm=``)는 프로파일에서 가져옵니다.
+HTTP User-Agent는 기기 정보가 없는 앱 공통값 ``korailtalk`` 입니다.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ class DynaPathMasterEngine:
     APP_ID: ClassVar[str] = "com.korail.talk"
     AS_VALUE: ClassVar[str] = "[38ff229cb34c7dda8e28220a2d750cce]"
     DEVICE_MODEL: ClassVar[str] = "SM-S928N"
-    OS_VERSION: ClassVar[str] = "13"
+    OS_VERSION: ClassVar[str] = "14"
     OS_TYPE: ClassVar[str] = "Android"
     SDK_VERSION: ClassVar[str] = "v1.0.3"
 
@@ -175,7 +175,7 @@ class DynaPathMasterEngine:
         Args:
             device_id: 앱이 들고 다니는 기기 식별자.
             ts: 요청 시각 (epoch 밀리초).
-            rand: 요청마다 새로 뽑는 4자 영대문자·숫자 논스.
+            rand: 요청마다 새로 뽑는 4자 영소문자·영대문자·숫자 논스.
         """
         with self._lock:
             return self._generate_token_locked(device_id, ts, rand)

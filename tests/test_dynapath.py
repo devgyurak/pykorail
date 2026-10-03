@@ -27,8 +27,11 @@ def engine(fixed_clock: None) -> DynaPathMasterEngine:
     return DynaPathMasterEngine()
 
 
-def test_first_token_matches_v1_0_3_golden(engine: DynaPathMasterEngine) -> None:
+def test_first_token_matches_v1_0_3_golden(fixed_clock: None) -> None:
     """APK 분석을 반영한 Python 구현의 회귀 기준이며 SDK 실행 산출물은 아닙니다."""
+    # given: 과거 고정 토큰의 입력 OS를 명시해 기본 기기 변경과 인코더 회귀를 구분합니다.
+    engine = DynaPathMasterEngine(os_version="13")
+
     # when
     token = engine.generate_token("fixture-device", INIT_MS + 1234, "aB12")
 
@@ -55,7 +58,7 @@ def test_fresh_engines_match_for_same_inputs(engine: DynaPathMasterEngine) -> No
         f"v1.0.3+aB12+{INIT_MS + 1234}",
         "ai=com.korail.talk&di=fixture-device&as=%5B38ff229cb34c7dda8e28220a2d750cce%5D&"
         f"su=false&dbg=false&emu=false&hk=false&it={INIT_MS}&ts={INIT_MS + 1234}&rt=1234&"
-        "os=13&dm=SM-S928N&st=Android&sv=v1.0.3",
+        "os=14&dm=SM-S928N&st=Android&sv=v1.0.3",
     )
 
 
@@ -210,7 +213,7 @@ def test_default_engine_signs_as_the_documented_device() -> None:
 
     # then
     assert engine.device_model == "SM-S928N"
-    assert engine.os_version == "13"
+    assert engine.os_version == "14"
 
 
 def test_profile_drives_the_signature() -> None:

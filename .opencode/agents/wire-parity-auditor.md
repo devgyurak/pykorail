@@ -23,11 +23,11 @@ tools:
 ### 1. 고정 상수가 그대로인지
 `src/pykorail/constants.py` 에서 확인:
 ```
-USER_AGENT   = "Dalvik/2.1.0 (Linux; U; Android 13; SM-S928N Build/UP1A.231005.007)"
-APP_VERSION  = "250601002"
+USER_AGENT   = "korailtalk"
+APP_VERSION  = "250722001"
+APP_DISPLAY_VERSION = "7.0.8"
 API_KEY      = "korail1234567890"
 SID_KEY      = b"2485dd54d9deaa36"
-DEVICE_ID    = "558a4f02041657ea"
 IMPERSONATE  = "chrome131_android"
 DEVICE       = "AD"
 ```
@@ -106,13 +106,16 @@ print(sorted((S.calls[-1][2].get('params') or {}).keys()))
 특히 확인할 것:
 - 조회(`search_schedule`)만 `Key` 없이 빈 `Sid` 를 보냅니다 — 다른 엔드포인트와
   통일하려 들면 안 됩니다.
-- `login` 만 실제 `Sid` 값을 폼에 싣습니다.
+- `login`은 DynaPath 헤더만 싣고 `Sid`는 생성·전송하지 않습니다.
 - `stationdata` 는 파라미터 없는 bodyless POST 입니다.
 
-### 5. UA ↔ 서명 일치
-`device_profile` 을 주입했을 때 User-Agent 의 기기와 DynaPath 서명의 `os=`/`dm=` 이
-같은 기기를 가리키는지 확인하세요. `tests/test_client.py::TestDeviceProfile` 이
-검증합니다. 한쪽만 바뀌면 그 불일치 자체가 탐지 신호입니다.
+### 5. 앱 UA와 프로파일 신원
+User-Agent는 프로파일 유무와 무관하게 `korailtalk`입니다. 프로파일은 DynaPath의
+`di`·`os`·`dm`을 지정합니다. 공유 하드코딩 ID를 요구하지 마세요. 생성된 ID는
+`Korail.android_id`와 `Korail(android_id=...)`로 저장·복원 가능해야 합니다.
+`tests/test_client.py::TestDeviceProfile`과 로그인 폼 전체 골든 테스트를 확인하세요.
+현재 근거와 검증 한계는 `docs/protocol-evidence-7.0.8.json`에 있습니다.
+비밀번호는 안쪽 NO_WRAP(2), 바깥쪽 URL_SAFE(8)이며 76자 LF 래핑을 검증합니다.
 
 ### 6. 전체 게이트
 ```bash

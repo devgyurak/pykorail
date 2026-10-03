@@ -11,7 +11,8 @@
 안드로이드 크롬 계열(``chrome131_android``)이라 TLS 지문과도 일치합니다 — 아이폰·
 통신사 전용(S/K/L 접미사) 모델을 넣지 마세요.
 
-카탈로그는 결정적입니다(``Math.random`` 없음). 무작위로 하나 뽑고 싶으면
+모델·OS 조합과 프로파일 ``id`` 는 결정적이며 ``android_id`` 는 생성 시 임의 값입니다.
+무작위로 하나 뽑고 싶으면
 :func:`random_profile` 을 쓰되, **한 번 뽑은 프로파일은 계속 재사용하세요** —
 실행마다 다른 폰인 척하는 것이 오히려 부자연스럽습니다.
 """
@@ -19,6 +20,7 @@
 from __future__ import annotations
 
 import random
+from dataclasses import replace
 
 from pykorail.device.profile import DeviceProfile
 
@@ -128,18 +130,28 @@ DEVICE_PROFILES: tuple[DeviceProfile, ...] = _build_catalog()
 PROFILES_BY_ID: dict[str, DeviceProfile] = {profile.id: profile for profile in DEVICE_PROFILES}
 
 
-def profile_by_id(profile_id: str | None) -> DeviceProfile | None:
-    """저장해 둔 ``id`` 로 프로파일을 찾습니다. 없거나 카탈로그에서 사라졌으면 ``None``."""
+def profile_by_id(profile_id: str | None, *, android_id: str | None = None) -> DeviceProfile | None:
+    """프로파일을 찾고, 저장된 ``android_id`` 가 있으면 카탈로그를 바꾸지 않고 복원합니다.
+
+    프로파일이 없으면 ``None`` 입니다. ID를 생략하면 이번 프로세스에서 생성된
+    카탈로그 객체를 반환하므로 실행 간 유지하려면 두 ID를 함께 저장하세요.
+
+    Raises:
+        ValueError: 찾은 프로파일에 복원할 android_id의 형식이 잘못됐습니다.
+    """
     if profile_id is None:
         return None
-    return PROFILES_BY_ID.get(profile_id)
+    profile = PROFILES_BY_ID.get(profile_id)
+    if profile is not None and android_id is not None:
+        return replace(profile, android_id=android_id)
+    return profile
 
 
 def random_profile(rng: random.Random | None = None) -> DeviceProfile:
     """카탈로그에서 프로파일 하나를 무작위로 뽑습니다.
 
-    최초 1회만 뽑아 ``profile.id`` 를 저장해 두고, 그 뒤로는
-    :func:`profile_by_id` 로 같은 프로파일을 복원해 쓰세요. ``rng`` 를 넘기면
+    최초 1회만 뽑아 ``profile.id`` 와 ``profile.android_id`` 를 함께 저장하고,
+    :func:`profile_by_id` 로 복원해 쓰세요. ``rng`` 를 넘기면
     재현 가능한 선택이 됩니다(테스트용).
     """
     return (rng or random).choice(DEVICE_PROFILES)

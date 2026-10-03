@@ -146,15 +146,24 @@ for ticket in korail.tickets.all():
 <details>
 <summary><b>기기 프로파일 고정하기</b> — 여러 번 실행한다면</summary>
 
-실행할 때마다 다른 기기인 척하면 오히려 부자연스럽습니다. 한 번 뽑아 `id` 를
-저장해 두고 계속 쓰세요.
+프로파일마다 합성 Android ID가 하나 생성되며, 같은 프로파일을 쓰는 클라이언트는
+그 ID를 재사용합니다. 재시작 후에도 유지하려면 `id`와 `android_id`를 함께 저장하세요.
+pykorail은 파일을 자동으로 읽거나 쓰지 않습니다.
 
 ```python
 from pykorail.device import profile_by_id, random_profile
 
-profile = profile_by_id(saved_id) or random_profile()
+profile = profile_by_id(saved_id, android_id=saved_android_id) or random_profile()
+# 호출 앱의 설정에 profile.id와 profile.android_id를 함께 저장합니다.
 korail = Korail(device_profile=profile)
 ```
+
+전체 프로파일을 저장하려면 `dataclasses.asdict(profile)`을 직렬화한 뒤
+`DeviceProfile(**saved_data)`로 복원할 수도 있습니다. ID는 Android 14의
+SSAID 계산 방식과 코레일 공개 서명 인증서로 생성한 합성 값이며, 실제 기기에서
+추출한 값은 아닙니다. 프로파일을 생략하면 클라이언트마다 새 ID가 생성됩니다.
+이때도 `korail.android_id`를 저장하고 `Korail(android_id=saved_android_id)`로 복원할 수 있습니다.
+프로파일 유무와 무관하게 User-Agent는 `korailtalk`입니다.
 
 </details>
 
@@ -207,8 +216,8 @@ except KorailError as exc:
 코레일은 TLS 지문을 보기 때문에 이때 로그인이 거부될 수 있습니다.
 `pip install curl_cffi` 로 해결되는 경우가 대부분입니다.
 
-휴대폰 번호로 로그인한다면 **하이픈을 넣어야 합니다** (`010-1234-5678`).
-빠뜨리면 회원번호로 조회돼 엉뚱하게 실패합니다.
+휴대폰 번호는 `010-1234-5678`과 `01012345678` 모두 입력할 수 있습니다.
+클라이언트가 휴대폰 로그인으로 분류하고 하이픈을 제거해 전송합니다.
 
 </details>
 

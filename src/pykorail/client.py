@@ -13,6 +13,7 @@ from pykorail.auth.signer import RequestSigner
 from pykorail.constants import (
     API_ENDPOINTS,
     API_KEY,
+    APP_DISPLAY_VERSION,
     APP_VERSION,
     DEFAULT_HEADERS,
     DEVICE,
@@ -21,7 +22,7 @@ from pykorail.constants import (
     PHONE_NUMBER_REGEX,
 )
 from pykorail.crypto import encrypt_password
-from pykorail.device import dalvik_user_agent
+from pykorail.device.android_id import validate_android_id
 from pykorail.exceptions import LoginFailedError
 from pykorail.resources import ReservationResource, StationResource, TicketResource, TrainResource
 from pykorail.transport import create_session
@@ -46,12 +47,13 @@ class Korail:
         korail = Korail()
         korail.login("me@example.com", "password")
 
-    ``device_profile`` 을 주입하면 User-Agent 와 DynaPath 서명이 **같은 기기**를
-    가리키도록 함께 바뀝니다. 둘 중 하나만 바꾸면 그 불일치가 곧 탐지 신호입니다::
+    ``device_profile`` 은 DynaPath의 기기 ID·모델·OS를 지정합니다.
+    User-Agent는 프로파일과 무관하게 ``korailtalk`` 을 사용합니다::
 
         from pykorail.device import profile_by_id, random_profile
 
-        profile = profile_by_id(saved_id) or random_profile()
+        profile = profile_by_id(saved_id, android_id=saved_android_id) or random_profile()
+        # profile.id와 profile.android_id를 함께 저장합니다.
         korail = Korail(device_profile=profile)
 
     Attributes:
@@ -59,6 +61,10 @@ class Korail:
         trains: 시간표 조회 (:class:`~pykorail.resources.TrainResource`).
         reservations: 예매·결제·취소 (:class:`~pykorail.resources.ReservationResource`).
         tickets: 승차권 조회·환불 (:class:`~pykorail.resources.TicketResource`).
+        android_id: 실제 서명에 쓰는 ID. 저장한 뒤 생성자의 동명 인자로 복원할 수 있습니다.
+
+    Raises:
+        ValueError: android_id 형식이 잘못됐거나 프로파일의 ID와 충돌합니다.
     """
 
     def __init__(
@@ -66,13 +72,19 @@ class Korail:
         verbose: bool = False,
         device_profile: DeviceProfileLike | None = None,
         validate_stations: bool = True,
+        *,
+        android_id: str | None = None,
     ) -> None:
-        # 공유 dict 를 오염시키지 않도록 복사한 뒤 User-Agent 만 갈아 끼웁니다.
+        if android_id is not None:
+            validate_android_id(android_id)
+            profile_id = getattr(device_profile, "android_id", None)
+            if profile_id is not None and profile_id != android_id:
+                raise ValueError("android_id가 device_profile.android_id와 다릅니다")
+        # 유효성 오류가 나면 HTTP 세션을 만들지 않습니다.
+        signer = RequestSigner(device_profile, device_id=android_id)
+        self._android_id = signer.android_id
         headers = dict(DEFAULT_HEADERS)
-        if device_profile is not None:
-            headers["User-Agent"] = dalvik_user_agent(device_profile)
-
-        self._api = ApiClient(create_session(headers), RequestSigner(device_profile), verbose)
+        self._api = ApiClient(create_session(headers), signer, verbose)
         self._idx: str | None = None
         self.device_profile = device_profile
 
@@ -90,6 +102,7 @@ class Korail:
         verbose: bool = False,
         device_profile: DeviceProfileLike | None = None,
         validate_stations: bool = True,
+        android_id: str | None = None,
     ) -> Korail:
         """클라이언트를 만들고 곧바로 로그인합니다.
 
@@ -98,8 +111,11 @@ class Korail:
 
         Raises:
             LoginFailedError: :meth:`login` 이 실패했습니다.
+            ValueError: android_id 형식이 잘못됐거나 프로파일의 ID와 충돌합니다.
         """
-        korail = cls(verbose=verbose, device_profile=device_profile, validate_stations=validate_stations)
+        korail = cls(
+            verbose=verbose, device_profile=device_profile, validate_stations=validate_stations, android_id=android_id
+        )
         try:
             korail.login(korail_id, korail_pw)
         except BaseException:
@@ -108,6 +124,11 @@ class Korail:
         return korail
 
     # ------------------------------------------------------------- 세션 상태
+    @property
+    def android_id(self) -> str:
+        """프로파일 지정 여부와 무관하게 저장·복원할 수 있는 서명 기기 ID입니다."""
+        return self._android_id
+
     @property
     def verbose(self) -> bool:
         return self._api.verbose
@@ -184,51 +205,45 @@ class Korail:
     def login(self, korail_id: str, korail_pw: str) -> None:
         """로그인합니다. 실패는 전부 예외입니다 — 성공 여부를 반환하지 않습니다.
 
-        빈 자격증명·하이픈 없는 번호·암호화 키 발급 실패는 예외인데 비밀번호가
+        빈 자격증명·암호화 키 발급 실패는 예외인데 비밀번호가
         틀린 것만 ``False`` 를 돌려주던 시절이 있었습니다. 반환값을 확인하지 않은
         호출자는 로그인하지 못한 채로 조회에 들어가 한참 뒤 엉뚱한 ``P058`` 을
         보게 됩니다. 실패 경로를 하나로 모아 그 구멍을 없앱니다.
 
         Raises:
-            LoginFailedError: 아이디/비밀번호가 비었거나, 휴대폰 번호 형식이
-                잘못됐거나, 암호화 키 발급이 실패했거나, 서버가 자격증명을
+            LoginFailedError: 아이디/비밀번호가 비었거나,
+                암호화 키 발급이 실패했거나, 서버가 자격증명을
                 거부했습니다.
         """
         if not korail_id or not korail_pw:
             raise LoginFailedError("아이디와 비밀번호가 필요합니다")
 
-        # 하이픈 없는 휴대폰 번호는 회원번호로 잘못 조회돼 "비밀번호가 틀렸다"는
-        # 엉뚱한 응답을 받습니다. 서버에 보내기 전에 분명하게 알려 줍니다.
-        if HYPHENLESS_PHONE_REGEX.match(korail_id):
-            hyphenated = f"{korail_id[:3]}-{korail_id[3:-4]}-{korail_id[-4:]}"
-            raise LoginFailedError(
-                f"휴대폰 번호로 로그인하려면 하이픈을 넣어야 합니다: {korail_id!r} 대신 {hyphenated!r}"
-            )
-
         # 아이디 형태에 따라 서버가 조회할 컬럼이 달라집니다: 5=이메일, 4=휴대폰, 2=회원번호.
         if EMAIL_REGEX.match(korail_id):
             input_flag = "5"
-        elif PHONE_NUMBER_REGEX.match(korail_id):
+        elif PHONE_NUMBER_REGEX.fullmatch(korail_id) or HYPHENLESS_PHONE_REGEX.fullmatch(korail_id):
             input_flag = "4"
+            # 7.0.8 성공 캡처는 하이픈 없는 번호와 휴대폰 구분값을 함께 보냅니다.
+            korail_id = korail_id.replace("-", "")
         else:
             input_flag = "2"
 
         encrypted_pw = self._encrypt_password(korail_pw)
 
         url = API_ENDPOINTS["login"]
-        headers, sid = self._api.sign(url)
+        # 현재 앱은 로그인에 DynaPath 헤더만 싣고 Sid 폼 필드는 보내지 않습니다.
+        headers, _ = self._api.sign(url, include_sid=False)
         data = {
             "Device": DEVICE,
             "Version": APP_VERSION,
+            "AppVersion": APP_DISPLAY_VERSION,
             "Key": API_KEY,
+            "txtInputFlg": input_flag,
             "txtMemberNo": korail_id,
             "txtPwd": encrypted_pw,
-            "txtInputFlg": input_flag,
+            "checkValidPw": "Y",
             "idx": self._idx,
         }
-        if sid:
-            data["Sid"] = sid
-
         payload = self._api.post(url, data=data, headers=headers)
         account = self._api.account
 

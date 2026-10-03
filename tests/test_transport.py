@@ -67,6 +67,8 @@ class TestCreateSession:
         # then
         assert hasattr(session, "get")
         assert hasattr(session, "post")
+        assert hasattr(session, "default_headers")
+        assert session.default_headers is False
         session.close()
 
     def test_applies_headers(self) -> None:
