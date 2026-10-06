@@ -9,10 +9,10 @@ import pytest
 from pykorail.api import ApiClient
 from pykorail.auth.signer import RequestSigner
 from pykorail.constants import API_ENDPOINTS
-from pykorail.exceptions import HttpStatusError, NeedToLoginError, TransportError
+from pykorail.exceptions import AccessRestrictedError, HttpStatusError, NeedToLoginError, TransportError
 from pykorail.transport import HttpSession
 from tests.conftest import FakeSession, Reply
-from tests.payloads import ACCESS_RESTRICTED
+from tests.payloads import ACCESS_RESTRICTED, STATION_PAYLOAD
 
 URL = API_ENDPOINTS["search_schedule"]
 
@@ -37,6 +37,61 @@ class TestHttpStatus:
 
         # then
         assert (exc.value.status_code, exc.value.code, exc.value.msg) == (403, "-2000", ACCESS_RESTRICTED["message"])
+
+    @pytest.mark.parametrize("status", [403, 200])
+    @pytest.mark.parametrize("code", ["-2000", -2000])
+    def test_access_restriction_has_its_own_type_whatever_the_status(self, status: int, code: object) -> None:
+        """이용제한 봉투가 200 으로 와도 "결과 없음" 으로 흘러가면 막힌 채 계속 두드립니다."""
+        # given
+        api = api_replying(Reply(status, {**ACCESS_RESTRICTED, "code": code}))
+
+        # when
+        with pytest.raises(AccessRestrictedError) as exc:
+            api.post(URL)
+
+        # then
+        assert (exc.value.status_code, exc.value.code) == (status, "-2000")
+
+    def test_access_restriction_message_leads_with_the_cause(self) -> None:
+        """200 으로 왔을 때 "HTTP 200" 으로 시작하면 로그만 봐서는 성공한 응답처럼 읽힙니다."""
+        # given
+        api = api_replying(Reply(200, ACCESS_RESTRICTED))
+
+        # when
+        with pytest.raises(AccessRestrictedError) as exc:
+            api.post(URL)
+
+        # then
+        assert str(exc.value).startswith("이용제한: ")
+        assert "(HTTP 200, -2000)" in str(exc.value)
+
+    def test_other_rejections_are_not_access_restrictions(self) -> None:
+        """대기 루프가 이용제한만 골라 멈출 수 있도록 다른 거절과 섞지 않습니다."""
+        # given
+        api = api_replying(Reply(502, "<html>502 Bad Gateway</html>"))
+
+        # when
+        with pytest.raises(HttpStatusError) as exc:
+            api.post(URL)
+
+        # then
+        assert not isinstance(exc.value, AccessRestrictedError)
+
+    @pytest.mark.parametrize(
+        "body",
+        [STATION_PAYLOAD, {**ACCESS_RESTRICTED, "code": "-2001"}],
+        ids=["station-master", "other-code"],
+    )
+    def test_bodies_without_str_result_pass_through_on_200_unless_restricted(self, body: dict[str, Any]) -> None:
+        """판정은 code=-2000 하나로 좁습니다 — 역 마스터처럼 strResult 없는 정상 응답이나 다른 코드는 통과합니다."""
+        # given
+        api = api_replying(Reply(200, body))
+
+        # when
+        payload = api.post(URL)
+
+        # then
+        assert payload == body
 
     def test_tracking_id_stays_out_of_the_message(self) -> None:
         """``id`` 는 요청 추적값일 수 있어 로그·트레이스백에 남기지 않습니다."""

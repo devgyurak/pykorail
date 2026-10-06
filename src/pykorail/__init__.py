@@ -32,6 +32,7 @@ from pykorail.auth import NetFunnelHelper
 from pykorail.client import Korail
 from pykorail.device import DeviceProfile, DeviceProfileLike, profile_by_id, random_profile
 from pykorail.exceptions import (
+    AccessRestrictedError,
     HttpStatusError,
     KorailError,
     LoginFailedError,
@@ -88,6 +89,7 @@ def _resolve_version() -> str:
 __version__ = _resolve_version()
 
 __all__ = [
+    "AccessRestrictedError",
     "AdultPassenger",
     "Card",
     "ChildPassenger",

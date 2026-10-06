@@ -214,8 +214,10 @@ class Korail:
             LoginFailedError: 아이디/비밀번호가 비었거나,
                 암호화 키 발급이 실패했거나, 서버가 자격증명을
                 거부했습니다.
-            HttpStatusError: 서버가 자격증명을 보기 전에 HTTP 4xx·5xx 로
-                요청을 거절했습니다 (예: 403 이용제한). 비밀번호 문제가 아닙니다.
+            AccessRestrictedError: 실행 환경 검증에 걸려 이용이 제한됐습니다
+                (``code=-2000``, 상태 코드 무관). 같은 요청을 곧바로 반복하지 마세요.
+            HttpStatusError: 서버가 자격증명을 보기 전에 HTTP 4xx·5xx 로 요청을
+                거절했습니다. 비밀번호 문제가 아닙니다.
         """
         if not korail_id or not korail_pw:
             raise LoginFailedError("아이디와 비밀번호가 필요합니다")

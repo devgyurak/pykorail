@@ -12,7 +12,8 @@
     ├── StationNotFoundError   요청 전 클라이언트 검증 실패
     ├── PastDepartureError     이미 지난 시각으로 조회
     └── TransportError         세션 생성 실패 / 비 JSON 응답
-        └── HttpStatusError    코레일 형식이 아닌 HTTP 4xx·5xx (예: 403 이용제한)
+        └── HttpStatusError    코레일 형식이 아닌 HTTP 4xx·5xx
+            └── AccessRestrictedError  이용제한 봉투 code=-2000 (상태 무관)
 """
 
 from __future__ import annotations
@@ -25,10 +26,11 @@ from pykorail.exceptions.api import (
     error_for_code,
 )
 from pykorail.exceptions.base import KorailError, PykorailError
-from pykorail.exceptions.network import HttpStatusError, NetFunnelError, TransportError
+from pykorail.exceptions.network import AccessRestrictedError, HttpStatusError, NetFunnelError, TransportError
 from pykorail.exceptions.validation import PastDepartureError, StationNotFoundError
 
 __all__ = [
+    "AccessRestrictedError",
     "HttpStatusError",
     "KorailError",
     "LoginFailedError",
