@@ -38,6 +38,30 @@ class TestHttpStatus:
         # then
         assert (exc.value.status_code, exc.value.code, exc.value.msg) == (403, "-2000", ACCESS_RESTRICTED["message"])
 
+    @pytest.mark.parametrize("code", ["-2000", -2000])
+    def test_access_restriction_on_200_is_still_rejected(self, code: object) -> None:
+        """이용제한 봉투가 200 으로 와도 "결과 없음" 으로 흘러가면 막힌 채 계속 두드립니다."""
+        # given
+        api = api_replying(Reply(200, {**ACCESS_RESTRICTED, "code": code}))
+
+        # when
+        with pytest.raises(HttpStatusError) as exc:
+            api.post(URL)
+
+        # then
+        assert (exc.value.status_code, exc.value.code) == (200, "-2000")
+
+    def test_other_bodies_without_str_result_pass_through_on_200(self) -> None:
+        """역 마스터처럼 strResult 없이 오는 정상 응답은 막지 않습니다."""
+        # given
+        api = api_replying(Reply(200, {"stns": {"stn": []}}))
+
+        # when
+        payload = api.post(URL)
+
+        # then
+        assert payload == {"stns": {"stn": []}}
+
     def test_tracking_id_stays_out_of_the_message(self) -> None:
         """``id`` 는 요청 추적값일 수 있어 로그·트레이스백에 남기지 않습니다."""
         # given

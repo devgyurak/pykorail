@@ -389,7 +389,8 @@ except KorailError as exc:
 `HttpStatusError` 는 서버가 요청 자체를 거절했다는 뜻입니다 — 비밀번호 오류나
 "열차 없음" 이 아닙니다. 상태 코드(`status_code`)와 서버가 준 `code` · `message`
 (`msg`)를 그대로 담습니다. 실행 환경 검증에 걸리면 403 과 `code=-2000` 이용제한
-안내가 옵니다. 이때는 같은 요청을 곧바로 반복하지 마세요.
+안내가 옵니다. 이 이용제한 봉투는 HTTP 200 으로 와도 `HttpStatusError`(`status_code=200`)
+가 됩니다. 이때는 같은 요청을 곧바로 반복하지 마세요.
 
 ```python
 from pykorail import HttpStatusError

@@ -32,6 +32,9 @@ class HttpStatusError(TransportError):
     (이슈 #27). 이를 비밀번호 오류나 결과 없음으로 바꾸면 사용자가 원인을 알 수
     없으므로, 상태 코드와 서버가 준 ``code``·``message`` 를 그대로 실어 따로 올립니다.
 
+    이용제한 봉투(``code=-2000``)는 **HTTP 200 으로 와도** 이 예외가 됩니다 — 그때
+    ``status_code`` 는 200 입니다.
+
     본문에 ``strResult`` 가 있으면 상태 코드와 무관하게 기존처럼
     :class:`~pykorail.exceptions.base.KorailError` 코드 매핑을 탑니다.
     """
