@@ -48,6 +48,14 @@ class TestHierarchy:
         # then
         assert not is_korail_error
 
+    def test_access_restriction_is_still_an_http_status_error(self) -> None:
+        """기존 ``except HttpStatusError`` 호출부가 이용제한도 계속 잡아야 합니다."""
+        # when
+        is_http_status_error = issubclass(AccessRestrictedError, HttpStatusError)
+
+        # then
+        assert is_http_status_error
+
 
 class TestCodeMapping:
     @pytest.mark.parametrize(
