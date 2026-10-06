@@ -17,7 +17,8 @@ PykorailError
 ├── NetFunnelError         ← 대기열 게이트 실패
 ├── StationNotFoundError   ← 요청을 보내기 **전** 클라이언트가 잡은 입력 오류
 └── TransportError         ← 세션 생성 실패 / 비 JSON 응답
-    └── HttpStatusError    ← 코레일 형식(strResult)이 아닌 HTTP 4xx·5xx (403 이용제한 등)
+    └── HttpStatusError    ← 코레일 형식(strResult)이 아닌 HTTP 4xx·5xx
+        └── AccessRestrictedError ← 이용제한 봉투 code=-2000 (상태 무관, 403 이 관측됨)
 ```
 
 - **서버가 `h_msg_cd` 로 알려준 실패** → `KorailError` 하위. 아래 절차대로.

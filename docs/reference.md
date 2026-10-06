@@ -369,7 +369,8 @@ PykorailError
 ├── StationNotFoundError   요청 전 클라이언트 검증 — 역 이름이 없음
 ├── PastDepartureError     요청 전 클라이언트 검증 — 이미 지난 시각
 └── TransportError         세션 생성 실패 / 비 JSON 응답
-    └── HttpStatusError    코레일 형식이 아닌 HTTP 4xx·5xx · 이용제한 봉투(상태 무관)
+    └── HttpStatusError    코레일 형식이 아닌 HTTP 4xx·5xx — 403 이용제한 등
+        └── AccessRestrictedError  이용제한 봉투 code=-2000 (상태 무관)
 ```
 
 `except PykorailError` 하나로 라이브러리 유래 실패를 전부 잡을 수 있습니다.
@@ -388,17 +389,22 @@ except KorailError as exc:
 
 `HttpStatusError` 는 서버가 요청 자체를 거절했다는 뜻입니다 — 비밀번호 오류나
 "열차 없음" 이 아닙니다. 상태 코드(`status_code`)와 서버가 준 `code` · `message`
-(`msg`)를 그대로 담습니다. 실행 환경 검증에 걸리면 403 과 `code=-2000` 이용제한
-안내가 옵니다. 이 이용제한 봉투는 HTTP 200 으로 와도 `HttpStatusError`(`status_code=200`)
-가 됩니다. 이때는 같은 요청을 곧바로 반복하지 마세요.
+(`msg`)를 그대로 담습니다.
+
+실행 환경 검증에 걸리면 `code=-2000` 이용제한 안내가 오고, 하위 타입
+`AccessRestrictedError` 가 됩니다. 관측된 것은 HTTP 403 이지만, 같은 봉투가 다른
+상태(200 등)로 와도 이 타입입니다 — `status_code` 에는 실제 상태가 담깁니다. 이때는
+같은 요청을 곧바로 반복하지 마세요. 대기 루프라면 이 타입만 따로 잡아 멈추면 됩니다.
 
 ```python
-from pykorail import HttpStatusError
+from pykorail import AccessRestrictedError, HttpStatusError
 
 try:
     korail.login(korail_id, korail_pw)
+except AccessRestrictedError as exc:
+    print(exc)  # 이용제한: 원활한 서비스를 위해 ... (HTTP 403, -2000)
 except HttpStatusError as exc:
-    print(exc.status_code, exc.code, exc.msg)  # 403 -2000 원활한 서비스를 위해 ...
+    print(exc.status_code, exc.code, exc.msg)  # 그 밖의 거절 (502 등)
 ```
 
 `PastDepartureError` 는 요청 시각(`requested`)과 판정 기준 시각(`now`)을 함께

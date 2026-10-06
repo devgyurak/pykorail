@@ -8,7 +8,7 @@ import pytest
 
 from pykorail.constants import API_ENDPOINTS
 from pykorail.exceptions import (
-    HttpStatusError,
+    AccessRestrictedError,
     KorailError,
     NeedToLoginError,
     NoResultsError,
@@ -356,7 +356,7 @@ class TestTrainSearch:
         client, _ = make_korail({"stationdata": STATION_PAYLOAD, "search_schedule": restricted})
 
         # when
-        with pytest.raises(HttpStatusError) as exc:
+        with pytest.raises(AccessRestrictedError) as exc:
             client.trains.search("서울", "부산")
 
         # then

@@ -13,7 +13,7 @@ from Crypto.Util.Padding import unpad
 from pykorail.client import Korail
 from pykorail.constants import API_ENDPOINTS
 from pykorail.device import DEVICE_PROFILES
-from pykorail.exceptions import HttpStatusError, LoginFailedError
+from pykorail.exceptions import AccessRestrictedError, LoginFailedError
 from tests.conftest import Reply
 from tests.dynapath_decoder import decode_token
 from tests.payloads import (
@@ -226,14 +226,14 @@ class TestLogin:
     def test_access_restriction_is_not_reported_as_bad_password(self, make_korail, status: int, code: object) -> None:
         """이용제한을 비밀번호 오류로 바꾸면 사용자가 엉뚱한 것을 고칩니다 (이슈 #27).
 
-        봉투가 HTTP 200 으로 와도 ``LoginFailedError`` 가 아니라 ``HttpStatusError`` 입니다.
+        봉투가 HTTP 200 으로 와도 ``LoginFailedError`` 가 아니라 ``AccessRestrictedError`` 입니다.
         """
         # given
         restricted = Reply(status, {**ACCESS_RESTRICTED, "code": code})
         client, _ = make_korail({"code": CIPHER_PAYLOAD, "login": restricted})
 
         # when
-        with pytest.raises(HttpStatusError) as exc:
+        with pytest.raises(AccessRestrictedError) as exc:
             client.login("me@example.com", "pw")
 
         # then
