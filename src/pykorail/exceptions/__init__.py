@@ -12,7 +12,7 @@
     ├── StationNotFoundError   요청 전 클라이언트 검증 실패
     ├── PastDepartureError     이미 지난 시각으로 조회
     └── TransportError         세션 생성 실패 / 비 JSON 응답
-        └── HttpStatusError    코레일 형식이 아닌 HTTP 4xx·5xx (예: 403 이용제한)
+        └── HttpStatusError    코레일 형식이 아닌 HTTP 4xx·5xx, 또는 상태와 무관한 이용제한 봉투
 """
 
 from __future__ import annotations

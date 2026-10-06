@@ -369,7 +369,7 @@ PykorailError
 ├── StationNotFoundError   요청 전 클라이언트 검증 — 역 이름이 없음
 ├── PastDepartureError     요청 전 클라이언트 검증 — 이미 지난 시각
 └── TransportError         세션 생성 실패 / 비 JSON 응답
-    └── HttpStatusError    코레일 형식이 아닌 HTTP 4xx·5xx — 403 이용제한 등
+    └── HttpStatusError    코레일 형식이 아닌 HTTP 4xx·5xx · 이용제한 봉투(상태 무관)
 ```
 
 `except PykorailError` 하나로 라이브러리 유래 실패를 전부 잡을 수 있습니다.

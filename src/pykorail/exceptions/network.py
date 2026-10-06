@@ -25,7 +25,7 @@ class TransportError(PykorailError):
 
 
 class HttpStatusError(TransportError):
-    """코레일이 HTTP 4xx·5xx 로 응답했고, 본문이 코레일 응답 형식이 아닙니다.
+    """코레일이 요청을 거절했고, 본문이 코레일 응답 형식이 아닙니다 (HTTP 4xx·5xx 또는 이용제한 봉투).
 
     서버나 앞단이 요청 자체를 거절한 것이라 자격증명·조회 결과와는 무관합니다.
     실행 환경 검증에 걸리면 HTTP 403 과 함께 ``code=-2000`` 이용제한 안내가 옵니다

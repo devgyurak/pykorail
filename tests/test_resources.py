@@ -344,17 +344,23 @@ class TestTrainSearch:
         with pytest.raises(NoResultsError):
             client.trains.search("서울", "부산")
 
-    def test_access_restriction_is_not_reported_as_no_results(self, make_korail) -> None:
-        """403 이용제한을 "열차 없음" 으로 바꾸면 대기 루프가 원인을 모른 채 계속 돕니다 (이슈 #27)."""
+    @pytest.mark.parametrize("status", [403, 200])
+    @pytest.mark.parametrize("code", ["-2000", -2000])
+    def test_access_restriction_is_not_reported_as_no_results(self, make_korail, status: int, code: object) -> None:
+        """이용제한을 "열차 없음" 으로 바꾸면 대기 루프가 원인을 모른 채 계속 돕니다 (이슈 #27).
+
+        봉투가 HTTP 200 으로 와도 같습니다 — 상태 코드가 아니라 봉투가 거절을 말합니다.
+        """
         # given
-        client, _ = make_korail({"stationdata": STATION_PAYLOAD, "search_schedule": Reply(403, ACCESS_RESTRICTED)})
+        restricted = Reply(status, {**ACCESS_RESTRICTED, "code": code})
+        client, _ = make_korail({"stationdata": STATION_PAYLOAD, "search_schedule": restricted})
 
         # when
         with pytest.raises(HttpStatusError) as exc:
             client.trains.search("서울", "부산")
 
         # then
-        assert (exc.value.status_code, exc.value.code) == (403, "-2000")
+        assert (exc.value.status_code, exc.value.code) == (status, "-2000")
 
     def test_sends_departure_time_in_kst(self, korail) -> None:
         # given
