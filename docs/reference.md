@@ -491,7 +491,7 @@ print([seat.seat_no for seat in seats if seat.is_available])
 | `wait_reserve_flag` | `int` | `9` = 예약대기 가능, `-1` = 미적용 |
 | `dep_run_order` · `arr_run_order` | `str` | 출발 · 도착역의 운행 순서. 호차 · 좌석 조회가 구간을 이 값으로 가리킵니다 |
 | `dep_cons_order` · `arr_cons_order` | `str` | 출발 · 도착역의 구성 순서. 좌석을 지정한 예매가 운행 순서와 함께 돌려보냅니다 |
-| `seat_attribute` | `str` | 이 열차 행의 좌석 속성 코드. 호차 · 좌석 조회에 그대로 돌려보냅니다 |
+| `seat_attribute` | `str` | 이 열차 행의 좌석 속성 코드. 호차 · 좌석 조회와 좌석 지정 예매에 그대로 돌려보냅니다 |
 
 | 메서드 · 속성 | 반환 | 설명 |
 | --- | --- | --- |

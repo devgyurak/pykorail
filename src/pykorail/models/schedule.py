@@ -134,7 +134,7 @@ class Train(Schedule):
     #: 출발·도착역의 구성 순서. 좌석을 지정한 예매가 운행 순서와 함께 돌려보냅니다.
     dep_cons_order: str
     arr_cons_order: str
-    #: 이 열차 행의 좌석 속성 코드 (``"015"`` 등). 호차·좌석 조회에 그대로 돌려보냅니다.
+    #: 이 열차 행의 좌석 속성 코드 (``"015"`` 등). 호차·좌석 조회와 좌석 지정 예매에 그대로 돌려보냅니다.
     seat_attribute: str
 
     @classmethod

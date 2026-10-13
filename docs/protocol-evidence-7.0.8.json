@@ -579,7 +579,8 @@
           "txtSrcarNo{n} · txtSeatNo{n}": "앱은 new TicketReservationInSrcar(선택한 호차 번호, 좌석의 seatNo) 를 만듦 — 호차는 서버가 준 문자열, 좌석은 화면 표시(seat_spec)가 아니라 식별자(seat_no).",
           "journey": "앱은 조회 행의 값을 가공 없이 옮김 (TrainScheduleOutTrainInfo.toTicketReservationInput): hTrnNo · hTrnClsfCd · hTrnGpCd · hRunDt · hDptDt · hDptTm · hDptRsStnCd · hDptStnConsOrdr · hDptStnRunOrdr · hArvRsStnCd · hArvStnConsOrdr · hArvStnRunOrdr.",
           "txtJrnyTpCd1 · txtJrnySqno1 · txtChgFlg1": "11 · 001 · N — 길이(둘 · — · 하나)만 APK 로 읽힘. 값은 참조 구현의 실서버 성공 기록.",
-          "txtSeatAttCd1–5": "000 · 000 · 000 · 015 · 000 — 세 글자라는 것까지만 APK 로 읽힘. 기존 create() 가 쓰는 값과 같음.",
+          "txtSeatAttCd1–3 · 5": "000 — 세 글자라는 것까지만 APK 로 읽힘. 기존 create() 가 쓰는 값과 같음.",
+          "txtSeatAttCd4": "그 열차 행의 hSeatAttCd. 비어 있으면 좌석 종류의 기본값(일반석 015) — create_transfer 와 같은 규칙. 좌석 선택 화면의 요청 생성부(TrainSeatMapViewModel.buildTicketReservationIn)는 조회 화면이 넘긴 TicketReservationIn 을 복사하면서 작업 구분 · 좌석 목록 · 좌석 수만 바꾸고 이 값은 그대로 둠 — 고른 좌석의 속성(CarSeat.attribute, 응답의 rq_seat_att_cd)은 쓰이지 않음.",
           "txtMenuId · hidFreeFlg · txtStndFlg": "11 · N · N — 기존 create() 가 쓰는 값과 같음.",
           "blank": "txtGdNo · txtCardNo_{n} 처럼 값이 빈 필드는 실리지 않음 (form_flattening)."
         },

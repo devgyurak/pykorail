@@ -299,7 +299,10 @@ class ReservationResource(Resource):
             "txtSeatAttCd1": "000",
             "txtSeatAttCd2": "000",
             "txtSeatAttCd3": "000",
-            "txtSeatAttCd4": "015",
+            # 좌석 속성은 고른 좌석이 아니라 **열차 행**의 값입니다. 좌석 선택 화면은
+            # 조회가 넘긴 TicketReservationIn 을 복사하면서 작업 구분 · 좌석 목록만
+            # 바꾸므로, 여기서도 행의 값을 그대로 싣고 비면 좌석 종류의 기본값을 씁니다.
+            "txtSeatAttCd4": train.seat_attribute or _DEFAULT_SEAT_ATTRIBUTE,
             "txtSeatAttCd5": "000",
             "txtJrnyCnt": "1",
             # 호차 수가 아니라 고른 **좌석** 수입니다.

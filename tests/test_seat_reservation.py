@@ -139,6 +139,30 @@ class TestCreateWithSeats:
             "txtSrcarCnt": "1",
         }
 
+    def test_sends_the_train_rows_seat_attribute(self, chosen) -> None:
+        """좌석 속성은 고른 좌석이 아니라 열차 행의 값입니다 — 행이 015 가 아니면 그 값이 나갑니다."""
+        # given
+        client, session, train, seats = chosen
+        other = dataclasses.replace(train, seat_attribute="019")
+
+        # when
+        client.reservations.create_with_seats(other, seats[:1])
+
+        # then
+        assert session.kwargs_for("reserve")["data"]["txtSeatAttCd4"] == "019"
+
+    def test_blank_seat_attribute_falls_back_to_the_ordinary_seat(self, chosen) -> None:
+        """앱도 행의 좌석 속성이 비면 좌석 종류의 기본값(일반석 015)을 씁니다."""
+        # given
+        client, session, train, seats = chosen
+        blank = dataclasses.replace(train, seat_attribute="")
+
+        # when
+        client.reservations.create_with_seats(blank, seats[:1])
+
+        # then
+        assert session.kwargs_for("reserve")["data"]["txtSeatAttCd4"] == "015"
+
     def test_sends_the_train_as_the_search_gave_it(self, chosen) -> None:
         """열차번호는 0 을 채우지 않고, 구간은 구성 순서와 운행 순서를 함께 가리킵니다."""
         # given
