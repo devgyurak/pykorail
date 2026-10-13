@@ -67,12 +67,15 @@ apply_ruleset "$RULESETS_DIR/tag-protection.json"
 # main 은 workflow_dispatch 로 수동 배포할 때의 경로입니다. 정책 이름과 종류가 같은
 # 항목이 이미 있으면 다시 만들지 않습니다 (POST 는 중복을 만들 수 있습니다).
 apply_pypi_environment() {
-  if ! gh api "repos/$REPO/environments/pypi" >/dev/null 2>&1; then
-    echo "  'pypi' environment 가 없어 건너뜁니다"
-    return 0
-  fi
-
   echo "  'pypi' environment 배포 제한 갱신"
+
+  # PUT 은 environment 가 없으면 만듭니다. 여기서 "없으면 건너뛴다" 로 빠지면, 저장소를
+  # 옮기거나 environment 를 다시 만든 바로 그 상황에서 제한이 안 걸리고, 첫 릴리스가
+  # 무제한 pypi 를 자동 생성합니다 — 이 함수를 둔 이유가 사라집니다.
+  #
+  # deployment_branch_policy 만 보내도 기존 reviewers·wait_timer 는 유지됩니다. PUT 전후로
+  # 승인자와 타이머를 심어 대조해 확인했습니다 — 나중에 pypi 에 승인자를 걸어도 이
+  # 스크립트 재실행이 지우지 않습니다.
   gh api --method PUT "repos/$REPO/environments/pypi" --input - >/dev/null <<'JSON'
 {"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}
 JSON

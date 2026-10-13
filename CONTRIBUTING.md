@@ -439,7 +439,8 @@ git tag v0.3.0 && git push origin v0.3.0
 
 PyPI 업로드는 `pypi` environment 를 거칩니다. 그 environment 는 배포를 **`v*` 태그와
 `main`** 으로 제한해 둬서, 다른 브랜치에서 수동 배포가 실행되지 않습니다 (`main` 은
-`workflow_dispatch` 로 수동 배포할 때의 경로입니다).
+`workflow_dispatch` 로 수동 배포할 때의 경로입니다). 이 제한은 ruleset 과 함께
+`setup-branch-protection.sh` 가 걸어 주므로, environment 를 다시 만들어도 되살아납니다.
 
 마지막으로 **`main` 을 `develop` 으로 역머지합니다.** 머지 커밋과 태그를 `develop` 에
 가져와야 다음 작업의 빌드 버전(hatch-vcs)과 다음 릴리스 PR 의 최신 상태(strict)가
