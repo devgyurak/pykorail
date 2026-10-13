@@ -267,8 +267,9 @@ class Korail:
 
         if payload.get("h_msg_cd") in PasswordChangeRequiredError.codes:
             # 비밀번호 변경 안내는 SUCC 와 회원번호를 달고 옵니다. 아래의 성공 조건에 그대로
-            # 걸리지만 세션은 인증되지 않아서, 성공으로 치면 이후의 모든 호출이 이유 없이
-            # P058 로 거절됩니다. 성공 여부보다 **먼저** 봐야 합니다.
+            # 걸리지만 세션은 인증되지 않아서, 성공으로 치면 이후의 인증이 필요한 호출이 이유
+            # 없이 P058 로 거절됩니다(열차 조회는 그대로입니다). 성공 여부보다 **먼저** 봐야
+            # 합니다.
             account.clear()
             raise PasswordChangeRequiredError(payload.get("h_msg_txt"), payload.get("h_msg_cd"))
 

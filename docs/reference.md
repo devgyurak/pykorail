@@ -835,7 +835,8 @@ except HttpStatusError as exc:
 
 `PasswordChangeRequiredError` 는 같은 비밀번호를 6개월 넘게 쓴 계정에서 납니다. 서버는
 이때 로그인 응답을 **성공으로** 보내지만 세션을 인증하지 않아서, 로그인된 것으로 치면 이후의
-모든 호출이 이유 없이 `NeedToLoginError` 가 됩니다. 그래서 로그인 단계에서 막습니다.
+**로그인이 필요한 호출**이 이유 없이 `NeedToLoginError` 가 됩니다 — 같은 세션에서 열차 조회는
+그대로 됐습니다. 그래서 로그인 단계에서 막습니다.
 자격증명이 틀린 것이 아니니 **다시 시도해도 같습니다** — 코레일톡 앱이나 홈페이지에서 안내를
 처리한 뒤 로그인하세요. `LoginFailedError` 의 하위 타입이라 기존 `except LoginFailedError` 도
 그대로 잡고, 서버의 안내문이 `msg` 에 실립니다.
