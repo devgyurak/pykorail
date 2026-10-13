@@ -16,6 +16,14 @@
 # 그 우회는 ci-ok·strict(최신 상태) 요구까지 함께 건너뜁니다 — 즉 이 ruleset 이 실제로
 # 보장하는 것은 직접 푸시·강제 푸시·삭제 금지이고, ci-ok 는 본인이 눈으로 확인해야 합니다.
 #
+# 이 스크립트가 거는 것:
+#   · 브랜치·태그 ruleset 세 개 (develop · main · tag)
+#   · pypi environment 의 배포 제한 (v* 태그 + main) — ruleset 과 달리 저장소
+#     environment 설정이라, 손으로만 걸어 두면 저장소를 옮기거나 environment 를
+#     다시 만들 때 조용히 사라집니다.
+#
+# ruleset JSON 에 없는 required_reviewers 는 API 가 빈 배열로 채웁니다 (영향 없음).
+#
 # 필요한 것: gh CLI 로그인 + 대상 저장소 admin 권한.
 # 여러 번 실행해도 안전합니다 (있으면 갱신).
 
@@ -55,6 +63,40 @@ apply_ruleset "$RULESETS_DIR/develop-protection.json"
 apply_ruleset "$RULESETS_DIR/main-protection.json"
 apply_ruleset "$RULESETS_DIR/tag-protection.json"
 
+# PyPI 업로드가 거치는 environment 입니다. 태그 v* 와 main 에서만 배포를 허용합니다 —
+# main 은 workflow_dispatch 로 수동 배포할 때의 경로입니다. 정책 이름과 종류가 같은
+# 항목이 이미 있으면 다시 만들지 않습니다 (POST 는 중복을 만들 수 있습니다).
+apply_pypi_environment() {
+  if ! gh api "repos/$REPO/environments/pypi" >/dev/null 2>&1; then
+    echo "  'pypi' environment 가 없어 건너뜁니다"
+    return 0
+  fi
+
+  echo "  'pypi' environment 배포 제한 갱신"
+  gh api --method PUT "repos/$REPO/environments/pypi" --input - >/dev/null <<'JSON'
+{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}
+JSON
+
+  local existing name type entry
+  existing="$(
+    gh api "repos/$REPO/environments/pypi/deployment-branch-policies" \
+      --jq '.branch_policies[]? | "\(.name):\(.type)"' 2>/dev/null || true
+  )"
+
+  for entry in "v*:tag" "main:branch"; do
+    name="${entry%%:*}"
+    type="${entry##*:}"
+    if printf '%s\n' "$existing" | grep -qxF "$name:$type"; then
+      echo "    $name ($type) 이미 있음"
+    else
+      gh api --method POST "repos/$REPO/environments/pypi/deployment-branch-policies" \
+        -f "name=$name" -f "type=$type" >/dev/null
+      echo "    $name ($type) 추가"
+    fi
+  done
+}
+apply_pypi_environment
+
 echo
 echo "develop 브랜치 (작업 PR 이 모이는 곳):"
 echo "  · PR 로만 변경 가능 (직접 푸시 금지)"
@@ -72,6 +114,9 @@ echo "  · 태그는 이 브랜치에서 밀지만, 보호는 태그 ruleset 이
 echo
 echo "태그 (릴리스 트리거):"
 echo "  · 태그 생성·수정·삭제는 저장소 admin 만 가능"
+echo
+echo "pypi environment (PyPI 업로드):"
+echo "  · 배포는 v* 태그와 main 에서만 허용 (ruleset 이 아니라 environment 설정)"
 echo
 echo "admin 우회 범위:"
 echo "  · develop · main 직접 push → 막힙니다 (admin 도 예외 없음, bypass_mode=pull_request)"

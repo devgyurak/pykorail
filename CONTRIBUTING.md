@@ -448,6 +448,7 @@ PyPI 업로드는 `pypi` environment 를 거칩니다. 그 environment 는 배�
 
 ```bash
 gh pr create --base develop --head main --title "v0.3.0 develop 반영" --label ignore-for-release
+gh pr merge --merge --admin      # squash 하지 마세요
 ```
 
 ---
