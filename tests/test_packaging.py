@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import re
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -15,47 +16,43 @@ import pytest
 import pykorail
 
 PYPROJECT = Path(__file__).resolve().parent.parent / "pyproject.toml"
-PYPROJECT_TEXT = PYPROJECT.read_text(encoding="utf-8")
+#: ``pyproject.toml`` 을 구조로 읽습니다. 문자열 검사는 주석이나 다른 표에 같은 글자가
+#: 있어도 통과하므로, 키 하나하나를 봅니다.
+PYPROJECT_DATA = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
+
+PROJECT = PYPROJECT_DATA["project"]
+TOOL = PYPROJECT_DATA["tool"]
 
 
-def _project_field(name: str) -> str:
-    """``pyproject.toml`` 의 최상위 문자열 필드를 읽습니다.
-
-    문자열 필드 몇 개를 읽는 데는 정규식으로 충분합니다. 3.10 을 지원하던 때는
-    ``tomllib`` 을 쓸 수 없어서였고, 이제는 쓸 수 있으니 읽을 것이 늘면 바꾸세요.
-    """
-    match = re.search(rf'^{name} = "([^"]+)"', PYPROJECT_TEXT, re.M)
-    assert match is not None, f"pyproject.toml 에 {name} 이 없습니다"
-    return match.group(1)
+def _classifier_minors() -> list[int]:
+    """``project.classifiers`` 에서 파이썬 마이너 버전만 뽑습니다."""
+    pattern = re.compile(r"Programming Language :: Python :: 3\.(\d+)")
+    return [int(match.group(1)) for classifier in PROJECT["classifiers"] if (match := pattern.fullmatch(classifier))]
 
 
 class TestVersionSource:
     def test_version_is_dynamic(self) -> None:
         """버전을 pyproject 에 하드코딩하면 태그와 어긋납니다."""
         # when & then
-        assert 'dynamic = ["version"]' in PYPROJECT_TEXT
+        assert "version" in PROJECT["dynamic"]
 
     def test_no_hardcoded_version_field(self) -> None:
-        # when
-        literal = re.search(r'^version = "', PYPROJECT_TEXT, re.M)
-
-        # then
-        assert literal is None
+        # when & then
+        assert "version" not in PROJECT
 
     def test_version_comes_from_vcs(self) -> None:
         # when & then
-        assert "[tool.hatch.version]" in PYPROJECT_TEXT
-        assert 'source = "vcs"' in PYPROJECT_TEXT
+        assert TOOL["hatch"]["version"]["source"] == "vcs"
 
     def test_build_requires_hatch_vcs(self) -> None:
         """빌드 백엔드가 태그를 못 읽으면 버전이 0.0.0 으로 나갑니다."""
         # when & then
-        assert "hatch-vcs" in PYPROJECT_TEXT
+        assert "hatch-vcs" in PYPROJECT_DATA["build-system"]["requires"]
 
     def test_fallback_exists_for_gitless_builds(self) -> None:
         """소스 tarball·얕은 체크아웃에서도 빌드가 죽지 않아야 합니다."""
         # when & then
-        assert "fallback-version" in PYPROJECT_TEXT
+        assert "fallback-version" in TOOL["hatch"]["version"]
 
     def test_runtime_version_is_resolvable(self) -> None:
         # when & then
@@ -83,11 +80,8 @@ class TestVersionSource:
 
 class TestMetadata:
     def test_name(self) -> None:
-        # when
-        name = _project_field("name")
-
-        # then
-        assert name == "pykorail"
+        # when & then
+        assert PROJECT["name"] == "pykorail"
 
     def test_requires_python_floor_matches_runtime_guard(self) -> None:
         """``requires-python`` 과 ``_compat.MIN_PYTHON`` 이 같은 하한을 말해야 합니다."""
@@ -95,7 +89,7 @@ class TestMetadata:
         from pykorail._compat import MIN_PYTHON
 
         # when
-        declared = _project_field("requires-python")
+        declared = PROJECT["requires-python"]
 
         # then
         assert declared == ">=" + ".".join(map(str, MIN_PYTHON))
@@ -105,7 +99,7 @@ class TestMetadata:
         from pykorail._compat import MIN_PYTHON
 
         # when
-        target = _project_field("target-version")
+        target = TOOL["ruff"]["target-version"]
 
         # then
         assert target == "py{}{}".format(*MIN_PYTHON)
@@ -114,14 +108,14 @@ class TestMetadata:
     def test_declares_a_classifier_for_each_supported_minor(self, minor: int) -> None:
         """CI 매트릭스와 classifier 가 어긋나면 사용자가 지원 범위를 오해합니다."""
         # when & then
-        assert f'"Programming Language :: Python :: 3.{minor}"' in PYPROJECT_TEXT
+        assert f"Programming Language :: Python :: 3.{minor}" in PROJECT["classifiers"]
 
     def test_declares_no_classifier_below_minimum(self) -> None:
         """지원을 끊은 버전의 classifier 가 남아 있으면 PyPI 가 지원 범위를 거짓으로 보여 줍니다."""
         # given
         from pykorail._compat import MIN_PYTHON
 
-        declared = [int(minor) for minor in re.findall(r'"Programming Language :: Python :: 3\.(\d+)"', PYPROJECT_TEXT)]
+        declared = _classifier_minors()
 
         # when
         dropped = [minor for minor in declared if minor < MIN_PYTHON[1]]
@@ -133,8 +127,11 @@ class TestMetadata:
 class TestCoverageGate:
     def test_threshold_is_ninety(self) -> None:
         """커버리지 게이트가 조용히 낮춰지는 것을 막습니다."""
+        # given
+        addopts = TOOL["pytest"]["ini_options"]["addopts"]
+
         # when & then
-        assert "--cov-fail-under=90" in PYPROJECT_TEXT
+        assert "--cov-fail-under=90" in addopts
 
 
 class TestWorkflows:
