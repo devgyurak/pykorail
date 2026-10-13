@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pykorail.models.parsing import amount, text
+
+if TYPE_CHECKING:
+    from typing import Self
 
 
 @dataclass(frozen=True)
@@ -30,7 +33,7 @@ class Fare:
     total: int
 
     @classmethod
-    def from_response(cls, data: dict[str, Any]) -> Fare:
+    def from_response(cls, data: dict[str, Any]) -> Self:
         return cls(
             train_no=text(data, "trnNo"),
             journey_no=text(data, "jrnySqno"),

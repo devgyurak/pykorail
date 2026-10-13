@@ -7,9 +7,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pykorail.models.parsing import integer, records, text
+
+if TYPE_CHECKING:
+    from typing import Self
 
 #: ``sale_psb_flg`` 가 이 값이면 살 수 있는 좌석입니다.
 _SELLABLE = "Y"
@@ -23,7 +26,7 @@ class SeatAttribute:
     name: str
 
     @classmethod
-    def from_response(cls, data: dict[str, Any]) -> SeatAttribute:
+    def from_response(cls, data: dict[str, Any]) -> Self:
         return cls(code=text(data, "seatAttCd"), name=text(data, "seatAttNm"))
 
 
@@ -43,7 +46,7 @@ class Car:
     attributes: tuple[SeatAttribute, ...] = ()
 
     @classmethod
-    def from_response(cls, data: dict[str, Any]) -> Car:
+    def from_response(cls, data: dict[str, Any]) -> Self:
         return cls(
             car_no=text(data, "h_srcar_no"),
             seat_class=text(data, "h_psrm_cl_cd"),
@@ -77,7 +80,7 @@ class CarSeat:
     message: str
 
     @classmethod
-    def from_response(cls, data: dict[str, Any], *, car_no: str, seat_class: str) -> CarSeat:
+    def from_response(cls, data: dict[str, Any], *, car_no: str, seat_class: str) -> Self:
         return cls(
             car_no=car_no,
             seat_class=seat_class,

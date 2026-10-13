@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pykorail.models.parsing import integer, text
+
+if TYPE_CHECKING:
+    from typing import Self
 
 
 @dataclass(frozen=True)
@@ -39,7 +42,7 @@ class RefundFee:
     """
 
     @classmethod
-    def from_response(cls, data: dict[str, Any]) -> RefundFee:
+    def from_response(cls, data: dict[str, Any]) -> Self:
         """``CommissionView`` 응답 하나로 만듭니다."""
         return cls(
             fee=integer(data, "ret_fee"),

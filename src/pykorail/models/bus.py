@@ -8,9 +8,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pykorail.models.parsing import amount, hhmm, integer, mmdd, text
+
+if TYPE_CHECKING:
+    from typing import Self
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +75,7 @@ class AirportBus:
     price: int
 
     @classmethod
-    def from_response(cls, data: dict[str, Any], *, dep_name: str, arr_name: str) -> AirportBus:
+    def from_response(cls, data: dict[str, Any], *, dep_name: str, arr_name: str) -> Self:
         return cls(
             bus_no=text(data, "trnNo"),
             dep_code=text(data, "dptRsStnCd"),

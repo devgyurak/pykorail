@@ -36,6 +36,7 @@ from pykorail.transport import create_session
 
 if TYPE_CHECKING:
     from types import TracebackType
+    from typing import Self
 
     from pykorail.device import DeviceProfileLike
 
@@ -114,7 +115,7 @@ class Korail:
         device_profile: DeviceProfileLike | None = None,
         validate_stations: bool = True,
         android_id: str | None = None,
-    ) -> Korail:
+    ) -> Self:
         """클라이언트를 만들고 곧바로 로그인합니다.
 
         실패하면 연결을 닫고 예외를 다시 올립니다 — 로그인 못 한 클라이언트가
@@ -169,7 +170,7 @@ class Korail:
         return self._api.account.phone_number
 
     # ------------------------------------------------------------- 컨텍스트 관리
-    def __enter__(self) -> Korail:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(

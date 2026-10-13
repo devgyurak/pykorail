@@ -11,6 +11,7 @@ from pykorail.models.schedule import Train
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Self
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class TransferStation:
     english_name: str
 
     @classmethod
-    def from_response(cls, data: dict[str, Any]) -> TransferStation:
+    def from_response(cls, data: dict[str, Any]) -> Self:
         return cls(
             code=text(data, "chtnRsStnCd"),
             name=text(data, "chtnRsStnNm"),
@@ -55,7 +56,7 @@ class Transfer:
             raise ValueError(f"환승 여정에는 구간이 {_LEGS}개 이상 필요합니다: {len(self.legs)}개")
 
     @classmethod
-    def from_response(cls, rows: Sequence[dict[str, Any]]) -> Transfer:
+    def from_response(cls, rows: Sequence[dict[str, Any]]) -> Self:
         """한 여정으로 묶인 행들에서 만듭니다. 타는 순서대로 넘기세요 — 묶고 줄 세우는 일은
         :func:`parse_transfers` 가 합니다."""
         return cls(legs=tuple(Train.from_response(row) for row in rows))

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pykorail.models.parsing import integer, text
+
+if TYPE_CHECKING:
+    from typing import Self
 
 
 @dataclass(frozen=True)
@@ -24,7 +27,7 @@ class Seat:
     discount: int
 
     @classmethod
-    def from_response(cls, data: dict[str, Any]) -> Seat:
+    def from_response(cls, data: dict[str, Any]) -> Self:
         return cls(
             car=text(data, "h_srcar_no"),
             seat=text(data, "h_seat_no"),

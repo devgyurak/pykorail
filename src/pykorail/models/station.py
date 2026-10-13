@@ -26,9 +26,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pykorail.models.parsing import floating, text
+
+if TYPE_CHECKING:
+    from typing import Self
 
 #: 역 목록이 들어 있는 응답 경로.
 STATIONS_PATH = ("stns", "stn")
@@ -55,7 +58,7 @@ class Station:
     popup_message: str
 
     @classmethod
-    def from_response(cls, data: dict[str, Any]) -> Station:
+    def from_response(cls, data: dict[str, Any]) -> Self:
         return cls(
             code=text(data, "stn_cd"),
             name=text(data, "stn_nm"),

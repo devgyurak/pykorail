@@ -9,9 +9,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pykorail.models.parsing import amount, integer, records, text
+
+if TYPE_CHECKING:
+    from typing import Self
 
 
 @dataclass(frozen=True)
@@ -33,7 +36,7 @@ class MileageEntry:
     amount: int
 
     @classmethod
-    def from_response(cls, data: dict[str, Any]) -> MileageEntry:
+    def from_response(cls, data: dict[str, Any]) -> Self:
         return cls(
             date=text(data, "dptDt"),
             kind_name=text(data, "pontDvNm"),
@@ -66,7 +69,7 @@ class Mileage:
     entries: tuple[MileageEntry, ...] = ()
 
     @classmethod
-    def from_response(cls, data: dict[str, Any]) -> Mileage:
+    def from_response(cls, data: dict[str, Any]) -> Self:
         return cls(
             ktx=amount(data, "totAvlRailPontValNum"),
             samsung_card=amount(data, "totAvlRailPontValNum1"),
@@ -111,7 +114,7 @@ class Coupon:
     guide: str
 
     @classmethod
-    def from_response(cls, data: dict[str, Any]) -> Coupon:
+    def from_response(cls, data: dict[str, Any]) -> Self:
         return cls(
             coupon_no=text(data, "h_cpn_no"),
             title=text(data, "h_rmk_1_cont"),

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pykorail.models.parsing import integer, text
 from pykorail.models.schedule import Train
+
+if TYPE_CHECKING:
+    from typing import Self
 
 #: ``MyTicketList`` 응답의 ``reservation_list`` 항목 안에서 ``train_info`` 까지 가는 경로.
 #: 각 단계가 리스트이고 첫 항목만 씁니다 — 앱도 그렇게 읽습니다.
@@ -60,7 +63,7 @@ class Ticket:
     sale_info4: str
 
     @classmethod
-    def from_response(cls, data: dict[str, Any], *, seat_no: str | None = None) -> Ticket:
+    def from_response(cls, data: dict[str, Any], *, seat_no: str | None = None) -> Self:
         """``train_info`` 항목 하나로 승차권을 만듭니다.
 
         Args:

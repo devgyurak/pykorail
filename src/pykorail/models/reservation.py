@@ -9,6 +9,8 @@ from pykorail.models.parsing import hhmm, integer, text
 from pykorail.models.schedule import Train
 
 if TYPE_CHECKING:
+    from typing import Self
+
     from pykorail.models.seat import Seat
 
 _WAITING_BUY_LIMIT_DATE = "00000000"
@@ -57,7 +59,7 @@ class Reservation:
         journey_no: str | None = None,
         journey_cnt: str | None = None,
         rsv_chg_no: str | None = None,
-    ) -> Reservation:
+    ) -> Self:
         # 예약 응답에는 출발·도착일이 따로 오지 않고 운행일 하나만 옵니다.
         train = Train.from_response(data)
         train = replace(train, dep_date=train.run_date, arr_date=train.run_date)
