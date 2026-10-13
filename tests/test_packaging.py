@@ -46,8 +46,12 @@ class TestVersionSource:
 
     def test_build_requires_hatch_vcs(self) -> None:
         """빌드 백엔드가 태그를 못 읽으면 버전이 0.0.0 으로 나갑니다."""
+        # given
+        requires = PYPROJECT_DATA["build-system"]["requires"]
+
         # when & then
-        assert "hatch-vcs" in PYPROJECT_DATA["build-system"]["requires"]
+        # 버전을 고정하면 `hatch-vcs>=0.4` 처럼 오므로 이름 앞부분으로 봅니다.
+        assert any(requirement.startswith("hatch-vcs") for requirement in requires)
 
     def test_fallback_exists_for_gitless_builds(self) -> None:
         """소스 tarball·얕은 체크아웃에서도 빌드가 죽지 않아야 합니다."""
