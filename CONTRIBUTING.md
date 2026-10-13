@@ -258,9 +258,11 @@ APK: com.korail.talk versionName 7.0.1 (2026-08 추출)
 
 ### 2. 브랜치
 
-`<접두사 소문자>/<요약-kebab>`
+`<접두사 소문자>/<요약-kebab>` 형태로 **`develop` 에서** 땁니다. PR 도 `develop` 으로
+냅니다 — `main` 은 릴리스 전용이고, 거기에는 `develop` 을 올리는 릴리스 PR 만 갑니다.
 
 ```bash
+git switch develop && git pull
 git switch -c fix/past-departure-guard
 ```
 
@@ -284,8 +286,8 @@ FIX: 과거 시각 조회를 요청 전에 차단
 
 커밋과 같습니다 — `FIX: 과거 시각 조회를 요청 전에 차단`.
 
-`main` 은 squash 머지가 가능해서 PR 제목이 그대로 히스토리에 남습니다. 그래서
-커밋과 같은 형식을 씁니다.
+`develop`(과 릴리스 PR 을 올리는 `main`)은 squash 머지가 가능해서 PR 제목이 그대로
+히스토리에 남습니다. 그래서 커밋과 같은 형식을 씁니다.
 
 ### 5. 라벨 → 릴리스 노트
 
@@ -317,7 +319,7 @@ PR 템플릿에 들어 있습니다. 특히:
 PR 을 열면 자동으로 돕니다 — 린트 · 타입 검사 · 워크플로 린트(actionlint) ·
 Python 3.11–3.15 테스트 · 빌드 · Trivy 보안 스캔. 전부 우분투에서 돕니다.
 
-여기에 더해 **main 으로 가는 PR** 에는 **CodeRabbit** 이 리뷰 코멘트를 답니다
+여기에 더해 **develop · main 으로 가는 PR** 에는 **CodeRabbit** 이 리뷰 코멘트를 답니다
 (설정은 [`.coderabbit.yaml`](.coderabbit.yaml)). 초안(draft) PR 은 건너뜁니다.
 필수 통과 항목이 아니니 지적에 동의하지 않으시면 그렇게 답해 주세요 — 사람이
 판단합니다. PR 에서 `@coderabbitai` 로 말을 걸 수도 있습니다.
@@ -329,9 +331,12 @@ Python 3.11–3.15 테스트 · 빌드 · Trivy 보안 스캔. 전부 우분투�
 
 ### 8. 머지
 
-`main` 은 보호돼 있습니다. **@devgyurak 의 승인**과 **CI(`ci-ok`) 통과** 후에만
+`develop` 은 보호돼 있습니다. **@devgyurak 의 승인**과 **CI(`ci-ok`) 통과** 후에만
 머지되고, 리뷰 코멘트가 남아 있으면 머지 버튼이 잠깁니다. 새 커밋을 올리면 기존
 승인이 무효화되니, 리뷰 반영 후 다시 승인을 요청해 주세요.
+
+릴리스는 별개입니다 — 메인테이너가 `develop` 을 `main` 으로 올리는 PR 을 열고
+머지합니다 (아래 "릴리스" 참고).
 
 ---
 
@@ -349,8 +354,8 @@ Python 3.11–3.15 테스트 · 빌드 · Trivy 보안 스캔. 전부 우분투�
 
 ## 저장소 설정 (메인테이너용)
 
-`main` 은 보호돼 있습니다 — **직접 푸시할 수 없고, 코드 소유자(@devgyurak) 승인
-없이는 머지되지 않습니다.**
+`develop` 과 `main` 이 보호돼 있습니다 — **직접 푸시할 수 없고, 코드
+소유자(@devgyurak) 승인 없이는 머지되지 않습니다.**
 
 저장소 파일만으로는 강제되지 않습니다. 브랜치 보호는 GitHub 설정이라 한 번 켜 줘야
 합니다.
@@ -359,24 +364,29 @@ Python 3.11–3.15 테스트 · 빌드 · Trivy 보안 스캔. 전부 우분투�
 .github/scripts/setup-branch-protection.sh
 ```
 
-적용되는 규칙 ([`main-protection.json`](.github/rulesets/main-protection.json)):
+적용되는 규칙 ([`develop-protection.json`](.github/rulesets/develop-protection.json) ·
+[`main-protection.json`](.github/rulesets/main-protection.json)):
 
-- main 은 PR 로만 변경 가능
+- develop · main 은 PR 로만 변경 가능
 - 승인 1개 이상 + [`CODEOWNERS`](.github/CODEOWNERS) 승인 필수
 - 새 커밋이 올라오면 기존 승인 무효화, 마지막 푸시한 사람 외의 승인 필요
 - 리뷰 코멘트를 전부 해결해야 머지 가능
-- 상태 체크 `ci-ok` 통과 필수 (최신 main 기준)
-- main 삭제·강제푸시 금지
+- 상태 체크 `ci-ok` 통과 필수 (해당 브랜치의 최신 기준)
+- develop · main 삭제·강제푸시 금지
+
+main 쪽에도 같은 규칙을 두는 이유는, 릴리스 PR(`develop` → `main`)을 **메인테이너만**
+머지하도록 만드는 장치가 바로 코드 소유자 승인 요구이기 때문입니다.
 
 적용 후 확인:
 
 ```bash
 gh api repos/devgyurak/pykorail/rulesets --jq '.[] | "\(.id) \(.name) \(.enforcement)"'
-git push origin main   # 거부되면 정상
+git push origin develop   # 거부되면 정상
+git push origin main      # 거부되면 정상
 ```
 
 > [!NOTE]
-> **admin 도 main 에 직접 push 할 수 없습니다.** `bypass_actors` 의
+> **admin 도 develop · main 에 직접 push 할 수 없습니다.** `bypass_actors` 의
 > `bypass_mode` 가 `pull_request` 라서, 우회는 "PR 안에서 승인 요건을 건너뛰는 것"
 > 까지만 허용되고 직접 push 는 여전히 막힙니다.
 >
@@ -392,8 +402,14 @@ git push origin main   # 거부되면 정상
 
 버전의 유일한 출처는 **git 태그**입니다. 파일에 버전을 적지 않습니다.
 
+릴리스는 `develop` 을 `main` 으로 올리는 PR 로 시작합니다. 제목은 버전(`v0.3.0`)
+이고(접두사는 개별 작업 PR 의 규칙입니다), 이 PR 은 **메인테이너만** 머지합니다.
+머지한 뒤 `main` 에서 태그를 밀면 됩니다.
+
 ```bash
-git tag v0.2.0 && git push origin v0.2.0
+gh pr create --base main --head develop --title "v0.3.0"
+git switch main && git pull
+git tag v0.3.0 && git push origin v0.3.0
 ```
 
 태그를 밀면 버전 도출 → 전 버전 게이트 → Trivy → 빌드 → PyPI 업로드 →

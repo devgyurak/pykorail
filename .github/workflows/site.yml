@@ -4,7 +4,8 @@ name: site
 # site/scripts/sync-docs.mjs 가 빌드 시점에 README.md · docs/reference.md · CONTRIBUTING.md
 # 에서 만들어 내므로 사이트가 저장소와 어긋날 수 없습니다.
 #
-# 그 원본이나 site/ 를 건드린 PR · main 푸시에서 사이트를 빌드하고 내부 링크를 검사합니다.
+# 그 원본이나 site/ 를 건드린 PR · develop · main 푸시에서 사이트를 빌드하고 내부
+# 링크를 검사합니다.
 # 깨진 페이지가 배포 뒤가 아니라 여기서 드러나게 하려는 것입니다. **배포는 여기서 하지
 # 않습니다** — Cloudflare Workers Builds 가 자체 Git 연동으로 빌드 · 배포하므로(docs/site.md)
 # Cloudflare 자격증명이 이 저장소에 들어오지 않습니다.
@@ -16,7 +17,7 @@ name: site
 # 아래 경로 목록은 sync-docs.mjs 의 PAGES 와 맞춰야 합니다 — 페이지를 추가하면 여기도 추가하세요.
 on:
   pull_request:
-    branches: [main]
+    branches: [main, develop]
     paths: &site_paths
       - "site/**"
       - "README.md"
@@ -24,7 +25,7 @@ on:
       - "CONTRIBUTING.md"
       - ".github/workflows/site.yml"
   push:
-    branches: [main]
+    branches: [main, develop]
     paths: *site_paths
   workflow_dispatch:
 

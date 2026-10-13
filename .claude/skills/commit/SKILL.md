@@ -148,8 +148,9 @@ upt/curl-cffi
 
 **제목은 커밋과 같습니다** — `FIX: 과거 시각 조회를 요청 전에 차단`.
 
-`main` 은 squash 머지가 가능해서(`allowed_merge_methods` 에 `squash` 포함) PR 제목이
-그대로 히스토리에 남습니다. 두 체계가 다르면 main 의 로그가 섞입니다.
+작업 PR 은 `develop`, 릴리스 PR 은 `main` 으로 갑니다. 둘 다 squash 머지가 가능해서
+(`allowed_merge_methods` 에 `squash` 포함) PR 제목이 그대로 히스토리에 남습니다.
+두 체계가 다르면 develop · main 의 로그가 섞입니다.
 
 접두사는 **변경의 종류**를, 라벨은 **릴리스 노트 분류**를 말합니다
 (`.github/release.yml`).

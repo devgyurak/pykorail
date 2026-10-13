@@ -4,7 +4,8 @@
 # 버전이 그 PR 리뷰에 쓰입니다 — 이 파일을 고치는 PR 은 바뀐 설정으로 리뷰됩니다.
 #
 # 리뷰는 **게이트가 아닙니다.** 필수 상태 체크는 `ci-ok` 하나뿐이고
-# (`.github/rulesets/main-protection.json`), 아래 request_changes_workflow 와
+# (`.github/rulesets/develop-protection.json` · `main-protection.json`), 아래
+# request_changes_workflow 와
 # pre_merge_checks 를 머지를 막지 않는 쪽으로 둔 것도 그래서입니다.
 
 language: ko-KR
@@ -30,6 +31,7 @@ reviews:
     drafts: false
     base_branches:
       - main
+      - develop
 
   path_filters:
     # 빌드 때 hatch-vcs 가 만들어내는 파일 — 손으로 고치지 않습니다.
