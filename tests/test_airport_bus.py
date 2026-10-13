@@ -9,7 +9,7 @@ import pytest
 
 from pykorail.exceptions import KorailError, StationNotFoundError
 from pykorail.models import AdultPassenger, AirportBus, BusStop, ChildPassenger
-from pykorail.resources.trains import KST
+from pykorail.resources.clock import KST
 from tests.payloads import (
     BUS_INFO,
     BUS_SCHEDULE_PAYLOAD,

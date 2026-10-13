@@ -10,7 +10,7 @@ import pytest
 from pykorail.exceptions import KorailError, NeedToLoginError
 from pykorail.models import Coupon, Mileage, MileageEntry
 from pykorail.options import MileageInquiry, MileageType
-from pykorail.resources.trains import KST, to_kst
+from pykorail.resources.clock import KST, to_kst
 from tests.payloads import (
     COUPON_INFO,
     COUPONS_PAYLOAD,

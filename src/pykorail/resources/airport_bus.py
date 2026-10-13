@@ -11,7 +11,7 @@ from pykorail.models.car import CarSeat
 from pykorail.models.parsing import records, text
 from pykorail.models.passenger import AdultPassenger, Passenger
 from pykorail.resources.base import Resource
-from pykorail.resources.trains import to_kst
+from pykorail.resources.clock import to_kst
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

@@ -18,8 +18,10 @@ from pykorail.exceptions import (
 )
 from pykorail.models import AdultPassenger, Card, ChildPassenger, Reservation, Seat, Ticket, Transfer
 from pykorail.options import SeatClass
+from pykorail.resources import trains
 from pykorail.resources.base import without_blanks
-from pykorail.resources.trains import KST, MAX_PAGES, PAST_TOLERANCE, to_kst
+from pykorail.resources.clock import KST, to_kst
+from pykorail.resources.trains import MAX_PAGES, PAST_TOLERANCE
 from tests.conftest import Replies, Reply
 from tests.payloads import (
     ACCESS_RESTRICTED,
@@ -177,6 +179,12 @@ class TestToKst:
 
         # then
         assert result.tzinfo == KST
+
+    def test_trains_keeps_re_exposing_the_shared_names(self) -> None:
+        """``resources.trains`` 로 가져오던 옛 경로가 그대로 남아 있어야 합니다."""
+        # when & then
+        assert trains.KST is KST
+        assert trains.to_kst is to_kst
 
 
 class TestStations:

@@ -15,11 +15,12 @@ from __future__ import annotations
 
 from pykorail.resources.airport_bus import AirportBusResource
 from pykorail.resources.base import Resource
+from pykorail.resources.clock import to_kst
 from pykorail.resources.membership import MembershipResource
 from pykorail.resources.reservations import ReservationResource
 from pykorail.resources.stations import StationResource
 from pykorail.resources.tickets import TicketResource
-from pykorail.resources.trains import TrainResource, to_kst
+from pykorail.resources.trains import TrainResource
 
 __all__ = [
     "AirportBusResource",

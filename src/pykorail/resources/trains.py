@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from pykorail.constants import API_ENDPOINTS, APP_VERSION, DEVICE, KST_OFFSET_HOURS
+from pykorail.constants import API_ENDPOINTS, APP_VERSION, DEVICE
 from pykorail.exceptions import NoResultsError, PastDepartureError
 from pykorail.models.car import Car, CarSeat
 from pykorail.models.fare import Fare
@@ -23,6 +23,7 @@ from pykorail.models.schedule import Train
 from pykorail.models.transfer import Transfer, TransferStation, parse_transfers
 from pykorail.options import SeatClass, TrainType
 from pykorail.resources.base import Resource, without_blanks
+from pykorail.resources.clock import KST, to_kst
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -30,8 +31,6 @@ if TYPE_CHECKING:
     from pykorail.api import ApiClient
     from pykorail.options import SeatClassCode, TrainTypeCode
     from pykorail.resources.stations import StationResource
-
-KST = timezone(timedelta(hours=KST_OFFSET_HOURS))
 
 #: 과거 판정 유예. 호출자가 ``datetime.now()`` 를 그대로 넘겨도 계산·왕복 지연 때문에
 #: 걸리는 일이 없도록 조금 봐줍니다. 이보다 더 지난 시각은 열차가 이미 떠났다는 뜻이라
@@ -51,20 +50,6 @@ _TRANSFER = "2"
 #: 넣습니다. 위의 여정 종류와 값은 같지만 다른 필드라 따로 둡니다.
 _FARE_DIRECT = "1"
 _FARE_TRANSFER = "2"
-
-
-def to_kst(moment: datetime | None) -> datetime:
-    """KST 기준 시각으로 정규화합니다.
-
-    ``None`` 이면 지금, naive 면 이미 KST 인 것으로 보고 tz 만 붙이고, aware 면
-    KST 로 변환합니다. 서버가 보내 주는 날짜·시각이 전부 KST 라 기준을 여기 하나로
-    모읍니다 — 실행 머신의 로컬 타임존에 결과가 흔들리면 안 됩니다.
-    """
-    if moment is None:
-        return datetime.now(KST)
-    if moment.tzinfo is None:
-        return moment.replace(tzinfo=KST)
-    return moment.astimezone(KST)
 
 
 class TrainResource(Resource):

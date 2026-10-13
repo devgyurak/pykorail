@@ -11,7 +11,7 @@ from pykorail.models.membership import Coupon, Mileage
 from pykorail.models.parsing import records
 from pykorail.options import MileageInquiry, MileageType
 from pykorail.resources.base import Resource
-from pykorail.resources.trains import to_kst
+from pykorail.resources.clock import to_kst
 
 if TYPE_CHECKING:
     from pykorail.options import MileageInquiryCode, MileageTypeCode
