@@ -12,6 +12,10 @@
 #
 # 작업 PR 의 도착지는 develop 이고 main 은 릴리스 전용입니다. 그래서 세 생태계 모두
 # `target-branch: develop` 을 지정합니다 — 기본 브랜치인 main 으로 열면 흐름을 벗어납니다.
+#
+# 주의: Dependabot 은 이 설정을 **기본 브랜치(main)** 에서 읽습니다. 이 파일이 main 에
+# 닿기 전(첫 develop → main 머지 전)까지는 `target-branch` 가 적용되지 않아 범프 PR 이
+# 계속 main 으로 열립니다. 머지 뒤 다음 실행부터 develop 으로 갑니다.
 version: 2
 
 updates:

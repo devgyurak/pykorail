@@ -49,6 +49,19 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
 
+      - name: 태그가 main 이력인지 확인
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          # 평소 작업 위치가 develop 이라 거기서 태그를 미는 실수가 현실적입니다.
+          # 태그 보호(tag-protection)는 "생성 권한"만 보고 커밋 위치는 안 봅니다.
+          # main 에서 (또는 릴리스 PR 에서) 민 태그만 PyPI 로 가도록 여기서 막습니다.
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor HEAD refs/remotes/origin/main; then
+            echo "::error::태그 ${GITHUB_REF_NAME} 이 main 의 이력이 아닙니다. main 에서 태그를 미세요."
+            exit 1
+          fi
+
       - name: 태그에서 버전 도출
         id: version
         run: |

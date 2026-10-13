@@ -34,7 +34,8 @@ export default defineConfig({
         },
       ],
       // 랜딩 페이지만 site/ 에 있습니다. 동기화된 페이지는 각자 원본 파일로 editUrl 을 겁니다.
-      editLink: { baseUrl: "https://github.com/devgyurak/pykorail/edit/main/site/" },
+      // 작업 위치는 develop 이라 저장소 파일 링크도 develop 을 가리킵니다.
+      editLink: { baseUrl: "https://github.com/devgyurak/pykorail/edit/develop/site/" },
       lastUpdated: false,
       // 코드 블록 모서리를 승차권의 설치 명령 칩(6px)과 같은 계열로 맞춥니다.
       expressiveCode: { styleOverrides: { borderRadius: "8px" } },

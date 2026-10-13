@@ -254,9 +254,14 @@ def test_individual_by_default(self) -> None:
 ## 6. CI/CD
 
 - **브랜치 모델** — 작업 PR 은 `develop` 으로, 릴리스 PR(`develop` → `main`)만
-  `main` 으로 갑니다. `main` 은 릴리스 전용이고 태그도 거기서 밉니다. 두 브랜치 모두
-  ruleset 으로 보호되며(승인 1 + CODEOWNERS + `ci-ok`), main 쪽 규칙은 릴리스 PR 을
-  **메인테이너만** 머지하게 만드는 장치입니다 (`.github/rulesets/`).
+  `main` 으로 갑니다. `main` 은 릴리스 전용이고 태그도 거기서 밉니다. 릴리스 PR 은
+  `main` 에서 **merge 커밋으로만** 머지하고(develop 이력이 main 에 닿아야 합니다),
+  태그 뒤 `main` → `develop` 역머지로 태그를 develop 에 가져옵니다.
+- **보호가 실제로 보장하는 것** — 두 브랜치 모두 ruleset 으로 직접 푸시·강제 푸시·삭제가
+  막히고 PR 로만 바뀝니다. 다만 **머지 권한은 ruleset 이 아니라 write 권한**이 정하고
+  (협업자는 @devgyurak 뿐), 본인 PR 은 스스로 승인할 수 없어 **admin 우회로 머지**되는데
+  그 우회는 `ci-ok`·strict 까지 건너뜁니다 — 머지 전에 체크가 초록인지 확인하세요
+  (`.github/rulesets/`).
 - **CI** (`.github/workflows/ci.yml`) — 린트·타입 검사, Python **3.11–3.15** 테스트,
   빌드·설치 확인, Trivy 스캔. **전부 우분투에서만 돕니다** — `src/` 에 플랫폼 분기가
   없고, Windows 러너가 실제로 잡아주던 인코딩 기본값 문제는 `tests/test_style.py`

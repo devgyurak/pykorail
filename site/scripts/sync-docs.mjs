@@ -75,7 +75,7 @@ function transform(text, fromFile, titleOverride) {
     })
     .join("");
   title ??= path.basename(fromFile, ".md");
-  const editUrl = `${GITHUB}/edit/main/${fromFile}`;
+  const editUrl = `${GITHUB}/edit/develop/${fromFile}`;
   const front = `---\ntitle: ${JSON.stringify(title)}\neditUrl: ${JSON.stringify(editUrl)}\n---\n`;
   return front + body.replace(/^\n+/, "\n");
 }
