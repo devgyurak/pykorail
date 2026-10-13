@@ -25,11 +25,15 @@ pip install pykorail
 ```
 
 ```python
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pykorail import Korail
 
+kst = timezone(timedelta(hours=9))
+# 내일 오전 9시(KST) 출발을 찾습니다.
+departure = (datetime.now(kst) + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
+
 with Korail.logged_in("me@example.com", "password") as korail:
-    trains = korail.trains.search("서울", "부산", depart_after=datetime(2026, 4, 1, 9, 0))
+    trains = korail.trains.search("서울", "부산", depart_after=departure)
     for train in trains:
         print(train)
 ```
@@ -57,7 +61,7 @@ from pykorail import AdultPassenger, Card, ChildPassenger
 trains = korail.trains.search(
     "서울",
     "부산",
-    depart_after=datetime(2026, 4, 1, 9, 0),
+    depart_after=departure,
     passengers=[AdultPassenger(2), ChildPassenger(1)],
 )
 
@@ -78,7 +82,7 @@ korail.reservations.pay(
 import time
 from pykorail import NoResultsError, PastDepartureError
 
-departure = datetime(2026, 4, 1, 9, 0)
+departure = (datetime.now(kst) + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
 
 while True:
     try:
@@ -222,7 +226,7 @@ SSAID 계산 방식과 코레일 공개 서명 인증서로 생성한 합성 값
 |                |                                                      |
 | -------------- | ---------------------------------------------------- |
 | **역은 이름으로**    | `"서울역"` 이 아니라 `"서울"`. 오타면 요청 전에 막고 비슷한 역을 알려줍니다.     |
-| **시각은 항상 KST** | `datetime(2026, 4, 1, 9)` 는 서버가 어느 타임존이든 한국시간 오전 9시. |
+| **시각은 항상 KST** | tz 없는 `datetime` 은 실행 머신의 타임존과 무관하게 한국시간으로 해석됩니다. |
 | **지난 시각은 거부**  | 서버가 과거에도 빈 결과만 줘서 "떠난 열차"와 "열차 없음"이 구분되지 않습니다.       |
 | **실패는 예외로**    | `cancel()` · `pay()` 는 성공 시 아무것도 반환하지 않습니다.          |
 

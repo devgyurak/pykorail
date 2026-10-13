@@ -93,9 +93,9 @@ class TrainResource(Resource):
             dep: 출발역 이름 (예: ``"서울"``).
             arr: 도착역 이름.
             depart_after: 이 시각 **이후** 출발하는 열차를 그날 하루에서 찾습니다.
-                naive datetime 은 KST 로 봅니다(코레일 시간표가 KST 기준이므로,
-                ``datetime(2026, 4, 1, 9)`` 는 한국시간 오전 9시입니다). tz 가 붙어
-                있으면 KST 로 변환합니다. 생략하면 지금(KST).
+                naive datetime 은 KST 로 봅니다(코레일 시간표가 KST 기준이라 ``09:00`` 은
+                UTC 서버에서도 한국시간 오전 9시입니다). tz 가 붙어 있으면 KST 로 변환합니다.
+                생략하면 지금(KST).
             train_type: :class:`~pykorail.options.TrainType` 코드.
             passengers: 생략하면 어른 1명.
             include_no_seats: 매진 열차도 포함합니다.

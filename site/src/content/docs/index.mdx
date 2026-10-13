@@ -30,14 +30,19 @@ import SectionHead from "../../components/SectionHead.astro";
 <Demo>
 
 ```python
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pykorail import Korail
+
+kst = timezone(timedelta(hours=9))
+# 내일 오전 9시(KST) 출발을 찾습니다.
+tomorrow = datetime.now(kst) + timedelta(days=1)
+departure = tomorrow.replace(hour=9, minute=0, second=0, microsecond=0)
 
 with Korail.logged_in("me@example.com", "password") as korail:
     trains = korail.trains.search(
         "서울",
         "부산",
-        depart_after=datetime(2026, 4, 1, 9, 0),
+        depart_after=departure,
     )
     for train in trains:
         print(train)

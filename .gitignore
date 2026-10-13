@@ -29,6 +29,11 @@ src/pykorail/_version.py
 /scratch*.py
 /local/
 
+# 실서버 확인에 쓰는 자격증명(.env*) — 전역 gitignore 에만 의존하지 않도록 저장소에서도 막습니다.
+.env
+.env.*
+!.env.example
+
 # 리버스 엔지니어링용 APK 와 디컴파일 결과 — 절대 커밋하지 않습니다.
 *.apk
 androguard.log

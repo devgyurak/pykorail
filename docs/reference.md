@@ -152,7 +152,7 @@ from_yongsan = [t for t in trains if t.dep_name == "용산"]
 
 > [!TIP]
 > `depart_after` 는 실행 머신의 로컬 타임존과 무관하게 항상 KST 로 해석됩니다.
-> UTC 서버에서 돌려도 `datetime(2026, 4, 1, 9)` 는 한국시간 오전 9시입니다.
+> UTC 서버에서 돌려도 `09:00` 은 한국시간 오전 9시입니다.
 
 #### 환승 조회
 
