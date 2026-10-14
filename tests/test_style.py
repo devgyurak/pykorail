@@ -35,6 +35,11 @@ ROOT = TESTS_DIR.parent
 TEST_FILES = sorted(TESTS_DIR.rglob("test_*.py"))
 BANNED = (ast.If, ast.For, ast.While, ast.AsyncFor)
 
+#: 검사 대상이 되는 테스트 함수. ``async def test_*`` 도 **같은 규약**을 따라야 합니다.
+#: ``ast.FunctionDef`` 만 보면 async 테스트가 제어 흐름 금지 · Given–When–Then 검사를
+#: 통째로 빠져나가, 비동기 코드가 늘어날수록 규약의 구멍도 함께 커집니다.
+TestFunction = ast.FunctionDef | ast.AsyncFunctionDef
+
 # encoding 검사는 패키지 코드에도 걸립니다. _version.py 는 hatch-vcs 가 빌드 때
 # 만들어내는 파일이라 우리가 고칠 수 없어 제외합니다.
 # 양쪽 다 rglob 입니다 — 한쪽만 glob 이면 하위 디렉터리가 생겼을 때 조용히 빠집니다.
@@ -92,8 +97,12 @@ def _parse(path: Path) -> tuple[ast.Module, list[str]]:
     return ast.parse(source), source.splitlines()
 
 
-def _test_functions(tree: ast.Module) -> list[ast.FunctionDef]:
-    return [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name.startswith("test_")]
+def _test_functions(tree: ast.Module) -> list[TestFunction]:
+    return [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_")
+    ]
 
 
 def control_flow_violations(path: Path) -> list[str]:
@@ -161,15 +170,15 @@ def gwt_violations(path: Path) -> list[str]:
     tree, lines = _parse(path)
     violations: list[str] = []
 
-    def body_lines(fn: ast.FunctionDef) -> list[str]:
+    def body_lines(fn: TestFunction) -> list[str]:
         end = fn.end_lineno or fn.lineno
         return lines[fn.lineno - 1 : end]
 
-    def first_marker_line(fn: ast.FunctionDef, pattern: re.Pattern[str]) -> int | None:
+    def first_marker_line(fn: TestFunction, pattern: re.Pattern[str]) -> int | None:
         matches = [i for i, line in enumerate(body_lines(fn), fn.lineno) if pattern.match(line)]
         return matches[0] if matches else None
 
-    def first_statement_line(fn: ast.FunctionDef) -> int:
+    def first_statement_line(fn: TestFunction) -> int:
         # 독스트링은 준비 코드가 아닙니다.
         statements = [
             node
@@ -257,6 +266,52 @@ class TestCheckersActuallyWork:
             "test_sample.py:1 test_f — '# then' 없음",
             "test_sample.py:1 test_f — '# when' 없음",
         ]
+
+    @pytest.mark.parametrize(
+        ("source", "banned"),
+        [
+            ("async def test_f(x):\n    for item in x:\n        pass\n", "For"),
+            ("async def test_f(x):\n    if x:\n        return 1\n", "If"),
+            ("async def test_f(x):\n    while x:\n        break\n", "While"),
+        ],
+        ids=["async-for", "async-if", "async-while"],
+    )
+    def test_async_tests_face_the_control_flow_ban(self, tmp_path: Path, source: str, banned: str) -> None:
+        """``async def test_*`` 가 제어 흐름 금지를 빠져나가면 규약에 구멍이 생깁니다."""
+        # given
+        sample = tmp_path / "test_sample.py"
+        sample.write_text(source, encoding="utf-8")
+
+        # when
+        found = control_flow_violations(sample)
+
+        # then
+        assert found == [f"test_sample.py:2 {banned}"]
+
+    @pytest.mark.parametrize(
+        ("source", "expected"),
+        [
+            (
+                "async def test_f():\n    assert True\n",
+                [
+                    "test_sample.py:1 test_f — '# then' 없음",
+                    "test_sample.py:1 test_f — '# when' 없음",
+                ],
+            ),
+            ("async def test_f():\n    # when\n    assert True\n", ["test_sample.py:1 test_f — '# then' 없음"]),
+        ],
+        ids=["async-no-markers", "async-missing-then"],
+    )
+    def test_async_tests_face_the_given_when_then_rule(self, tmp_path: Path, source: str, expected: list[str]) -> None:
+        # given
+        sample = tmp_path / "test_sample.py"
+        sample.write_text(source, encoding="utf-8")
+
+        # when
+        found = gwt_violations(sample)
+
+        # then
+        assert found == expected
 
     def test_gwt_checker_requires_given_when_there_is_setup(self, tmp_path: Path) -> None:
         # given

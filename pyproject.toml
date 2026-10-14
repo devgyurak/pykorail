@@ -73,6 +73,10 @@ dev = [
     # PR 로 먼저 오고, 거기서 한 번에 고칩니다.
     "actionlint-py>=1.7.12",
     "pytest>=8.0.0",
+    # 비동기 테스트(``async def test_*``)를 그대로 돌리려면 필요합니다. 규약은
+    # tests/test_style.py 가 AST 로 강제하므로, 그 검사기가 async 테스트도 보게
+    # 되는 순간(``_test_functions``)부터 수집 자체가 실패하지 않도록 함께 들어옵니다.
+    "pytest-asyncio>=1.4.0",
     "pytest-cov>=5.0.0",
     "ruff>=0.14.0",
     "ty>=0.0.1a10",
@@ -134,6 +138,12 @@ unresolved-import = "warn"
 testpaths = ["tests"]
 # 커버리지 게이트는 CI 가 아니라 로컬 실행에도 걸립니다 — 90% 아래로 내려가면 실패합니다.
 addopts = "-q --cov=pykorail --cov-report=term-missing --cov-fail-under=90"
+# 비동기 테스트에 마커를 붙이지 않아도 수집되게 합니다(``auto``). 명시 마커를
+# 빠뜨린 async 테스트가 조용히 **수집되지 않고** 통과한 것처럼 보이는 것을 막습니다.
+asyncio_mode = "auto"
+# 이벤트 루프는 테스트 함수마다 새로 만듭니다(function). 루프 하나를 공유하면
+# 앞 테스트가 남긴 세션·태스크가 뒤 테스트의 실패로 이어져 원인 추적이 어려워집니다.
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.coverage.run]
 source = ["src/pykorail"]
