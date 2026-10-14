@@ -1,4 +1,9 @@
-"""응답 해석 — HTTP 상태 코드와 코레일 응답 형식을 함께 봅니다."""
+"""저수준 클라이언트 — 전송 연결과 공유 해석 배선.
+
+응답 판정 자체는 두 계층이 같은 :func:`~pykorail._shared.parse_response` 를 쓰므로
+``tests/test_shared_response.py`` 에서 한 번만 검증합니다. 여기에는 ``get``/``post`` 가
+그 함수를 거치는지와 ``verbose`` 로그가 **이 계층의 로거**로 나가는지만 둡니다.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +14,7 @@ import pytest
 from pykorail._async.api import AsyncApiClient
 from pykorail.auth.signer import RequestSigner
 from pykorail.constants import API_ENDPOINTS
-from pykorail.exceptions import AccessRestrictedError, HttpStatusError, NeedToLoginError, TransportError
+from pykorail.exceptions import AccessRestrictedError, NeedToLoginError
 from pykorail.transport import AsyncHttpSession
 from tests._async.conftest import AsyncFakeSession, Reply
 from tests.payloads import ACCESS_RESTRICTED, STATION_PAYLOAD
@@ -17,115 +22,58 @@ from tests.payloads import ACCESS_RESTRICTED, STATION_PAYLOAD
 URL = API_ENDPOINTS["search_schedule"]
 
 
-def api_replying(reply: Any) -> AsyncApiClient:
+def api_replying(reply: Any, *, verbose: bool = False) -> AsyncApiClient:
     """조회 엔드포인트가 ``reply`` 를 돌려주는 저수준 클라이언트."""
     # AsyncFakeSession.headers 는 평범한 dict 라 프로토콜의 MutableMapping 속성과 불변성이 어긋납니다.
     session = cast(AsyncHttpSession, AsyncFakeSession({"search_schedule": reply}))
-    return AsyncApiClient(session, RequestSigner(device_id="fixture-device"))
+    return AsyncApiClient(session, RequestSigner(device_id="fixture-device"), verbose=verbose)
 
 
-class TestHttpStatus:
-    @pytest.mark.parametrize("code", ["-2000", -2000])
-    async def test_access_restriction_keeps_status_code_and_message(self, code: object) -> None:
-        """403 이용제한을 그대로 실어야 "비밀번호 오류"·"결과 없음" 과 구분됩니다."""
+class TestSharedParsingIsWired:
+    async def test_get_returns_the_parsed_body(self) -> None:
         # given
-        api = api_replying(Reply(403, {**ACCESS_RESTRICTED, "code": code}))
+        api = api_replying(STATION_PAYLOAD)
 
         # when
-        with pytest.raises(HttpStatusError) as exc:
-            await api.post(URL)
+        payload = await api.get(URL)
 
         # then
-        assert (exc.value.status_code, exc.value.code, exc.value.msg) == (403, "-2000", ACCESS_RESTRICTED["message"])
+        assert payload == STATION_PAYLOAD
 
-    @pytest.mark.parametrize("status", [403, 200])
-    @pytest.mark.parametrize("code", ["-2000", -2000])
-    async def test_access_restriction_has_its_own_type_whatever_the_status(self, status: int, code: object) -> None:
-        """이용제한 봉투가 200 으로 와도 "결과 없음" 으로 흘러가면 막힌 채 계속 두드립니다."""
+    async def test_post_returns_the_parsed_body(self) -> None:
         # given
-        api = api_replying(Reply(status, {**ACCESS_RESTRICTED, "code": code}))
-
-        # when
-        with pytest.raises(AccessRestrictedError) as exc:
-            await api.post(URL)
-
-        # then
-        assert (exc.value.status_code, exc.value.code) == (status, "-2000")
-
-    async def test_access_restriction_message_leads_with_the_cause(self) -> None:
-        """200 으로 왔을 때 "HTTP 200" 으로 시작하면 로그만 봐서는 성공한 응답처럼 읽힙니다."""
-        # given
-        api = api_replying(Reply(200, ACCESS_RESTRICTED))
-
-        # when
-        with pytest.raises(AccessRestrictedError) as exc:
-            await api.post(URL)
-
-        # then
-        assert str(exc.value).startswith("이용제한: ")
-        assert "(HTTP 200, -2000)" in str(exc.value)
-
-    async def test_other_rejections_are_not_access_restrictions(self) -> None:
-        """대기 루프가 이용제한만 골라 멈출 수 있도록 다른 거절과 섞지 않습니다."""
-        # given
-        api = api_replying(Reply(502, "<html>502 Bad Gateway</html>"))
-
-        # when
-        with pytest.raises(HttpStatusError) as exc:
-            await api.post(URL)
-
-        # then
-        assert not isinstance(exc.value, AccessRestrictedError)
-
-    @pytest.mark.parametrize(
-        "body",
-        [STATION_PAYLOAD, {**ACCESS_RESTRICTED, "code": "-2001"}],
-        ids=["station-master", "other-code"],
-    )
-    async def test_bodies_without_str_result_pass_through_on_200_unless_restricted(self, body: dict[str, Any]) -> None:
-        """판정은 code=-2000 하나로 좁습니다 — 역 마스터처럼 strResult 없는 정상 응답이나 다른 코드는 통과합니다."""
-        # given
-        api = api_replying(Reply(200, body))
+        api = api_replying(STATION_PAYLOAD)
 
         # when
         payload = await api.post(URL)
 
         # then
-        assert payload == body
+        assert payload == STATION_PAYLOAD
 
-    async def test_tracking_id_stays_out_of_the_message(self) -> None:
-        """``id`` 는 요청 추적값일 수 있어 로그·트레이스백에 남기지 않습니다."""
+    async def test_rejection_from_the_shared_parser_surfaces(self) -> None:
         # given
         api = api_replying(Reply(403, ACCESS_RESTRICTED))
 
-        # when
-        with pytest.raises(HttpStatusError) as exc:
+        # when & then
+        with pytest.raises(AccessRestrictedError):
             await api.post(URL)
 
-        # then
-        assert ACCESS_RESTRICTED["id"] not in str(exc.value)
-
-    @pytest.mark.parametrize(
-        ("body", "expected"),
-        [
-            ("<html>502 Bad Gateway</html>", "HTTP 502: <html>502 Bad Gateway</html> (None)"),
-            ("", "HTTP 502: 응답 본문 없음 (None)"),
-            ([1, 2], "HTTP 502: 응답 본문 없음 (None)"),
-            ({}, "HTTP 502: 응답 본문 없음 (None)"),
-        ],
-    )
-    async def test_unrecognized_error_bodies_still_report_the_status(self, body: object, expected: str) -> None:
-        """프록시의 HTML 오류 페이지처럼 JSON 이 아니어도 상태 코드는 남아야 합니다."""
+    async def test_verbose_logs_the_body_with_this_layers_logger(self, caplog) -> None:
+        """verbose 로그는 계층별 로거로 나갑니다 — 동기는 pykorail.api, 그 하위는 별도 이름입니다."""
         # given
-        api = api_replying(Reply(502, body))
+        api = api_replying(STATION_PAYLOAD, verbose=True)
 
         # when
-        with pytest.raises(HttpStatusError) as exc:
+        with caplog.at_level("DEBUG", logger="pykorail.api.async"):
             await api.post(URL)
 
         # then
-        assert str(exc.value) == expected
+        logged = [record.getMessage() for record in caplog.records if record.name == "pykorail.api.async"]
+        assert len(logged) == 1
+        assert "stn_cd" in logged[0]
 
+
+class TestCheck:
     async def test_korail_shaped_error_body_keeps_code_mapping(self) -> None:
         """4xx 라도 strResult 가 있으면 기존 h_msg_cd 매핑이 원인을 더 정확히 말합니다."""
         # given
@@ -149,23 +97,3 @@ class TestHttpStatus:
 
         # then
         assert (exc.value.msg, exc.value.code) == (said, "P058")
-
-    async def test_non_json_success_is_a_plain_transport_error(self) -> None:
-        """200 인데 JSON 이 아니면 서버 거절이 아니라 응답 형식 문제입니다."""
-        # given
-        api = api_replying(Reply(200, "not json"))
-
-        # when
-        with pytest.raises(TransportError) as exc:
-            await api.post(URL)
-
-        # then
-        assert type(exc.value) is TransportError
-
-    def test_http_status_error_is_a_transport_error(self) -> None:
-        """기존 ``except TransportError`` 호출부가 새 예외도 잡아야 합니다."""
-        # when
-        is_transport_error = issubclass(HttpStatusError, TransportError)
-
-        # then
-        assert is_transport_error

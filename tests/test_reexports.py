@@ -23,7 +23,7 @@ import pykorail.resources.reservations
 import pykorail.resources.stations
 import pykorail.resources.tickets
 import pykorail.resources.trains
-from pykorail._shared import KST, to_kst, without_blanks
+from pykorail._shared import ACCESS_RESTRICTED_CODE, KST, Account, to_kst, without_blanks
 from pykorail._sync.api import ApiClient as SyncApiClient
 from pykorail._sync.client import Korail as SyncKorail
 from pykorail._sync.resources import Resource as SyncResource
@@ -202,6 +202,14 @@ def test_client_reexports_the_generated_sync_class() -> None:
 def test_api_reexports_the_generated_sync_class() -> None:
     # when & then
     assert pykorail.api.ApiClient is SyncApiClient
+
+
+def test_api_and_async_share_the_same_account_class() -> None:
+    """동기·비동기가 같은 로그인 상태 클래스를 써야 합니다 (#90 의 목적)."""
+    # when & then
+    assert pykorail.api.Account is pykorail._async.api.Account
+    assert pykorail.api.Account is Account
+    assert pykorail.api.ACCESS_RESTRICTED_CODE is ACCESS_RESTRICTED_CODE
 
 
 def test_resource_package_reexports_the_generated_sync_classes() -> None:

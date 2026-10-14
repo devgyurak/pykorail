@@ -46,7 +46,7 @@ _async/ ──(scripts/unasync.py)──▶ _sync/     ← _sync 는 생성물, 
    │                    │                       └── transport.py
    │                    └── models/  (불변 응답 모델)
    │
-   └── _shared/   without_blanks · clock   ← 두 계층이 함께 쓰는 순수 헬퍼
+   └── _shared/   without_blanks · clock · account · response   ← 두 계층이 함께 쓰는 순수 헬퍼
 
 client.py · api.py · resources/   ← 공개 경로. 동기 객체는 _sync, Async* 객체는 _async 를
                                     재수출할 뿐입니다.

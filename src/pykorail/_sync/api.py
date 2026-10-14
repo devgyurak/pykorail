@@ -10,14 +10,18 @@ HTTP 왕복·서명·에러 변환처럼 "어느 리소스에서나 똑같은 �
 
 from __future__ import annotations
 
-import json
 import logging
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any
 
+from pykorail._shared.account import Account
+
+# ``ACCESS_RESTRICTED_CODE`` 는 판정 로직과 함께 _shared 로 옮겼지만, 예전처럼
+# ``pykorail.api.ACCESS_RESTRICTED_CODE`` 로 접근되도록 모듈 속성으로 남깁니다.
+# ``as`` 자기 자신으로의 재수출이라 ruff 도 쓰이지 않는 import 로 보지 않습니다.
+from pykorail._shared.response import ACCESS_RESTRICTED_CODE as ACCESS_RESTRICTED_CODE
+from pykorail._shared.response import parse_response
 from pykorail.constants import API_KEY, APP_DISPLAY_VERSION, APP_VERSION, DEVICE
-from pykorail.exceptions import AccessRestrictedError, HttpStatusError, TransportError, error_for_code
-from pykorail.models.parsing import text
+from pykorail.exceptions import error_for_code
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -26,32 +30,6 @@ if TYPE_CHECKING:
     from pykorail.transport import HttpSession, Response
 
 logger = logging.getLogger("pykorail.api")
-
-
-@dataclass
-class Account:
-    """로그인 세션 상태.
-
-    여러 리소스가 읽고(``mbCrdNo``) 로그인만 쓰기 때문에, 클라이언트와 리소스가
-    같은 인스턴스를 공유합니다.
-    """
-
-    logined: bool = False
-    membership_number: str | None = None
-    name: str | None = None
-    email: str | None = None
-    phone_number: str | None = None
-
-    def clear(self) -> None:
-        self.logined = False
-        self.membership_number = None
-        self.name = None
-        self.email = None
-        self.phone_number = None
-
-
-#: 실행 환경 검증에 걸렸을 때 오는 이용제한 봉투의 ``code`` (이슈 #27).
-ACCESS_RESTRICTED_CODE: Final = "-2000"
 
 
 class ApiClient:
@@ -125,30 +103,7 @@ class ApiClient:
     def _parse(self, response: Response) -> dict[str, Any]:
         if self.verbose:
             logger.debug("%s", response.text)
-        status = response.status_code
-        try:
-            parsed = json.loads(response.text)
-        except json.JSONDecodeError as exc:
-            if status >= 400:
-                raise HttpStatusError(status, response.text[:200] or None) from exc
-            raise TransportError(f"코레일 응답을 JSON 으로 읽지 못했습니다: {response.text[:200]!r}") from exc
-        # 4xx·5xx 라도 코레일 형식(strResult)이면 h_msg_cd 매핑을 그대로 탑니다.
-        # 그 밖의 거절 본문(403 이용제한의 code·message 등)을 통과시키면 호출부가
-        # strResult 부재를 "비밀번호 오류"·"결과 없음" 으로 읽어 원인이 사라집니다.
-        korail_shaped = isinstance(parsed, dict) and "strResult" in parsed
-        # 이용제한 봉투(code=-2000)는 상태 코드와 무관하게 거절로 봅니다. 관측된 것은 HTTP 403
-        # 응답뿐이고(#27) 200 으로 온 캡처는 없습니다 — 방어적 처리입니다. 같은 봉투가 200 으로
-        # 왔을 때 그대로 돌려주면 호출부가 strResult 부재를 "결과 없음"·"비밀번호 오류" 로 읽고,
-        # 막힌 채로 같은 요청을 반복하게 됩니다.
-        restricted = isinstance(parsed, dict) and not korail_shaped and text(parsed, "code") == ACCESS_RESTRICTED_CODE
-        if (status >= 400 and not korail_shaped) or restricted:
-            body = parsed if isinstance(parsed, dict) else {}
-            error_type = AccessRestrictedError if restricted else HttpStatusError
-            # ``id`` 는 요청 추적값일 수 있어 예외 메시지에 싣지 않습니다.
-            raise error_type(status, text(body, "message") or None, text(body, "code") or None)
-        if not isinstance(parsed, dict):
-            raise TransportError(f"코레일 응답이 객체가 아닙니다: {type(parsed).__name__}")
-        return parsed
+        return parse_response(response.status_code, response.text)
 
 
 def _kwargs(**candidates: Any) -> dict[str, Any]:
