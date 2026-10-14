@@ -58,6 +58,9 @@ Korail(
 `trains` · `reservations` · `tickets` · `membership` · `airport_bus`)는
 [`Korail`](#korail) 과 같고, I/O 가 닿는 메서드만 코루틴입니다.
 
+타입 힌트에는 `pykorail.resources.AsyncStationResource` 처럼 ``Async*Resource`` 를,
+API 클라이언트는 `pykorail.api.AsyncApiClient` 를 씁니다.
+
 ```python
 import asyncio
 

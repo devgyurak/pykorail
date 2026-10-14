@@ -3,7 +3,7 @@
 # 다시 만들려면: uv run python scripts/unasync.py
 """리소스 — 엔드포인트를 도메인별로 묶은 API 표면.
 
-:class:`~pykorail.client.Korail` 이 하나씩 들고 있고, 전부 같은
+:class:`~pykorail.Korail` 이 하나씩 들고 있고, 전부 같은
 :class:`~pykorail.api.ApiClient` 를 공유해 세션·서명·로그인 상태를 나눠 씁니다::
 
     korail.stations.all()

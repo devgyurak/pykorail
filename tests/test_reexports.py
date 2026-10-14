@@ -253,3 +253,16 @@ def test_api_logger_keeps_its_name() -> None:
     """``verbose`` 로그를 ``pykorail.api`` 로거에 걸어 둔 사용자가 계속 받아야 합니다."""
     # when & then
     assert pykorail.api.logger.name == "pykorail.api"
+
+
+def test_async_classes_are_reachable_from_the_public_packages() -> None:
+    """타입 힌트를 달려고 private 경로(``pykorail._async...``)를 쓰지 않아도 돼야 합니다."""
+    # when & then
+    assert pykorail.api.AsyncApiClient.__name__ == "AsyncApiClient"
+    assert pykorail.resources.AsyncResource.__name__ == "AsyncResource"
+    assert pykorail.resources.AsyncStationResource.__name__ == "AsyncStationResource"
+    assert pykorail.resources.AsyncTrainResource.__name__ == "AsyncTrainResource"
+    assert pykorail.resources.AsyncReservationResource.__name__ == "AsyncReservationResource"
+    assert pykorail.resources.AsyncTicketResource.__name__ == "AsyncTicketResource"
+    assert pykorail.resources.AsyncMembershipResource.__name__ == "AsyncMembershipResource"
+    assert pykorail.resources.AsyncAirportBusResource.__name__ == "AsyncAirportBusResource"
