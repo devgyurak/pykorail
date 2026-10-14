@@ -1,0 +1,165 @@
+name: close-issues
+
+# GitHub 은 닫기 키워드(`Closes #12` 등)를 **기본 브랜치(main)** 로 가는 PR 에서만
+# 읽습니다. 작업 PR 은 develop 으로 가므로 키워드가 무시되고, 머지돼도 이슈가 열린 채
+# 남습니다 (실제로 #59 가 그렇게 갇혔습니다). 그래서 develop 에 머지된 PR 의 본문을
+# 읽어 가리킨 이슈를 대신 닫습니다 (#77, CONTRIBUTING.md "머지" 절).
+#
+# push 를 쓰는 이유 — 더 "자연스러워" 보이는 두 이벤트를 일부러 피했습니다:
+#   - `pull_request`(closed): 포크·Dependabot PR 의 토큰이 읽기 전용이라 이슈를 닫지
+#     못합니다.
+#   - `pull_request_target`: 2025-12-08 부터 PR 의 base 가 아니라 **기본 브랜치(main)** 의
+#     워크플로 파일을 실행합니다 (github.blog/changelog 2025-11-07). 그래서 develop 에
+#     머지해도 다음 릴리스로 main 에 올라가기 전까지 아무것도 하지 않습니다.
+# develop 은 보호돼 직접 푸시가 막히므로 develop 의 push 는 곧 PR 머지입니다. 그 커밋에
+# 연결된 PR 을 찾아 읽으면 되고, push 토큰은 항상 쓰기 권한입니다.
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 다시 시험할 머지된 PR 번호 (base 가 develop 이어야 함)
+        required: true
+        type: string
+
+# 기본 권한은 비우고 잡에서 필요한 최소만 줍니다.
+permissions: {}
+
+jobs:
+  close-issues:
+    name: 닫기 키워드가 가리킨 이슈 닫기
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      # 커밋에 연결된 PR 을 조회하고 PR 본문을 읽는 데 필요합니다 (commits/{sha}/pulls 는
+      # "Pull requests" 읽기 권한을 요구합니다 — contents 는 필요 없습니다).
+      pull-requests: read
+    steps:
+      - name: 키워드 추출 · 이슈 닫기
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SHA: ${{ github.sha }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          set -euo pipefail
+
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            # 수동 실행은 PR 번호를 직접 받습니다. 숫자가 아니면 셸에 끼워 넣지 않고 중단.
+            case "${INPUT_PR_NUMBER}" in
+              '' | *[!0-9]*)
+                echo "::error::PR 번호가 숫자가 아닙니다: ${INPUT_PR_NUMBER}"
+                exit 1
+                ;;
+            esac
+            PR_NUMBER="${INPUT_PR_NUMBER}"
+          else
+            # 푸시된 커밋에 연결된 PR 중 "머지됨 + base 가 develop + merge_commit_sha 가 이
+            # 커밋"인 것을 고릅니다. 릴리스 PR(develop → main)이 열려 있으면 그 PR 도 같은
+            # 커밋에 딸려 나오므로(기본 브랜치에 없는 커밋) 이 셋을 모두 봐야 합니다.
+            # 푸시 시점에 연결이 아직 안 잡혀 있을 수 있어 몇 번 다시 조회합니다.
+            PR_NUMBER=""
+            for _ in 1 2 3 4 5; do
+              pulls="$(gh api "repos/${REPOSITORY}/commits/${EVENT_SHA}/pulls")"
+              PR_NUMBER="$(jq -r \
+                '[ .[] | select(.merged_at != null and .base.ref == "develop" and .merge_commit_sha == env.EVENT_SHA) ] | .[0].number // empty' \
+                <<< "${pulls}")"
+              if [ -n "${PR_NUMBER}" ]; then
+                break
+              fi
+              sleep 3
+            done
+
+            # develop 은 보호돼 직접 푸시가 안 되므로 PR 없는 푸시는 비정상입니다. 조용히
+            # 넘기면 이슈가 갇히고 원인도 안 보입니다.
+            if [ -z "${PR_NUMBER}" ]; then
+              echo "::error::커밋 ${EVENT_SHA} 에 연결된 develop 머지 PR 을 찾지 못했습니다."
+              exit 1
+            fi
+          fi
+
+          # 두 경로가 이후 코드를 똑같이 타도록 PR 을 한 번 더 읽습니다. 수동 실행의
+          # 머지·base 검증도 이 한 곳에서 겸합니다.
+          pr_json="$(gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}")"
+
+          if [ "$(jq -r '.merged' <<< "${pr_json}")" != "true" ]; then
+            echo "PR #${PR_NUMBER} 은 머지되지 않아 건너뜁니다."
+            exit 0
+          fi
+
+          base_ref="$(jq -r '.base.ref' <<< "${pr_json}")"
+          if [ "${base_ref}" != "develop" ]; then
+            echo "PR #${PR_NUMBER} 의 base 가 ${base_ref} 라 건너뜁니다."
+            exit 0
+          fi
+
+          # 1단계 — 본문 정리. jq·perl 실패는 그대로 실패시킵니다. 여기서 삼키면 추출이
+          # 통째로 비어 아무것도 안 하면서 성공한 것처럼 보입니다.
+          #   - HTML 주석 · 코드 펜스 · 인라인 코드 안의 키워드는 예시일 뿐이라 걷어냅니다.
+          #   - 인라인 코드는 한 줄 안에서만 봅니다(`[^\x60\n]*`). 짝 없는 백틱 하나가 다음
+          #     줄의 진짜 키워드까지 지워 버리지 못하게 하려는 것입니다.
+          #   - 백틱은 `\x60` 으로 씁니다 — 스크립트에 그대로 두면 shellcheck 가 명령
+          #     치환으로 오해합니다 (SC2016).
+          cleaned="$(jq -r '.body // ""' <<< "${pr_json}" | perl -0777 -pe '
+              s/<!--.*?-->//gs;
+              s/^[ \t]*(?:\x60{3}|~~~)[^\n]*\n.*?^[ \t]*(?:\x60{3}|~~~)[^\n]*\n//gms;
+              s/\x60[^\x60\n]*\x60//g;
+            ')"
+
+          # 2단계 — 키워드 추출. 매치가 없으면 grep 이 종료 상태 1 을 내는데 그건 정상이라
+          # 여기서만 삼킵니다. GitHub 이 기본 브랜치에서 인정하는 아홉 개 키워드
+          # (`close[sd]?` · `fix(es|ed)?` · `resolve[sd]?`, 콜론·대문자 허용)에 `#숫자` 가
+          # 붙은 것만 뽑습니다. `owner/repo#N` · URL 은 키워드와 `#` 사이의 화이트스페이스
+          # 조건 때문에 걸리지 않습니다. 셸 메타문자는 숫자 추출 단계에서 떨어져 나갑니다
+          # (`Closes #12; rm -rf ~` → `12`).
+          mapfile -t numbers < <(
+            printf '%s' "${cleaned}" \
+              | grep -oiE '\b(close[sd]?|fix(es|ed)?|resolve[sd]?)\b:?[[:space:]]+#[0-9]+' \
+              | grep -oE '#[0-9]+' \
+              | tr -d '#' \
+              | sort -u \
+              || true
+          )
+
+          if [ "${#numbers[@]}" -eq 0 ]; then
+            echo "PR #${PR_NUMBER} 의 본문에 닫기 키워드가 없습니다."
+            exit 0
+          fi
+
+          for number in "${numbers[@]}"; do
+            # `gh api --include` 는 오류일 때도 상태 줄을 stdout 으로 냅니다. 그 상태를
+            # 직접 봐서 없는 번호(404)와 그 밖의 오류(403·5xx)를 구분합니다. 뒤엣것은
+            # 삼키지 않고 실패시킵니다 — 조용히 넘기면 이슈가 계속 갇힙니다.
+            response="$(gh api --include "repos/${REPOSITORY}/issues/${number}" 2>/dev/null || true)"
+            read -r _ http_code _ <<< "$(head -n1 <<< "${response}")"
+
+            if [ "${http_code}" = "404" ]; then
+              echo "#${number} 는 없어 건너뜁니다."
+              continue
+            fi
+            if [ "${http_code}" != "200" ]; then
+              echo "::error::#${number} 조회에 실패했습니다 (HTTP ${http_code:-모름})."
+              exit 1
+            fi
+
+            # 헤더와 본문 사이의 빈 줄 뒤가 JSON 입니다.
+            issue_json="$(awk 'seen { print } /^[[:space:]]*$/ { seen = 1 }' <<< "${response}")"
+
+            if [ "$(jq -r 'has("pull_request")' <<< "${issue_json}")" = "true" ]; then
+              echo "#${number} 는 PR 이라 건너뜁니다."
+              continue
+            fi
+
+            state="$(jq -r '.state' <<< "${issue_json}")"
+            if [ "${state}" != "open" ]; then
+              echo "#${number} 는 이미 ${state} 상태라 건너뜁니다."
+              continue
+            fi
+
+            gh issue comment "${number}" --repo "${REPOSITORY}" --body \
+              "PR #${PR_NUMBER} 이(가) develop 에 머지되면서 닫기 키워드로 이 이슈를 가리켰습니다. GitHub 은 기본 브랜치로 가는 PR 에서만 그 키워드를 읽어서 워크플로가 대신 닫습니다."
+            gh issue close "${number}" --repo "${REPOSITORY}"
+            echo "#${number} 를 닫았습니다 (PR #${PR_NUMBER})."
+          done

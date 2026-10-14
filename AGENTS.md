@@ -266,6 +266,12 @@ def test_individual_by_default(self) -> None:
   빌드·설치 확인, Trivy 스캔. **전부 우분투에서만 돕니다** — `src/` 에 플랫폼 분기가
   없고, Windows 러너가 실제로 잡아주던 인코딩 기본값 문제는 `tests/test_style.py`
   의 `test_text_io_declares_encoding` 이 AST 로 대신합니다.
+- **이슈 자동 닫기** (`.github/workflows/close-issues.yml`) — `develop` 에 머지된 PR 의
+  본문에서 닫기 키워드(`Closes #12` 등)를 읽어 가리킨 이슈를 대신 닫습니다. GitHub 은
+  기본 브랜치로 가는 PR 에서만 키워드를 읽어서 develop 머지로는 닫히지 않기 때문입니다
+  (CONTRIBUTING.md "머지" 절). `pull_request` 는 포크·Dependabot PR 의 토큰이 읽기
+  전용이고 `pull_request_target` 은 기본 브랜치(main)의 파일을 실행하므로(2025-12-08),
+  보호된 develop 의 **push** 를 받아 그 커밋에 연결된 PR 을 찾습니다.
 - **CodeRabbit 리뷰** (`.coderabbit.yaml`) — develop · main 으로 가는 PR 에 리뷰 코멘트를
   답니다. GitHub App 이라 워크플로가 아니고, **필수 체크가 아닙니다**
   (`request_changes_workflow: false`). 설정에 경로별 리뷰 지침이 들어 있고,
