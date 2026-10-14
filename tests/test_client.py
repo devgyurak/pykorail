@@ -51,7 +51,7 @@ class TestConstruction:
     def test_bad_android_id_fails_before_session_creation(self, monkeypatch, android_id: str) -> None:
         # given
         create = Mock()
-        monkeypatch.setattr("pykorail.client.create_session", create)
+        monkeypatch.setattr("pykorail._sync.client.create_session", create)
 
         # when
         with pytest.raises(ValueError, match="android_id"):
@@ -63,7 +63,7 @@ class TestConstruction:
     def test_conflicting_profile_id_fails_before_session_creation(self, monkeypatch) -> None:
         # given
         create = Mock()
-        monkeypatch.setattr("pykorail.client.create_session", create)
+        monkeypatch.setattr("pykorail._sync.client.create_session", create)
         profile = DEVICE_PROFILES[0]
         different = ("0" if profile.android_id[0] != "0" else "1") + profile.android_id[1:]
 
@@ -523,7 +523,7 @@ class TestLoggedInFactory:
     def test_factory_restores_explicit_android_id(self, monkeypatch, make_korail) -> None:
         # given
         _, session = make_korail({"code": CIPHER_PAYLOAD, "login": LOGIN_OK})
-        monkeypatch.setattr("pykorail.client.create_session", lambda headers: session)
+        monkeypatch.setattr("pykorail._sync.client.create_session", lambda headers: session)
 
         # when
         client = Korail.logged_in("me@example.com", "pw", android_id="0123456789abcdef")
@@ -536,7 +536,7 @@ class TestLoggedInFactory:
     def test_returns_logged_in_client(self, monkeypatch, make_korail) -> None:
         # given
         _, session = make_korail({"code": CIPHER_PAYLOAD, "login": LOGIN_OK})
-        monkeypatch.setattr("pykorail.client.create_session", lambda headers: session)
+        monkeypatch.setattr("pykorail._sync.client.create_session", lambda headers: session)
 
         # when
         client = Korail.logged_in("me@example.com", "pw")
@@ -547,7 +547,7 @@ class TestLoggedInFactory:
     def test_bad_credentials_raise_and_close(self, monkeypatch, make_korail) -> None:
         # given
         _, session = make_korail({"code": CIPHER_PAYLOAD, "login": LOGIN_FAIL})
-        monkeypatch.setattr("pykorail.client.create_session", lambda headers: session)
+        monkeypatch.setattr("pykorail._sync.client.create_session", lambda headers: session)
 
         # when
         with pytest.raises(LoginFailedError):
@@ -617,7 +617,7 @@ class TestDeviceProfile:
             captured.update(headers)
             return FakeSession({})
 
-        monkeypatch.setattr("pykorail.client.create_session", fake_create_session)
+        monkeypatch.setattr("pykorail._sync.client.create_session", fake_create_session)
         profile = DeviceProfile(
             id="s21-a15",
             marketing="Galaxy S21",
@@ -641,7 +641,7 @@ class TestDeviceProfile:
         from tests.conftest import FakeSession
 
         create = Mock(return_value=FakeSession({}))
-        monkeypatch.setattr("pykorail.client.create_session", create)
+        monkeypatch.setattr("pykorail._sync.client.create_session", create)
 
         # when
         Korail()

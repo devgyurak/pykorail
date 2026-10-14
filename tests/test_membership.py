@@ -131,7 +131,7 @@ class TestMileage:
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
         today = datetime(2026, 10, 12, 0, 30, tzinfo=KST)
-        monkeypatch.setattr("pykorail.resources.membership.to_kst", lambda moment: today)
+        monkeypatch.setattr("pykorail._sync.resources.membership.to_kst", lambda moment: today)
 
         # when
         client.membership.mileage()
@@ -144,7 +144,7 @@ class TestMileage:
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
         today = datetime(2026, 10, 12, 9, 0, tzinfo=KST)
-        monkeypatch.setattr("pykorail.resources.membership.to_kst", lambda moment: today)
+        monkeypatch.setattr("pykorail._sync.resources.membership.to_kst", lambda moment: today)
 
         # when
         client.membership.mileage(since=date(2026, 4, 1))
@@ -173,7 +173,9 @@ class TestMileage:
         client, session = make_korail(MEMBERSHIP_ROUTES)
         today = datetime(2026, 10, 12, 9, 0, tzinfo=KST)
         # 오늘만 고정하고, 넘겨받은 시각은 진짜 변환을 그대로 탑니다.
-        monkeypatch.setattr("pykorail.resources.membership.to_kst", lambda moment: to_kst(moment) if moment else today)
+        monkeypatch.setattr(
+            "pykorail._sync.resources.membership.to_kst", lambda moment: to_kst(moment) if moment else today
+        )
 
         # when
         client.membership.mileage(since=datetime(2026, 9, 1, 15, 30))

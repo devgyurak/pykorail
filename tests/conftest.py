@@ -112,7 +112,7 @@ def make_korail(monkeypatch: pytest.MonkeyPatch):
 
     def factory(routes: dict[str, Any], **kwargs: Any) -> tuple[Korail, FakeSession]:
         session = FakeSession(routes)
-        monkeypatch.setattr("pykorail.client.create_session", lambda headers: session)
+        monkeypatch.setattr("pykorail._sync.client.create_session", lambda headers: session)
         return Korail(**kwargs), session
 
     return factory
