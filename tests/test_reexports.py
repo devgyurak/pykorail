@@ -259,7 +259,7 @@ def test_api_logger_keeps_its_name() -> None:
 def test_async_logger_has_its_own_name() -> None:
     """비동기 호출은 동기 로거를 덮지 않고 별도 이름으로 나갑니다."""
     # when & then
-    assert pykorail._async.api.logger.name == "pykorail._async.api"
+    assert pykorail._async.api.logger.name == "pykorail.api.async"
 
 
 def test_async_classes_are_reachable_from_the_public_packages() -> None:

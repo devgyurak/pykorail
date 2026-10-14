@@ -76,7 +76,7 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-`await` 가 붙는 것: `Korail` 의 `logged_in` · `login` · `logout` · `close` 와 리소스의
+`await` 가 붙는 것: `AsyncKorail` 의 `logged_in` · `login` · `logout` · `close` 와 리소스의
 조회·예매 메서드 전부(`all` · `find` · `search` · `cars` · `seats` · `create` · `pay`
 · `cancel` · `refund` · `mileage` · `coupons` · `stops` …). 컨텍스트 관리자는
 `async with await …` 입니다.
