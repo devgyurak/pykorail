@@ -49,6 +49,11 @@ with Korail.logged_in("me@example.com", "password") as korail:
 > 때문에 코레일이 앱을 바꾸면 예고 없이 멈출 수 있습니다. 이용 약관과 관련 법령을
 > 지키는 것은 사용자 책임이며, 과도한 자동 요청은 계정 제재로 이어질 수 있습니다.
 
+> [!CAUTION]
+> **승차권 재판매 목적으로 쓰지 마세요.** pykorail 은 본인이 탈 표를 예매하기 위한
+> 도구입니다. 되팔 표를 확보하는 데 쓰는 것을 금지합니다. 승차권을 웃돈을 받고 상습적으로
+> 되파는 행위는 철도사업법으로 금지되어 있습니다.
+
 ---
 
 ## 할 수 있는 것
@@ -74,30 +79,6 @@ korail.reservations.pay(
     Card(number="1234567812345678", password="12", verify_number="900101", expire="2812"),
 )
 ```
-
-<details>
-<summary><b>취소표 기다리기</b></summary>
-
-```python
-import time
-from pykorail import NoResultsError, PastDepartureError
-
-departure = (datetime.now(kst) + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
-
-while True:
-    try:
-        trains = korail.trains.search("서울", "부산", depart_after=departure)
-    except NoResultsError:
-        time.sleep(30)  # 서버에 부담 주지 않게 넉넉히 쉬세요
-        continue
-    except PastDepartureError:
-        break  # 열차가 이미 떠났습니다 — 무한정 돌지 않도록
-
-    korail.reservations.create(trains[0])
-    break
-```
-
-</details>
 
 <details>
 <summary><b>뒤쪽 열차까지 이어서 보기</b></summary>
@@ -287,13 +268,6 @@ except KorailError as exc:
 </details>
 
 <details>
-<summary><b>SRT 도 되나요?</b></summary>
-
-아니요. SRT(수서고속철도)는 다른 회사의 다른 시스템입니다.
-
-</details>
-
-<details>
 <summary><b>어제까지 되던 게 오늘 안 됩니다</b></summary>
 
 코레일이 서버를 바꿨을 수 있습니다.
@@ -307,6 +281,14 @@ except KorailError as exc:
 
 이 라이브러리는 앱과 같은 요청을 보낼 뿐이고, 좌석 배정은 코레일 서버가 합니다.
 명절 예매처럼 경쟁이 심한 상황에서 성공을 보장하지 않습니다.
+
+</details>
+
+<details>
+<summary><b>프록시를 넣을 계획은 없나요?</b></summary>
+
+없고, 앞으로도 넣지 않습니다. 프록시로 출처를 바꿔 가며 요청하는 것은 코레일 서버를
+속여 정상 이용자보다 유리하게 예매하려는 부정한 방법입니다.
 
 </details>
 
