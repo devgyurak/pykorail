@@ -1,3 +1,6 @@
+# 이 파일은 생성물입니다 — 직접 고치지 마세요.
+# 원본: tests/_async/test_airport_bus.py
+# 다시 만들려면: uv run python scripts/unasync.py
 """공항버스 리소스(``korail.airport_bus``)와 그 모델 — 정류장 · 시간표 · 좌석."""
 
 from __future__ import annotations
@@ -7,9 +10,9 @@ from datetime import UTC, datetime
 
 import pytest
 
+from pykorail._shared.clock import KST
 from pykorail.exceptions import KorailError, StationNotFoundError
 from pykorail.models import AdultPassenger, AirportBus, BusStop, ChildPassenger
-from pykorail.resources.clock import KST
 from tests.payloads import (
     BUS_INFO,
     BUS_SCHEDULE_PAYLOAD,
@@ -132,7 +135,7 @@ class TestStops:
     def test_callers_cannot_break_the_cache(self, make_korail) -> None:
         # given
         client, _ = make_korail(ROUTES)
-        client.airport_bus.stops().clear()
+        (client.airport_bus.stops()).clear()
 
         # when
         stops = client.airport_bus.stops()
@@ -203,7 +206,7 @@ class TestSearch:
         client, _ = make_korail(ROUTES)
 
         # when
-        bus = client.airport_bus.search("광명역", "인천공항T1", MORNING)[0]
+        bus = (client.airport_bus.search("광명역", "인천공항T1", MORNING))[0]
 
         # then
         assert (bus.dep_code, bus.dep_name, bus.arr_code, bus.arr_name) == ("0501", "광명역", "0921", "인천공항T1")
@@ -318,7 +321,7 @@ class TestSeats:
     def test_lists_the_seats(self, make_korail) -> None:
         # given
         client, _ = make_korail(ROUTES)
-        bus = client.airport_bus.search("광명역", "인천공항T1", MORNING)[0]
+        bus = (client.airport_bus.search("광명역", "인천공항T1", MORNING))[0]
 
         # when
         seats = client.airport_bus.seats(bus)
@@ -332,7 +335,7 @@ class TestSeats:
     def test_seats_are_general_class(self, make_korail) -> None:
         # given
         client, _ = make_korail(ROUTES)
-        bus = client.airport_bus.search("광명역", "인천공항T1", MORNING)[0]
+        bus = (client.airport_bus.search("광명역", "인천공항T1", MORNING))[0]
 
         # when
         seats = client.airport_bus.seats(bus)
@@ -343,7 +346,7 @@ class TestSeats:
     def test_sends_exact_form_fields(self, make_korail) -> None:
         # given
         client, session = make_korail(ROUTES)
-        bus = client.airport_bus.search("광명역", "인천공항T1", MORNING)[0]
+        bus = (client.airport_bus.search("광명역", "인천공항T1", MORNING))[0]
 
         # when
         client.airport_bus.seats(bus)
@@ -355,7 +358,7 @@ class TestSeats:
         """편의 값은 시간표 행 그대로, 호차는 상수입니다. 편 번호의 0 을 떼거나 채우지 않습니다."""
         # given
         client, session = make_korail(ROUTES)
-        bus = client.airport_bus.search("광명역", "인천공항T1", MORNING)[0]
+        bus = (client.airport_bus.search("광명역", "인천공항T1", MORNING))[0]
 
         # when
         client.airport_bus.seats(bus)
@@ -381,7 +384,7 @@ class TestSeats:
     def test_headcount_adds_every_passenger(self, make_korail) -> None:
         # given
         client, session = make_korail(ROUTES)
-        bus = client.airport_bus.search("광명역", "인천공항T1", MORNING)[0]
+        bus = (client.airport_bus.search("광명역", "인천공항T1", MORNING))[0]
 
         # when
         client.airport_bus.seats(bus, [AdultPassenger(2), ChildPassenger(1)])
@@ -393,7 +396,7 @@ class TestSeats:
     def test_bus_without_the_needed_values_is_rejected_before_any_request(self, make_korail, attribute: str) -> None:
         # given
         client, session = make_korail(ROUTES)
-        bus = dataclasses.replace(client.airport_bus.search("광명역", "인천공항T1", MORNING)[0], **{attribute: ""})
+        bus = dataclasses.replace((client.airport_bus.search("광명역", "인천공항T1", MORNING))[0], **{attribute: ""})
 
         # when
         with pytest.raises(ValueError, match=attribute):
@@ -413,7 +416,7 @@ class TestSeats:
     def test_no_seats_is_an_empty_list(self, make_korail, body: dict[str, object]) -> None:
         # given
         client, _ = make_korail({**ROUTES, "bus_seat_map": body})
-        bus = client.airport_bus.search("광명역", "인천공항T1", MORNING)[0]
+        bus = (client.airport_bus.search("광명역", "인천공항T1", MORNING))[0]
 
         # when
         seats = client.airport_bus.seats(bus)
@@ -425,7 +428,7 @@ class TestSeats:
         # given
         body = {key: value for key, value in BUS_SEAT_MAP_PAYLOAD.items() if key != "scar_no"}
         client, _ = make_korail({**ROUTES, "bus_seat_map": body})
-        bus = client.airport_bus.search("광명역", "인천공항T1", MORNING)[0]
+        bus = (client.airport_bus.search("광명역", "인천공항T1", MORNING))[0]
 
         # when
         seats = client.airport_bus.seats(bus)
@@ -436,7 +439,7 @@ class TestSeats:
     def test_goes_in_the_form_body_unsigned(self, make_korail) -> None:
         # given
         client, session = make_korail(ROUTES)
-        bus = client.airport_bus.search("광명역", "인천공항T1", MORNING)[0]
+        bus = (client.airport_bus.search("광명역", "인천공항T1", MORNING))[0]
 
         # when
         client.airport_bus.seats(bus)

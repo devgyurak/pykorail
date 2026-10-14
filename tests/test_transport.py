@@ -9,7 +9,7 @@ import pytest
 
 from pykorail import transport
 from pykorail.exceptions import TransportError
-from pykorail.transport import create_session, resolve_ca_bundle
+from pykorail.transport import create_async_session, create_session, resolve_ca_bundle
 
 
 def _blocking_import(blocked: str, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -123,3 +123,55 @@ class TestCreateSession:
         # then
         assert session is not None
         session.close()
+
+
+class TestCreateAsyncSession:
+    """비동기 세션은 requests 폴백이 없습니다 — curl_cffi 를 못 쓰면 곧바로 안내합니다."""
+
+    async def test_builds_a_curl_cffi_async_session(self) -> None:
+        # when
+        session = create_async_session()
+
+        # then
+        assert hasattr(session, "get")
+        assert hasattr(session, "post")
+        assert getattr(session, "default_headers", True) is False
+        await session.close()
+
+    async def test_applies_headers(self) -> None:
+        # when
+        session = create_async_session({"User-Agent": "test-agent"})
+
+        # then
+        assert session.headers["User-Agent"] == "test-agent"
+        await session.close()
+
+    async def test_does_not_mutate_the_caller_dict(self) -> None:
+        # given
+        headers = {"User-Agent": "test-agent"}
+
+        # when
+        await create_async_session(headers).close()
+
+        # then
+        assert headers == {"User-Agent": "test-agent"}
+
+    async def test_ca_bundle_is_skipped_when_unresolvable(self, monkeypatch) -> None:
+        # given
+        monkeypatch.setattr("pykorail.transport.resolve_ca_bundle", lambda: None)
+
+        # when
+        session = create_async_session()
+
+        # then
+        assert session is not None
+        await session.close()
+
+    async def test_raises_when_curl_cffi_is_missing(self, monkeypatch) -> None:
+        # given: 비동기에는 requests 폴백이 없습니다.
+        monkeypatch.setattr(transport, "curl_cffi", None)
+        monkeypatch.setattr(transport, "CURL_CFFI_IMPORT_ERROR", ImportError("DLL load failed"))
+
+        # when & then
+        with pytest.raises(TransportError, match="curl_cffi"):
+            create_async_session()

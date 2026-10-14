@@ -7,10 +7,11 @@ from datetime import UTC, date, datetime
 
 import pytest
 
+from pykorail._async.resources import membership as membership_module
+from pykorail._shared.clock import KST, to_kst
 from pykorail.exceptions import KorailError, NeedToLoginError
 from pykorail.models import Coupon, Mileage, MileageEntry
 from pykorail.options import MileageInquiry, MileageType
-from pykorail.resources.clock import KST, to_kst
 from tests.payloads import (
     COUPON_INFO,
     COUPONS_PAYLOAD,
@@ -45,22 +46,22 @@ COUPONS_FORM_FIELDS = {"Device", "Version", "AppVersion", "Key", "txtSelPage"}
 class TestMileage:
     """마일리지 잔액과 내역 — ``mlg.amtSpec.do``."""
 
-    def test_reads_the_balances(self, make_korail) -> None:
+    async def test_reads_the_balances(self, make_korail) -> None:
         # given
         client, _ = make_korail(MEMBERSHIP_ROUTES)
 
         # when
-        mileage = client.membership.mileage()
+        mileage = await client.membership.mileage()
 
         # then
         assert (mileage.ktx, mileage.samsung_card, mileage.rail_point, mileage.expiring) == (12340, 660, 500, 120)
 
-    def test_reads_one_page_of_history(self, make_korail) -> None:
+    async def test_reads_one_page_of_history(self, make_korail) -> None:
         # given
         client, _ = make_korail(MEMBERSHIP_ROUTES)
 
         # when
-        mileage = client.membership.mileage()
+        mileage = await client.membership.mileage()
 
         # then
         assert [(entry.date, entry.movement, entry.amount) for entry in mileage.entries] == [
@@ -69,24 +70,24 @@ class TestMileage:
         ]
         assert mileage.page_count == 3
 
-    def test_sends_exact_form_fields(self, make_korail) -> None:
+    async def test_sends_exact_form_fields(self, make_korail) -> None:
         """폼 필드 이름이 바뀌면 서버가 조용히 빈 결과를 줍니다."""
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
 
         # when
-        client.membership.mileage()
+        await client.membership.mileage()
 
         # then
         assert set(session.kwargs_for("mileage")["data"]) == MILEAGE_FORM_FIELDS
 
-    def test_asks_for_every_ktx_mileage_entry_by_default(self, make_korail) -> None:
+    async def test_asks_for_every_ktx_mileage_entry_by_default(self, make_korail) -> None:
         """구분 코드는 앱의 ``MileageType`` · ``MileageInquiryType`` 이 보내는 값입니다."""
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
 
         # when
-        client.membership.mileage()
+        await client.membership.mileage()
 
         # then
         data = session.kwargs_for("mileage")["data"]
@@ -102,69 +103,69 @@ class TestMileage:
         ],
         ids=["ktx-save", "ktx-use", "rail-point-all"],
     )
-    def test_sends_the_chosen_ledger_and_inquiry(
+    async def test_sends_the_chosen_ledger_and_inquiry(
         self, make_korail, kind: str, inquiry: str, expected: tuple[str, str]
     ) -> None:
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
 
         # when
-        client.membership.mileage(kind=kind, inquiry=inquiry)
+        await client.membership.mileage(kind=kind, inquiry=inquiry)
 
         # then
         data = session.kwargs_for("mileage")["data"]
         assert (data["pontTpVal"], data["qryDvVal"]) == expected
 
-    def test_sends_the_period_as_eight_digit_dates(self, make_korail) -> None:
+    async def test_sends_the_period_as_eight_digit_dates(self, make_korail) -> None:
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
 
         # when
-        client.membership.mileage(since=date(2026, 7, 1), until=date(2026, 9, 30))
+        await client.membership.mileage(since=date(2026, 7, 1), until=date(2026, 9, 30))
 
         # then
         data = session.kwargs_for("mileage")["data"]
         assert (data["qryStDt"], data["qryClsDt"]) == ("20260701", "20260930")
 
-    def test_period_defaults_to_the_last_thirty_days_in_kst(self, make_korail, monkeypatch) -> None:
+    async def test_period_defaults_to_the_last_thirty_days_in_kst(self, make_korail, monkeypatch) -> None:
         """실행 머신의 시간대가 아니라 KST 의 오늘이 기준입니다."""
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
         today = datetime(2026, 10, 12, 0, 30, tzinfo=KST)
-        monkeypatch.setattr("pykorail._sync.resources.membership.to_kst", lambda moment: today)
+        monkeypatch.setattr(membership_module, "to_kst", lambda moment: today)
 
         # when
-        client.membership.mileage()
+        await client.membership.mileage()
 
         # then
         data = session.kwargs_for("mileage")["data"]
         assert (data["qryStDt"], data["qryClsDt"]) == ("20260912", "20261012")
 
-    def test_since_alone_runs_up_to_today(self, make_korail, monkeypatch) -> None:
+    async def test_since_alone_runs_up_to_today(self, make_korail, monkeypatch) -> None:
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
         today = datetime(2026, 10, 12, 9, 0, tzinfo=KST)
-        monkeypatch.setattr("pykorail._sync.resources.membership.to_kst", lambda moment: today)
+        monkeypatch.setattr(membership_module, "to_kst", lambda moment: today)
 
         # when
-        client.membership.mileage(since=date(2026, 4, 1))
+        await client.membership.mileage(since=date(2026, 4, 1))
 
         # then
         data = session.kwargs_for("mileage")["data"]
         assert (data["qryStDt"], data["qryClsDt"]) == ("20260401", "20261012")
 
-    def test_until_alone_looks_back_thirty_days_from_it(self, make_korail) -> None:
+    async def test_until_alone_looks_back_thirty_days_from_it(self, make_korail) -> None:
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
 
         # when
-        client.membership.mileage(until=date(2026, 3, 31))
+        await client.membership.mileage(until=date(2026, 3, 31))
 
         # then
         data = session.kwargs_for("mileage")["data"]
         assert (data["qryStDt"], data["qryClsDt"]) == ("20260301", "20260331")
 
-    def test_datetime_since_does_not_break_the_period_check(self, make_korail, monkeypatch) -> None:
+    async def test_datetime_since_does_not_break_the_period_check(self, make_korail, monkeypatch) -> None:
         """``datetime`` 은 ``date`` 의 하위 타입이라 타입 검사를 통과하지만 ``date`` 와 비교되지 않습니다.
 
         ``until`` 을 생략하면 한쪽만 ``datetime`` 이 되어 ``TypeError`` 가 났습니다.
@@ -173,12 +174,10 @@ class TestMileage:
         client, session = make_korail(MEMBERSHIP_ROUTES)
         today = datetime(2026, 10, 12, 9, 0, tzinfo=KST)
         # 오늘만 고정하고, 넘겨받은 시각은 진짜 변환을 그대로 탑니다.
-        monkeypatch.setattr(
-            "pykorail._sync.resources.membership.to_kst", lambda moment: to_kst(moment) if moment else today
-        )
+        monkeypatch.setattr(membership_module, "to_kst", lambda moment: to_kst(moment) if moment else today)
 
         # when
-        client.membership.mileage(since=datetime(2026, 9, 1, 15, 30))
+        await client.membership.mileage(since=datetime(2026, 9, 1, 15, 30))
 
         # then
         data = session.kwargs_for("mileage")["data"]
@@ -193,81 +192,81 @@ class TestMileage:
         ],
         ids=["both-datetime", "date-then-datetime", "datetime-then-date"],
     )
-    def test_accepts_datetimes_for_the_period(
+    async def test_accepts_datetimes_for_the_period(
         self, make_korail, since: date, until: date, expected: tuple[str, str]
     ) -> None:
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
 
         # when
-        client.membership.mileage(since=since, until=until)
+        await client.membership.mileage(since=since, until=until)
 
         # then
         data = session.kwargs_for("mileage")["data"]
         assert (data["qryStDt"], data["qryClsDt"]) == expected
 
-    def test_aware_datetime_is_read_as_its_kst_date(self, make_korail) -> None:
+    async def test_aware_datetime_is_read_as_its_kst_date(self, make_korail) -> None:
         """UTC 15:00 은 KST 로 다음 날 0시입니다. 조회(``trains.search``)와 같은 해석입니다."""
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
         late_utc = datetime(2026, 9, 30, 15, 0, tzinfo=UTC)
 
         # when
-        client.membership.mileage(since=date(2026, 9, 1), until=late_utc)
+        await client.membership.mileage(since=date(2026, 9, 1), until=late_utc)
 
         # then
         assert session.kwargs_for("mileage")["data"]["qryClsDt"] == "20261001"
 
-    def test_sends_the_page_number(self, make_korail) -> None:
+    async def test_sends_the_page_number(self, make_korail) -> None:
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
 
         # when
-        client.membership.mileage(page=3)
+        await client.membership.mileage(page=3)
 
         # then
         assert session.kwargs_for("mileage")["data"]["nowPgNo"] == "3"
 
-    def test_rejects_a_period_that_ends_before_it_starts(self, make_korail) -> None:
+    async def test_rejects_a_period_that_ends_before_it_starts(self, make_korail) -> None:
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
 
         # when
         with pytest.raises(ValueError, match="since"):
-            client.membership.mileage(since=date(2026, 10, 2), until=date(2026, 10, 1))
+            await client.membership.mileage(since=date(2026, 10, 2), until=date(2026, 10, 1))
 
         # then
         assert session.calls == [], "틀린 기간은 요청 전에 걸러야 합니다"
 
     @pytest.mark.parametrize("page", [0, -1])
-    def test_rejects_a_page_below_one(self, make_korail, page: int) -> None:
+    async def test_rejects_a_page_below_one(self, make_korail, page: int) -> None:
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
 
         # when
         with pytest.raises(ValueError, match="page"):
-            client.membership.mileage(page=page)
+            await client.membership.mileage(page=page)
 
         # then
         assert session.calls == []
 
-    def test_goes_in_the_form_body_not_the_query(self, make_korail) -> None:
+    async def test_goes_in_the_form_body_not_the_query(self, make_korail) -> None:
         """앱은 이 요청을 폼 본문으로 보냅니다(@FormUrlEncoded)."""
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
 
         # when
-        client.membership.mileage()
+        await client.membership.mileage()
 
         # then
         assert "params" not in session.kwargs_for("mileage")
 
-    def test_is_not_signed(self, make_korail) -> None:
+    async def test_is_not_signed(self, make_korail) -> None:
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
 
         # when
-        client.membership.mileage()
+        await client.membership.mileage()
 
         # then
         assert "x-dynapath-m-token" not in session.kwargs_for("mileage").get("headers", {})
@@ -281,56 +280,56 @@ class TestMileage:
         ],
         ids=["absent", "null", "empty"],
     )
-    def test_no_history_still_carries_the_balances(self, make_korail, body: dict[str, object]) -> None:
+    async def test_no_history_still_carries_the_balances(self, make_korail, body: dict[str, object]) -> None:
         # given
         client, _ = make_korail({"mileage": body})
 
         # when
-        mileage = client.membership.mileage()
+        mileage = await client.membership.mileage()
 
         # then
         assert (mileage.entries, mileage.ktx) == ((), 12340)
 
-    def test_not_logged_in_is_an_exception(self, make_korail) -> None:
+    async def test_not_logged_in_is_an_exception(self, make_korail) -> None:
         # given
         client, _ = make_korail({"mileage": NEED_LOGIN})
 
         # when & then
         with pytest.raises(NeedToLoginError):
-            client.membership.mileage()
+            await client.membership.mileage()
 
 
 class TestCoupons:
     """할인쿠폰 목록 — ``passCard.CouponView``."""
 
-    def test_lists_the_coupons(self, make_korail) -> None:
+    async def test_lists_the_coupons(self, make_korail) -> None:
         # given
         client, _ = make_korail(MEMBERSHIP_ROUTES)
 
         # when
-        coupons = client.membership.coupons()
+        coupons = await client.membership.coupons()
 
         # then
         assert [(coupon.title, coupon.valid_until) for coupon in coupons] == [("KTX 10% 할인쿠폰", "20261231")]
 
-    def test_sends_exact_form_fields(self, make_korail) -> None:
+    async def test_sends_exact_form_fields(self, make_korail) -> None:
         """폼 필드 이름이 바뀌면 서버가 조용히 빈 결과를 줍니다."""
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
 
         # when
-        client.membership.coupons()
+        await client.membership.coupons()
 
         # then
         assert set(session.kwargs_for("coupons")["data"]) == COUPONS_FORM_FIELDS
 
     @pytest.mark.parametrize(("page", "sent"), [(1, "1"), (2, "2")])
-    def test_sends_the_page_number(self, make_korail, page: int, sent: str) -> None:
+    async def test_sends_the_page_number(self, make_korail, page: int, sent: str) -> None:
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
 
         # when
-        client.membership.coupons(page)
+        await client.membership.coupons(page)
 
         # then
         data = session.kwargs_for("coupons")["data"]
@@ -346,64 +345,64 @@ class TestCoupons:
         ],
         ids=["success-without-a-list", "no-results-refusal", "null", "empty"],
     )
-    def test_no_coupons_is_an_empty_list(self, make_korail, body: dict[str, object]) -> None:
+    async def test_no_coupons_is_an_empty_list(self, make_korail, body: dict[str, object]) -> None:
         # given
         client, _ = make_korail({"coupons": body})
 
         # when
-        coupons = client.membership.coupons()
+        coupons = await client.membership.coupons()
 
         # then
         assert coupons == []
 
     @pytest.mark.parametrize("page", [0, -1])
-    def test_rejects_a_page_below_one(self, make_korail, page: int) -> None:
+    async def test_rejects_a_page_below_one(self, make_korail, page: int) -> None:
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
 
         # when
         with pytest.raises(ValueError, match="page"):
-            client.membership.coupons(page)
+            await client.membership.coupons(page)
 
         # then
         assert session.calls == []
 
-    def test_goes_in_the_form_body_not_the_query(self, make_korail) -> None:
+    async def test_goes_in_the_form_body_not_the_query(self, make_korail) -> None:
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
 
         # when
-        client.membership.coupons()
+        await client.membership.coupons()
 
         # then
         assert "params" not in session.kwargs_for("coupons")
 
-    def test_is_not_signed(self, make_korail) -> None:
+    async def test_is_not_signed(self, make_korail) -> None:
         # given
         client, session = make_korail(MEMBERSHIP_ROUTES)
 
         # when
-        client.membership.coupons()
+        await client.membership.coupons()
 
         # then
         assert "x-dynapath-m-token" not in session.kwargs_for("coupons").get("headers", {})
 
-    def test_other_refusals_are_not_swallowed(self, make_korail) -> None:
+    async def test_other_refusals_are_not_swallowed(self, make_korail) -> None:
         """빈 리스트로 접는 것은 "결과 없음" 뿐입니다. 로그인 만료까지 삼키면 쿠폰이 없는 것으로 보입니다."""
         # given
         client, _ = make_korail({"coupons": NEED_LOGIN})
 
         # when & then
         with pytest.raises(NeedToLoginError):
-            client.membership.coupons()
+            await client.membership.coupons()
 
-    def test_unknown_refusal_is_a_korail_error(self, make_korail) -> None:
+    async def test_unknown_refusal_is_a_korail_error(self, make_korail) -> None:
         # given
         client, _ = make_korail({"coupons": {"strResult": "FAIL", "h_msg_cd": "ERR999999", "h_msg_txt": "오류"}})
 
         # when & then
         with pytest.raises(KorailError):
-            client.membership.coupons()
+            await client.membership.coupons()
 
 
 class TestMileageModel:

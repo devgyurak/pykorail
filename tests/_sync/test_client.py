@@ -1,3 +1,6 @@
+# 이 파일은 생성물입니다 — 직접 고치지 마세요.
+# 원본: tests/_async/test_client.py
+# 다시 만들려면: uv run python scripts/unasync.py
 """클라이언트 수명주기와 로그인."""
 
 from __future__ import annotations
@@ -10,11 +13,12 @@ import pytest
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 
-from pykorail.client import Korail
+from pykorail._sync import client as client_module
+from pykorail._sync.client import Korail
 from pykorail.constants import API_ENDPOINTS
 from pykorail.device import DEVICE_PROFILES
 from pykorail.exceptions import AccessRestrictedError, LoginFailedError, PasswordChangeRequiredError
-from tests.conftest import Reply
+from tests._sync.conftest import Reply
 from tests.dynapath_decoder import decode_token
 from tests.payloads import (
     ACCESS_RESTRICTED,
@@ -51,7 +55,7 @@ class TestConstruction:
     def test_bad_android_id_fails_before_session_creation(self, monkeypatch, android_id: str) -> None:
         # given
         create = Mock()
-        monkeypatch.setattr("pykorail._sync.client.create_session", create)
+        monkeypatch.setattr(client_module, "create_session", create)
 
         # when
         with pytest.raises(ValueError, match="android_id"):
@@ -63,7 +67,7 @@ class TestConstruction:
     def test_conflicting_profile_id_fails_before_session_creation(self, monkeypatch) -> None:
         # given
         create = Mock()
-        monkeypatch.setattr("pykorail._sync.client.create_session", create)
+        monkeypatch.setattr(client_module, "create_session", create)
         profile = DEVICE_PROFILES[0]
         different = ("0" if profile.android_id[0] != "0" else "1") + profile.android_id[1:]
 
@@ -523,7 +527,7 @@ class TestLoggedInFactory:
     def test_factory_restores_explicit_android_id(self, monkeypatch, make_korail) -> None:
         # given
         _, session = make_korail({"code": CIPHER_PAYLOAD, "login": LOGIN_OK})
-        monkeypatch.setattr("pykorail._sync.client.create_session", lambda headers: session)
+        monkeypatch.setattr(client_module, "create_session", lambda headers: session)
 
         # when
         client = Korail.logged_in("me@example.com", "pw", android_id="0123456789abcdef")
@@ -536,7 +540,7 @@ class TestLoggedInFactory:
     def test_returns_logged_in_client(self, monkeypatch, make_korail) -> None:
         # given
         _, session = make_korail({"code": CIPHER_PAYLOAD, "login": LOGIN_OK})
-        monkeypatch.setattr("pykorail._sync.client.create_session", lambda headers: session)
+        monkeypatch.setattr(client_module, "create_session", lambda headers: session)
 
         # when
         client = Korail.logged_in("me@example.com", "pw")
@@ -547,7 +551,7 @@ class TestLoggedInFactory:
     def test_bad_credentials_raise_and_close(self, monkeypatch, make_korail) -> None:
         # given
         _, session = make_korail({"code": CIPHER_PAYLOAD, "login": LOGIN_FAIL})
-        monkeypatch.setattr("pykorail._sync.client.create_session", lambda headers: session)
+        monkeypatch.setattr(client_module, "create_session", lambda headers: session)
 
         # when
         with pytest.raises(LoginFailedError):
@@ -609,7 +613,7 @@ class TestDeviceProfile:
     def test_profile_sets_signature_but_keeps_app_user_agent(self, monkeypatch) -> None:
         # given
         from pykorail.device import DeviceProfile
-        from tests.conftest import FakeSession
+        from tests._sync.conftest import FakeSession
 
         captured: dict[str, str] = {}
 
@@ -617,7 +621,7 @@ class TestDeviceProfile:
             captured.update(headers)
             return FakeSession({})
 
-        monkeypatch.setattr("pykorail._sync.client.create_session", fake_create_session)
+        monkeypatch.setattr(client_module, "create_session", fake_create_session)
         profile = DeviceProfile(
             id="s21-a15",
             marketing="Galaxy S21",
@@ -638,10 +642,10 @@ class TestDeviceProfile:
 
     def test_default_client_uses_same_app_user_agent(self, monkeypatch) -> None:
         # given
-        from tests.conftest import FakeSession
+        from tests._sync.conftest import FakeSession
 
         create = Mock(return_value=FakeSession({}))
-        monkeypatch.setattr("pykorail._sync.client.create_session", create)
+        monkeypatch.setattr(client_module, "create_session", create)
 
         # when
         Korail()
