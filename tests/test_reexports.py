@@ -11,6 +11,7 @@ import importlib
 
 import pytest
 
+import pykorail._async.api
 import pykorail.api
 import pykorail.client
 import pykorail.resources
@@ -253,6 +254,12 @@ def test_api_logger_keeps_its_name() -> None:
     """``verbose`` 로그를 ``pykorail.api`` 로거에 걸어 둔 사용자가 계속 받아야 합니다."""
     # when & then
     assert pykorail.api.logger.name == "pykorail.api"
+
+
+def test_async_logger_has_its_own_name() -> None:
+    """비동기 호출은 동기 로거를 덮지 않고 별도 이름으로 나갑니다."""
+    # when & then
+    assert pykorail._async.api.logger.name == "pykorail._async.api"
 
 
 def test_async_classes_are_reachable_from_the_public_packages() -> None:
