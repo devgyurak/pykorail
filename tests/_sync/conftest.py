@@ -1,11 +1,7 @@
 # 이 파일은 생성물입니다 — 직접 고치지 마세요.
 # 원본: tests/_async/conftest.py
 # 다시 만들려면: uv run python scripts/unasync.py
-"""가짜 비동기 HTTP 세션 — 네트워크 없이 리소스를 돌립니다.
-
-``tests/_sync/conftest.py`` 는 이 파일에서 생성됩니다(``scripts/unasync.py``).
-동기 쪽 가짜 세션을 고치려면 여기를 고치고 스크립트를 돌리세요.
-"""
+"""가짜 HTTP 세션 — 네트워크 없이 리소스를 돌립니다."""
 
 from __future__ import annotations
 

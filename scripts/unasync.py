@@ -55,13 +55,15 @@ RAW_SUBS: tuple[tuple[str, str], ...] = (
 
 SUBS = tuple((re.compile(pattern), replacement) for pattern, replacement in RAW_SUBS)
 
-#: 생성물에 남아 있으면 규칙이 샌 흔적.
+#: 생성물에 남아 있으면 규칙이 샌 흔적. 한국어 "비동기" 도 같이 봅니다 — 규칙으로
+#: 지워지지 않고 동기 파일에 그대로 실려 나가기 때문입니다.
 LEFTOVERS = (
     re.compile(r"\bawait\b"),
     re.compile(r"\basync\b"),
     re.compile(r"\bAsync[A-Za-z0-9_]*\b"),
     re.compile(r"create_async_session"),
     re.compile(r"_async"),
+    re.compile(r"비동기"),
 )
 
 HEADER = (
