@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from pykorail.auth.signer import RequestSigner
     from pykorail.transport import AsyncHttpSession, AsyncResponse
 
-logger = logging.getLogger("pykorail._async.api")
+logger = logging.getLogger("pykorail.api.async")
 
 
 @dataclass

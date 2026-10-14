@@ -41,9 +41,11 @@ PAIRS = (
 #: ``create_async_session`` 이 ``_async`` 규칙보다 먼저 와야 합니다. 반대로 두면
 #: ``create_async_session`` 이 ``create_sync_session`` 이 되어 버립니다.
 RAW_SUBS: tuple[tuple[str, str], ...] = (
-    # 로거 이름은 문자열 리터럴로만 바꿉니다. import 경로(`from pykorail._async.api import ...`)는
-    # 건드리지 않아야 합니다 — 따옴표까지 포함해 그 줄만 겨냥합니다.
-    (r'"pykorail\._async\.api"', '"pykorail.api"'),
+    # 로거 이름은 문자열 리터럴로만 바꿉니다. 동기 쪽은 ``pykorail.api``, 원본은 그 하위인
+    # ``pykorail.api.async`` — ``pykorail.api`` 에 건 핸들러가 propagate 로 둘 다 받습니다.
+    # import 경로(`from pykorail._async.api import ...`)는 건드리지 않아야 하므로 따옴표까지
+    # 포함해 그 줄만 겨냥합니다.
+    (r'"pykorail\.api\.async"', '"pykorail.api"'),
     (r"create_async_session", "create_session"),
     # ``Async`` 뒤에 대문자 이름이 올 때만 뗍니다. ``unasync`` 같은 소문자 단어와
     # ``asyncio`` 는 건드리지 않습니다.
