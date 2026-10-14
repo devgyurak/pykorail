@@ -1,6 +1,6 @@
-MIT License
+pykorail License
 
-Copyright (c) 2026 devgyurak
+Copyright (c) 2026 devgyurak and pykorail contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -9,8 +9,33 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. The above copyright notice, this permission notice, and the Commercial
+   Gain Restriction below shall be included in all copies or substantial
+   portions of the Software, and shall apply to all derivative works.
+
+2. Commercial Gain Restriction. You may not use the Software, or any work
+   or service derived from it, to obtain commercial gain. Commercial gain
+   includes, without limitation:
+
+   (a) reselling, or offering to resell, tickets, reservations, or
+       reservation rights obtained in whole or in part through the Software
+       for more than the price paid for them;
+
+   (b) charging any fee, commission, or subscription, or earning advertising
+       revenue, for booking, waiting-list, or ticket-acquisition services
+       that use the Software;
+
+   (c) selling, licensing, or otherwise commercially providing the Software,
+       or any product or service whose value derives entirely or
+       substantially from the Software.
+
+   The following are not commercial gain: booking tickets for your own
+   travel, or for others at face value without any fee; use by an
+   organization for the travel of its own members; research, education,
+   and non-commercial personal projects.
+
+3. Any violation of these conditions automatically terminates the
+   permissions granted to you under this license.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,

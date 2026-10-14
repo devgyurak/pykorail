@@ -6,14 +6,15 @@ dynamic = ["version"]
 description = "코레일(KTX) 스마트 예매 비공식 Python 클라이언트"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+# MIT 에 상업적 이득 금지 조항을 더한 자체 라이선스라 SPDX 표준 식별자가 없습니다.
+# PEP 639 의 LicenseRef- 로 가리키고, 라이선스 classifier 는 식별자와 함께 쓰지 않습니다.
+license = "LicenseRef-pykorail"
 license-files = ["LICENSE"]
 authors = [{ name = "devgyurak", email = "devgyurak@gmail.com" }]
 keywords = ["korail", "ktx", "letskorail", "train", "reservation", "korea"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Natural Language :: Korean",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
