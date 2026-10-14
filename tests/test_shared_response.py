@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from pykorail._shared import ACCESS_RESTRICTED_CODE, parse_response
+from pykorail._shared import parse_response
 from pykorail.exceptions import AccessRestrictedError, HttpStatusError, TransportError
 from tests.payloads import ACCESS_RESTRICTED, STATION_PAYLOAD
 
@@ -27,10 +27,11 @@ def test_access_restriction_keeps_status_code_and_message(code: object) -> None:
     # given
     body = body_of({**ACCESS_RESTRICTED, "code": code})
 
-    # when & then
+    # when
     with pytest.raises(HttpStatusError) as exc:
         parse_response(403, body)
 
+    # then
     assert (exc.value.status_code, exc.value.code, exc.value.msg) == (403, "-2000", ACCESS_RESTRICTED["message"])
 
 
@@ -41,10 +42,11 @@ def test_access_restriction_has_its_own_type_whatever_the_status(status: int, co
     # given
     body = body_of({**ACCESS_RESTRICTED, "code": code})
 
-    # when & then
+    # when
     with pytest.raises(AccessRestrictedError) as exc:
         parse_response(status, body)
 
+    # then
     assert (exc.value.status_code, exc.value.code) == (status, "-2000")
 
 
@@ -53,20 +55,22 @@ def test_access_restriction_message_leads_with_the_cause() -> None:
     # given
     body = body_of(ACCESS_RESTRICTED)
 
-    # when & then
+    # when
     with pytest.raises(AccessRestrictedError) as exc:
         parse_response(200, body)
 
+    # then
     assert str(exc.value).startswith("이용제한: ")
     assert "(HTTP 200, -2000)" in str(exc.value)
 
 
 def test_other_rejections_are_not_access_restrictions() -> None:
     """대기 루프가 이용제한만 골라 멈출 수 있도록 다른 거절과 섞지 않습니다."""
-    # when & then
+    # when
     with pytest.raises(HttpStatusError) as exc:
         parse_response(502, "<html>502 Bad Gateway</html>")
 
+    # then
     assert not isinstance(exc.value, AccessRestrictedError)
 
 
@@ -89,10 +93,11 @@ def test_tracking_id_stays_out_of_the_message() -> None:
     # given
     body = body_of(ACCESS_RESTRICTED)
 
-    # when & then
+    # when
     with pytest.raises(HttpStatusError) as exc:
         parse_response(403, body)
 
+    # then
     assert ACCESS_RESTRICTED["id"] not in str(exc.value)
 
 
@@ -107,37 +112,41 @@ def test_tracking_id_stays_out_of_the_message() -> None:
 )
 def test_unrecognized_error_bodies_still_report_the_status(body: str, expected: str) -> None:
     """프록시의 HTML 오류 페이지처럼 JSON 이 아니어도 상태 코드는 남아야 합니다."""
-    # when & then
+    # when
     with pytest.raises(HttpStatusError) as exc:
         parse_response(502, body)
 
+    # then
     assert str(exc.value) == expected
 
 
 def test_long_error_body_is_truncated_in_the_message() -> None:
     """본문이 길어도 예외 메시지가 통째로 실리지 않습니다."""
-    # when & then
+    # when
     with pytest.raises(HttpStatusError) as exc:
         parse_response(502, "x" * 300)
 
+    # then
     assert exc.value.msg == "x" * 200
 
 
 def test_non_json_success_is_a_plain_transport_error() -> None:
     """200 인데 JSON 이 아니면 서버 거절이 아니라 응답 형식 문제입니다."""
-    # when & then
+    # when
     with pytest.raises(TransportError) as exc:
         parse_response(200, "not json")
 
+    # then
     assert type(exc.value) is TransportError
 
 
 def test_non_object_success_is_a_transport_error() -> None:
     """JSON 이지만 객체가 아니면(목록 등) 해석할 필드가 없습니다."""
-    # when & then
+    # when
     with pytest.raises(TransportError) as exc:
         parse_response(200, "[1, 2]")
 
+    # then
     assert "객체가 아닙니다" in str(exc.value)
 
 
@@ -151,12 +160,6 @@ def test_korail_shaped_4xx_body_passes_through_for_code_mapping() -> None:
 
     # then
     assert payload == body
-
-
-def test_access_restricted_code_matches_the_server_value() -> None:
-    """판정 기준값이 이용제한 봉투의 ``code`` 와 같은 리터럴이어야 합니다."""
-    # when & then
-    assert ACCESS_RESTRICTED_CODE == "-2000"
 
 
 def test_http_status_error_is_a_transport_error() -> None:

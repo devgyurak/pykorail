@@ -9,30 +9,23 @@
 from __future__ import annotations
 
 from pykorail._async.api import AsyncApiClient
+from pykorail._shared.response import ACCESS_RESTRICTED_CODE as ACCESS_RESTRICTED_CODE
 from pykorail._sync import api as _impl
 
 # :func:`~pykorail._shared.parse_response` 로 판정 로직을 옮기면서 ``_impl`` 이 더는
 # 이 이름들을 import 하지 않습니다. 그래도 한때 이 모듈의 속성이었으므로(하위 호환),
-# 원래 정의된 곳에서 직접 재수출해 옛 import 경로를 유지합니다.
-from pykorail.exceptions import AccessRestrictedError, HttpStatusError, TransportError
-from pykorail.models.parsing import text
+# ``as`` 자기 자신으로 재수출해 옛 import 경로를 유지합니다. 원래도 import 부산물로
+# 우연히 노출되던 이름이라 새 공개 표면으로 만들지 않도록 ``__all__`` 에는 넣지 않습니다.
+from pykorail.exceptions import AccessRestrictedError as AccessRestrictedError
+from pykorail.exceptions import HttpStatusError as HttpStatusError
+from pykorail.exceptions import TransportError as TransportError
+from pykorail.models.parsing import text as text
 
-ACCESS_RESTRICTED_CODE = _impl.ACCESS_RESTRICTED_CODE
 Account = _impl.Account
 ApiClient = _impl.ApiClient
 logger = _impl.logger
 
-__all__ = [
-    "ACCESS_RESTRICTED_CODE",
-    "AccessRestrictedError",
-    "Account",
-    "ApiClient",
-    "AsyncApiClient",
-    "HttpStatusError",
-    "TransportError",
-    "logger",
-    "text",
-]
+__all__ = ["ACCESS_RESTRICTED_CODE", "Account", "ApiClient", "AsyncApiClient", "logger"]
 
 
 def __getattr__(name: str) -> object:

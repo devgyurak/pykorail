@@ -14,11 +14,6 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from pykorail._shared.account import Account
-
-# ``ACCESS_RESTRICTED_CODE`` 는 판정 로직과 함께 _shared 로 옮겼지만, 예전처럼
-# ``pykorail.api.ACCESS_RESTRICTED_CODE`` 로 접근되도록 모듈 속성으로 남깁니다.
-# ``as`` 자기 자신으로의 재수출이라 ruff 도 쓰이지 않는 import 로 보지 않습니다.
-from pykorail._shared.response import ACCESS_RESTRICTED_CODE as ACCESS_RESTRICTED_CODE
 from pykorail._shared.response import parse_response
 from pykorail.constants import API_KEY, APP_DISPLAY_VERSION, APP_VERSION, DEVICE
 from pykorail.exceptions import error_for_code
