@@ -44,6 +44,43 @@ with Korail.logged_in("me@example.com", "password") as korail:
 [KTX 105]  04/01 11:00~14:35  서울~부산  특실 가능, 일반실 매진 (3시간 35분)
 ```
 
+<details>
+<summary>비동기로 쓰기 (<code>AsyncKorail</code>)</summary>
+
+시그니처와 리소스가 동기판과 같고, 호출만 `await` 입니다.
+
+```python
+import asyncio
+from datetime import datetime, timedelta, timezone
+
+from pykorail import AsyncKorail
+
+
+async def main() -> None:
+    kst = timezone(timedelta(hours=9))
+    departure = (datetime.now(kst) + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
+    async with await AsyncKorail.logged_in("me@example.com", "password") as korail:
+        trains = await korail.trains.search("서울", "부산", depart_after=departure)
+        print(trains[0])
+
+
+asyncio.run(main())
+```
+
+제약:
+
+- **asyncio 전용입니다.** `curl_cffi` 의 비동기 세션이 asyncio 만 지원하므로 trio 는
+  지원하지 않습니다.
+- **인스턴스 하나는 이벤트 루프 하나에서만** 쓰세요. 로그인 상태를 태스크들이 공유합니다.
+  생성자는 루프 밖에서도 됩니다(네트워크를 치지 않습니다).
+- **동시에 `login` 을 부르는 것은 지원하지 않습니다.**
+- **`requests` 폴백이 없습니다.** `curl_cffi` 를 못 쓰면 `AsyncKorail()` 이
+  `TransportError` 로 안내합니다(`pip install curl_cffi`).
+- **요청 순서는 앱과 같습니다.** `reservations.all()` 처럼 예약마다 상세를 조회하는
+  흐름을 `gather` 로 묶지 않았습니다. 동시성은 여러 호출을 직접 묶어서 얻으세요.
+
+</details>
+
 > [!CAUTION]
 > **승차권 재판매 목적으로 쓰지 마세요.** pykorail 은 본인이 탈 표를 예매하기 위한
 > 도구입니다. 승차권을 웃돈을 받고 상습적으로 되파는 행위는 철도사업법으로 금지되어 있고,

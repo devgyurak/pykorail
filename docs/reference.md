@@ -52,6 +52,44 @@ Korail(
 > 계속 접근됩니다). 그런 이름들은 공개 API 가 아니었지만, 동작이 달라진 점은 적어
 > 둡니다.
 
+### `AsyncKorail`
+
+같은 API 를 `await` 로 쓰는 클라이언트입니다. 생성자 인자와 리소스(`stations` ·
+`trains` · `reservations` · `tickets` · `membership` · `airport_bus`)는
+[`Korail`](#korail) 과 같고, I/O 가 닿는 메서드만 코루틴입니다.
+
+```python
+import asyncio
+
+from pykorail import AsyncKorail
+
+
+async def main() -> None:
+    async with await AsyncKorail.logged_in("me@example.com", "password") as korail:
+        trains = await korail.trains.search("서울", "부산")
+        print(trains[0])
+
+
+asyncio.run(main())
+```
+
+`await` 가 붙는 것: `Korail` 의 `logged_in` · `login` · `logout` · `close` 와 리소스의
+조회·예매 메서드 전부(`all` · `find` · `search` · `cars` · `seats` · `create` · `pay`
+· `cancel` · `refund` · `mileage` · `coupons` · `stops` …). 컨텍스트 관리자는
+`async with await …` 입니다.
+
+**제약**
+
+- **asyncio 전용입니다.** `curl_cffi` 의 비동기 세션이 asyncio 만 지원하므로 trio 는
+  지원하지 않습니다.
+- **인스턴스 하나는 이벤트 루프 하나에서만** 쓰세요. 로그인 상태를 태스크들이
+  공유합니다. 생성자는 네트워크를 치지 않으므로 루프 밖에서도 됩니다.
+- **동시에 `login` 을 부르는 것은 지원하지 않습니다.**
+- **`requests` 폴백이 없습니다.** `curl_cffi` 를 못 쓰면 `AsyncKorail()` 이
+  [`TransportError`](#예외) 로 안내합니다.
+- **요청 순서는 앱과 같습니다.** `reservations.all()` 처럼 예약마다 상세를 조회하는
+  흐름을 `gather` 로 묶지 않았습니다.
+
 ### `korail.stations`
 
 로그인 없이 호출할 수 있는 공개 조회입니다. 결과는 **클라이언트 수명 동안 캐시**되고,
