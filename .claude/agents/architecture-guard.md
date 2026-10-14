@@ -1,6 +1,6 @@
 ---
 name: architecture-guard
-description: pykorail 의 계층·모델 규약 위반을 찾습니다. resources/·models/·client.py·api.py 를 수정한 뒤, 또는 새 모듈을 추가한 뒤 사용하세요. 계층을 거스르는 import, 클라이언트에 직접 붙은 엔드포인트, 가변 모델, 잘못된 상속을 잡아냅니다.
+description: pykorail 의 계층·모델 규약 위반을 찾습니다. `_async/`·`_sync/`·resources/·models/·client.py·api.py 를 수정한 뒤, 또는 새 모듈을 추가한 뒤 사용하세요. 계층을 거스르는 import, 클라이언트에 직접 붙은 엔드포인트, 가변 모델, 잘못된 상속, 손으로 고친 `_sync` 생성물을 잡아냅니다.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -15,21 +15,25 @@ model: sonnet
 ### 1. 계층 방향
 의존은 한 방향입니다:
 `client → resources → api → auth → crypto/transport`, 그리고 모두가
-`models`/`exceptions`/`constants`/`options`/`device` 에 의존할 수 있습니다.
+`models`/`exceptions`/`constants`/`options`/`device`/`_shared` 에 의존할 수 있습니다.
+I/O 계층은 비동기 원본(`src/pykorail/_async`)과 생성물(`src/pykorail/_sync`)로만
+갈라집니다 — 둘은 같은 내용이어야 하고, 공개 경로(`client.py`·`api.py`·
+`resources/`)는 `_sync` 를 재수출하는 shim 입니다.
 
 위반 예:
 - `models/` 나 `exceptions/` 가 `resources`/`api`/`client`/`transport` 를 import
 - `api.py` 가 `resources` 를 import
 - `auth/` 가 `resources`/`client` 를 import
 - `constants.py`/`options.py` 가 무언가를 import (표준 라이브러리 외)
+- `_async` 가 `_sync` 를, 또는 `_sync` 가 `_async` 를 import (한쪽은 생성물입니다)
 
 `grep -rn "^from pykorail\|^    from pykorail" src/pykorail` 로 import 그래프를 뽑아
 확인하세요. 순환이 없는지도 봅니다.
 
 ### 2. 엔드포인트 위치
-`client.py` 에 `API_ENDPOINTS[...]` 를 쓰는 새 메서드가 생겼는지 확인합니다.
+`_async/client.py` 에 `API_ENDPOINTS[...]` 를 쓰는 새 메서드가 생겼는지 확인합니다.
 허용되는 것은 `login`(+`_encrypt_password`)·`logout` 뿐입니다. 그 외 엔드포인트는
-전부 `resources/` 안에 있어야 합니다.
+전부 `_async/resources/` 안에 있어야 합니다.
 
 ### 3. HTTP 접근 경로
 리소스가 `_session` 을 직접 만지거나 `curl_cffi`/`requests` 를 import 하면 위반입니다.
@@ -55,6 +59,12 @@ model: sonnet
 ### 7. 빌트인 이름 잠식
 클래스 안에 `list`/`dict`/`type`/`id` 같은 빌트인 이름의 메서드가 있으면 지적하세요 —
 같은 클래스의 어노테이션을 가려 `ty` 가 깨집니다.
+
+### 8. `_sync` 생성물
+`src/pykorail/_sync` · `tests/_sync` 는 `_async` 에서 `scripts/unasync.py` 가 만드는
+생성물입니다. `git diff` 에서 `_sync` 만 바뀌고 대응하는 `_async` 는 그대로라면
+직접 수정한 것입니다 — 그 변경은 다음 생성에서 사라집니다. `uv run python
+scripts/unasync.py --check` 가 실패하는지도 함께 보세요.
 
 ## 보고 형식
 

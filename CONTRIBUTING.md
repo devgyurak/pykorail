@@ -172,14 +172,16 @@ assert bad == []
 
 ### 커버리지 90%
 
-`pytest` 가 `--cov-fail-under=90` 으로 돌아갑니다 (현재 96%). 게이트를 낮추지
+`pytest` 가 `--cov-fail-under=90` 으로 돌아갑니다 (현재 98%). 게이트를 낮추지
 말고 테스트를 써 주세요.
 
 ### 네트워크 금지
 
-테스트는 **절대 실제 요청을 보내지 않습니다.** `tests/conftest.py` 의 `FakeSession`
-과 `korail` / `make_korail` 픽스처를 쓰세요. 응답 샘플은 `tests/payloads.py` 에
-모읍니다 — **필드 이름을 지어내지 마세요.**
+테스트는 **절대 실제 요청을 보내지 않습니다.** `tests/_async/conftest.py` 와 생성된
+`tests/_sync/conftest.py` 의 `AsyncFakeSession`/`FakeSession` 과 `korail` /
+`make_korail` 픽스처를 쓰세요. I/O 테스트는 `tests/_async/` 가 원본이고
+`tests/_sync/` 는 `scripts/unasync.py` 가 만드는 생성물입니다. 응답 샘플은
+`tests/payloads.py` 에 모읍니다 — **필드 이름을 지어내지 마세요.**
 
 ### 특히 잘 깨지는 곳
 

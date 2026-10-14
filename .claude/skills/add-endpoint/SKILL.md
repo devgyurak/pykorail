@@ -167,10 +167,12 @@ class Transfer:
 
 ## 3. 리소스 메서드
 
+**비동기 원본 `src/pykorail/_async/` 를 고칩니다.** `_sync/` 는 생성물이라 손으로
+고치지 않습니다 — 고친 뒤 `uv run python scripts/unasync.py` 로 다시 만듭니다.
 **`client.py` 에 붙이지 마세요.** 도메인에 맞는 리소스를 고르거나 새로 만듭니다.
 
 ```python
-def transfers(self, train: Train) -> list[Transfer]:
+async def transfers(self, train: Train) -> list[Transfer]:
     """환승 정보를 조회합니다.
 
     폼 필드는 코레일톡+ 7.0.1 의 TransferViewActivity 에서 확인했습니다.
@@ -180,14 +182,14 @@ def transfers(self, train: Train) -> list[Transfer]:
     """
     url = API_ENDPOINTS["transfer"]
     headers, _ = self._api.sign(url)  # 서명 대상이 아니면 ({}, None)
-    payload = self._api.get(
+    payload = await self._api.get(
         url,
         params={**self._api.base_payload(), "txtTrnNo": train.train_no},
         headers=headers,
     )
     self._api.check(payload)
 
-    return [Transfer.from_response(i) for i in payload.get("trsf_infos", {}).get("trsf_info", [])]
+    return [Transfer.from_response(i) for i in records(payload, "trsf_infos", "trsf_info")]
 ```
 
 지켜야 할 것:
@@ -199,46 +201,50 @@ def transfers(self, train: Train) -> list[Transfer]:
 - **APK 근거를 docstring 이나 주석에 한 줄 남기세요.** 다음 사람이 "이 이상한 필드
   왜 있지" 하고 지우는 것을 막습니다.
 
-새 리소스라면 `resources/__init__.py` 에 등록하고 `Korail.__init__` 에서 배선합니다.
+새 리소스라면 `_async/resources/__init__.py` 에 등록하고 `AsyncKorail.__init__`
+(`_async/client.py`) 에서 배선한 뒤, `uv run python scripts/unasync.py` 로 `_sync` 를
+다시 만듭니다.
 
 ## 4. 테스트
 
-`tests/payloads.py` 에 **APK 에서 확인한 모양 그대로** 응답 샘플을 추가하고,
-`tests/conftest.py` 의 `korail` 픽스처 `routes` 에 엔드포인트를 등록하세요.
+`tests/payloads.py`(**공유** — 손으로 유지) 에 APK 에서 확인한 모양 그대로 응답
+샘플을 추가하고, `tests/_async/conftest.py` 의 `korail` 픽스처 `routes` 에
+엔드포인트를 등록하세요. I/O 테스트는 `tests/_async/` 에 비동기로 쓰고,
+`uv run python scripts/unasync.py` 로 `tests/_sync/` 를 생성합니다.
 
 ```python
 class TestTransfers:
-    def test_parses_transfers(self, korail) -> None:
+    async def test_parses_transfers(self, korail) -> None:
         # given
         client, _ = korail
-        train = client.trains.search("서울", "부산")[0]
+        train = (await client.trains.search("서울", "부산"))[0]
 
         # when
-        transfers = client.trains.transfers(train)
+        transfers = await client.trains.transfers(train)
 
         # then
         assert [t.station_name for t in transfers] == ["대전"]
 
-    def test_sends_exact_form_fields(self, korail) -> None:
+    async def test_sends_exact_form_fields(self, korail) -> None:
         """폼 필드 이름이 바뀌면 서버가 조용히 빈 결과를 줍니다."""
         # given
         client, session = korail
-        train = client.trains.search("서울", "부산")[0]
+        train = (await client.trains.search("서울", "부산"))[0]
 
         # when
-        client.trains.transfers(train)
+        await client.trains.transfers(train)
 
         # then
         params = session.kwargs_for("transfer")["params"]
         assert params["txtTrnNo"] == "101"
         assert set(params) == {"Device", "Version", "Key", "txtTrnNo"}
 
-    def test_empty_when_no_results(self, make_korail) -> None:
+    async def test_empty_when_no_results(self, make_korail) -> None:
         # given
         client, _ = make_korail({"transfer": NO_RESULTS})
 
         # when
-        transfers = client.trains.transfers(...)
+        transfers = await client.trains.transfers(...)
 
         # then
         assert transfers == []
@@ -257,7 +263,9 @@ class TestTransfers:
 ## 5. 마무리
 
 ```bash
+uv run python scripts/unasync.py             # _sync 다시 생성
 uv run ruff format && uv run ruff check --fix && uv run ty check && uv run pytest
+uv run python scripts/unasync.py --check      # 생성물이 최신인지
 ```
 
 커버리지 90% 하한을 넘겨야 합니다. `docs/reference.md` 의 API 표에도 한 줄 추가하고,

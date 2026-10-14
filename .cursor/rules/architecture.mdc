@@ -10,11 +10,14 @@ alwaysApply: true
 ## 계층 (의존은 한 방향)
 
 ```
-client.py  (Korail — 로그인/로그아웃/연결 수명만)
-   └── resources/   stations · trains · reservations · tickets   ← 엔드포인트는 전부 여기
+_async/ ──(scripts/unasync.py)──▶ _sync/   ← _sync 는 생성물, 직접 수정 금지
+   ├── client.py  (Korail — 로그인/로그아웃/연결 수명만)
+   └── resources/   stations · trains · reservations · tickets · membership · airport_bus
           └── api.py (ApiClient) ── auth/ ── crypto.py · transport.py
                  └── models/  (불변 응답 모델)
 
+_shared/   without_blanks · clock   ← 두 계층이 함께 쓰는 순수 헬퍼
+client.py · api.py · resources/   ← 공개 경로. _sync 를 재수출합니다.
 exceptions/ · constants.py · options.py · device/  ← 누구나 의존 가능, 아무에게도 의존 안 함
 ```
 
@@ -36,6 +39,9 @@ exceptions/ · constants.py · options.py · device/  ← 누구나 의존 가�
    클라이언트 측 입력 오류는 `PykorailError` 의 형제로.
 7. **상태 변경 메서드는 `-> None`, 실패 시 예외.** 불리언 반환 금지.
 8. **생성자에서 I/O 금지.** `Korail()` 은 네트워크를 치지 않습니다.
+9. **`_sync/` 는 생성물.** `src/pykorail/_sync` · `tests/_sync` 를 손으로 고치지
+   마세요. `_async` 를 고치고 `uv run python scripts/unasync.py` 를 돌립니다.
+   최신인지는 `uv run python scripts/unasync.py --check` 가 봅니다.
 
 ## 명령
 

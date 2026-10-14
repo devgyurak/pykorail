@@ -32,24 +32,33 @@ uv build                 # 배포 아티팩트
 ## 2. 아키텍처 — 절대 어기지 말 것
 
 계층은 **한 방향으로만** 의존합니다. 화살표를 거스르는 import 를 추가하지 마세요.
+I/O 계층(`client` · `api` · `transport` · `resources`)은 비동기 원본(`_async`)과
+생성물(`_sync`)로만 갈라지고, 규칙은 지금까지와 같습니다.
 
 ```
-client.py  (Korail — 로그인/로그아웃/연결 수명만)
+_async/ ──(scripts/unasync.py)──▶ _sync/     ← _sync 는 생성물, 직접 수정 금지
    │
-   ├── resources/   stations · trains · reservations · tickets   ← 엔드포인트는 전부 여기
+   ├── client.py  (Korail — 로그인/로그아웃/연결 수명만)
    │      │
-   │      └── api.py (ApiClient) ── auth/ (signer · dynapath) ── crypto.py
-   │             │                       └── transport.py
-   │             └── models/  (불변 응답 모델)
+   │      └── resources/   stations · trains · reservations · tickets · membership · airport_bus
+   │             │                       ← 엔드포인트는 전부 여기
+   │             └── api.py (ApiClient) ── auth/ (signer · dynapath) ── crypto.py
+   │                    │                       └── transport.py
+   │                    └── models/  (불변 응답 모델)
    │
-   └── exceptions/ · constants.py · options.py · device/   ← 누구나 의존 가능, 아무에게도 의존 안 함
+   └── _shared/   without_blanks · clock   ← 두 계층이 함께 쓰는 순수 헬퍼
+
+client.py · api.py · resources/   ← 공개 경로. _sync 의 객체를 그대로 재수출할 뿐입니다.
+
+exceptions/ · constants.py · options.py · device/   ← 누구나 의존 가능, 아무에게도 의존 안 함
 ```
 
 ### 지켜야 할 규칙
 
 1. **엔드포인트는 리소스에만.** `Korail` 본체에 새 API 메서드를 붙이지 마세요.
    `korail.trains.search()` 처럼 리소스에 넣고, 클라이언트에는 `login`/`logout`/
-   `close` 와 리소스 배선만 둡니다. 리소스가 늘면 `Korail.__init__` 에 한 줄 추가.
+   `close` 와 리소스 배선만 둡니다. 리소스가 늘면 `AsyncKorail.__init__`
+   (`_async/client.py`) 에 한 줄 추가합니다.
 
 2. **HTTP 는 `ApiClient` 를 통해서만.** 리소스가 `self._session` 을 직접 만지거나
    `requests`/`curl_cffi` 를 import 하면 안 됩니다. `self._api.get/post/sign/check/
@@ -79,7 +88,16 @@ client.py  (Korail — 로그인/로그아웃/연결 수명만)
    `refund`. 성공 여부를 불리언으로 돌려주지 마세요.
 
 8. **생성자에서 I/O 금지.** `Korail()` 은 네트워크를 치지 않습니다. 한 줄 편의가
-   필요하면 `Korail.logged_in()` 같은 팩토리를 쓰세요.
+   필요하면 `Korail.logged_in()` 같은 팩토리를 쓰세요. (비동기의
+   `create_async_session` 도 세션을 만드는 것뿐, 요청을 보내지 않습니다.)
+
+9. **`_sync/` 는 생성물이다.** `src/pykorail/_sync` · `tests/_sync` 는
+   `src/pykorail/_async` · `tests/_async` 에서 `scripts/unasync.py` 가 만듭니다.
+   **`_sync` 를 손으로 고치지 마세요** — 다음 생성에서 사라집니다. `_async` 를 고치고
+   `uv run python scripts/unasync.py` 를 돌린 뒤, 생성물이 최신인지
+   `uv run python scripts/unasync.py --check` 로 확인하세요(`tests/test_packaging.py` 와
+   CI 린트 잡도 같은 검사를 돌립니다). 공개 경로(`client.py` · `api.py` ·
+   `resources/`)는 `_sync` 를 재수출하는 shim 이니, I/O 를 바꾸려면 `_async` 입니다.
 
 ---
 
@@ -234,13 +252,15 @@ def test_individual_by_default(self) -> None:
 ### 5.3 커버리지 90% 하한
 
 `pytest` 가 `--cov-fail-under=90` 으로 돌아갑니다. **미달이면 실패입니다.**
-현재 96%. 게이트를 낮추거나 `--no-cov` 로 우회하지 마세요 — 테스트를 쓰세요.
+현재 98%. 게이트를 낮추거나 `--no-cov` 로 우회하지 마세요 — 테스트를 쓰세요.
 
 ### 5.4 그 밖의 규약
 
-- **네트워크 금지.** 테스트는 절대 실제 요청을 보내지 않습니다. `conftest.py` 의
-  `FakeSession` 과 `make_korail`/`korail` 픽스처를 쓰세요.
-- **응답 샘플은 `tests/payloads.py` 에.** 필드 이름은 실제 응답에서 온 것이니
+- **네트워크 금지.** 테스트는 절대 실제 요청을 보내지 않습니다.
+  `tests/_async/conftest.py` 와 생성된 `tests/_sync/conftest.py` 의
+  `AsyncFakeSession`/`FakeSession` 과 `make_korail`/`korail` 픽스처를 쓰세요.
+  I/O 테스트는 `tests/_async/` 가 원본이고 `tests/_sync/` 는 생성물입니다.
+- **응답 샘플은 `tests/payloads.py` 에(공유).** 필드 이름은 실제 응답에서 온 것이니
   지어내지 마세요. 새 페이로드가 필요하면 여기에 추가하고 공유합니다.
 - **테스트 하나에 개념 하나.** 이름은 검증하는 **행동**을 말해야 합니다
   (`test_missing_wait_flag_is_not_applicable`, `test_logout_clears_account_but_keeps_connection`).

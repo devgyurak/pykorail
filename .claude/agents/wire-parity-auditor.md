@@ -1,6 +1,6 @@
 ---
 name: wire-parity-auditor
-description: 코레일 서버로 나가는 요청이 바뀌지 않았는지 증명합니다. constants.py, auth/, crypto.py, transport.py, 또는 리소스의 폼 필드를 수정한 뒤 반드시 사용하세요. 서명 상수·앱 신원값·폼 필드·암호화 형태의 회귀를 잡습니다.
+description: 코레일 서버로 나가는 요청이 바뀌지 않았는지 증명합니다. constants.py, auth/, crypto.py, transport.py, 또는 `_async/` 리소스의 폼 필드를 수정한 뒤 반드시 사용하세요. 서명 상수·앱 신원값·폼 필드·암호화 형태의 회귀를 잡습니다.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -76,7 +76,7 @@ uv run pytest
 uv run python -c "
 import json
 from pykorail.client import Korail
-import pykorail.client as mod
+import pykorail._sync.client as mod  # 생성물 — create_session 은 여기에 있습니다
 
 class R:
     def __init__(s,p): s.text=json.dumps(p)
@@ -93,7 +93,9 @@ except Exception: pass
 print(sorted((S.calls[-1][2].get('params') or {}).keys()))
 "
 ```
-`git diff` 로 폼 dict 에서 **삭제되거나 이름이 바뀐 키**가 있는지 확인하세요.
+`git diff` 는 원본(`_async`)과 생성물(`_sync`)이 함께 바뀌었는지 확인하세요 —
+`_sync` 만 바뀌었다면 손으로 고친 것이고, 다음 생성에서 사라집니다.
+폼 dict 에서 **삭제되거나 이름이 바뀐 키**가 있는지도 확인하세요.
 빈 문자열로 보내는 필드(`txtChgFlg2`, `txtJrnySqno2` 등)를 지웠다면 회귀입니다.
 
 특히 확인할 것:
@@ -106,7 +108,8 @@ print(sorted((S.calls[-1][2].get('params') or {}).keys()))
 User-Agent는 프로파일 유무와 무관하게 `korailtalk`입니다. 프로파일은 DynaPath의
 `di`·`os`·`dm`을 지정합니다. 공유 하드코딩 ID를 요구하지 마세요. 생성된 ID는
 `Korail.android_id`와 `Korail(android_id=...)`로 저장·복원 가능해야 합니다.
-`tests/test_client.py::TestDeviceProfile`과 로그인 폼 전체 골든 테스트를 확인하세요.
+`tests/_async/test_client.py::TestDeviceProfile`(과 생성된 `tests/_sync`)과 로그인 폼
+전체 골든 테스트를 확인하세요.
 현재 근거와 검증 한계는 `docs/protocol-evidence-7.0.8.json`에 있습니다.
 비밀번호는 안쪽 NO_WRAP(2), 바깥쪽 URL_SAFE(8)이며 76자 LF 래핑을 검증합니다.
 

@@ -8,10 +8,11 @@ Claude Code 에서만 의미 있는 내용입니다.
 
 ## 서브에이전트
 
-- `architecture-guard` — 계층 위반, 상속/가변성 규칙 위반을 잡습니다. 리소스·모델·
-  클라이언트를 건드린 뒤 호출하세요.
+- `architecture-guard` — 계층 위반, 상속/가변성 규칙 위반을 잡습니다. `_async/`·`_sync/`·
+  resources·모델·클라이언트를 건드린 뒤 호출하세요.
 - `wire-parity-auditor` — 요청 페이로드가 바뀌지 않았는지 증명합니다. `constants.py`,
-  `auth/`, `crypto.py`, 리소스의 폼 필드를 건드렸다면 **반드시** 호출하세요.
+  `auth/`, `crypto.py`, `transport.py`, `_async/` 리소스의 폼 필드를 건드렸다면
+  **반드시** 호출하세요.
 - `test-author` — 규약(제어 흐름 금지, parametrize, 90% 커버리지)에 맞는 pytest 를
   씁니다. 커버리지가 떨어졌을 때 부르세요.
 
@@ -22,6 +23,13 @@ Claude Code 에서만 의미 있는 내용입니다.
 - `add-error-code` — 새 응답 코드를 예외 계층에 매핑하는 절차.
 - `commit` — 커밋 메시지·PR 제목·브랜치 이름 규약(`ADD:`/`FIX:`/`REF:`/`DEL:`/
   `DOCS:`/`UPT:`). 커밋하거나 PR 을 열기 전에 읽으세요.
+
+## I/O 계층
+
+`src/pykorail/_sync` · `tests/_sync` 는 `_async` 에서 `scripts/unasync.py` 가 만드는
+**생성물**입니다 — 손으로 고치지 마세요. `_async` 를 고친 뒤
+`uv run python scripts/unasync.py` 를 돌리고, `uv run python scripts/unasync.py --check`
+로 최신인지 확인합니다(테스트·CI 도 같은 검사를 돌립니다). 자세한 규칙은 AGENTS.md §2-9.
 
 ## 도구 사용
 
