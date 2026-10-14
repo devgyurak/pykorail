@@ -343,8 +343,7 @@ Python 3.11–3.15 테스트 · 빌드 · Trivy 보안 스캔. 전부 우분투�
 > 기본 브랜치로 가는 PR 에서만 키워드를 읽습니다. 작업 PR 은 `develop` 으로 가므로
 > 거기서는 닫히지 않고,
 > [`.github/workflows/close-issues.yml`](.github/workflows/close-issues.yml) 워크플로가
-> 머지 후 대신 닫아 줍니다. (릴리스 PR 본문에는 키워드가 없어 `main` 에 닿을 때
-> 다시 읽히지도 않습니다.)
+> 머지 후 대신 닫아 줍니다.
 
 ---
 

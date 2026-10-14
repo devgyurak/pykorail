@@ -11,8 +11,8 @@ name: close-issues
 #   - `pull_request_target`: 2025-12-08 부터 PR 의 base 가 아니라 **기본 브랜치(main)** 의
 #     워크플로 파일을 실행합니다 (github.blog/changelog 2025-11-07). 그래서 develop 에
 #     머지해도 다음 릴리스로 main 에 올라가기 전까지 아무것도 하지 않습니다.
-# develop 은 보호돼 직접 푸시가 막히므로 develop 의 push 는 곧 PR 머지입니다. 그 커밋에
-# 연결된 PR 을 찾아 읽으면 되고, push 토큰은 항상 쓰기 권한입니다.
+# develop 은 보호돼 직접 푸시가 막히므로 develop 의 push 는 곧 머지 권한을 가진 사람의 PR
+# 머지입니다. 그 커밋에 연결된 PR 을 찾아 읽으면 됩니다.
 on:
   push:
     branches: [develop]
@@ -32,8 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       issues: write
-      # 커밋에 연결된 PR 을 조회하고 PR 본문을 읽는 데 필요합니다 (commits/{sha}/pulls 는
-      # "Pull requests" 읽기 권한을 요구합니다 — contents 는 필요 없습니다).
+      # 커밋에 연결된 PR 을 조회하고 PR 본문을 읽는 데 필요합니다. `commits/{sha}/pulls`
+      # 의 요구 권한은 "Pull requests" 읽기입니다 (docs.github.com/en/rest/commits/commits).
       pull-requests: read
     steps:
       - name: 키워드 추출 · 이슈 닫기
