@@ -1,7 +1,14 @@
-"""동기 코드 경로를 위한 재수출. 실제 구현은 :mod:`pykorail._sync.resources.tickets` 에 있습니다."""
+"""동기 공개 경로 재수출 shim. 실제 구현은 :mod:`pykorail._sync.resources.tickets` 에 있습니다."""
 
 from __future__ import annotations
 
-from pykorail._sync.resources.tickets import TicketResource
+from pykorail._sync.resources import tickets as _impl
+
+TicketResource = _impl.TicketResource
 
 __all__ = ["TicketResource"]
+
+
+def __getattr__(name: str) -> object:
+    """``_impl`` 이 노출하는 나머지 이름을 위임합니다 (하위 호환)."""
+    return getattr(_impl, name)

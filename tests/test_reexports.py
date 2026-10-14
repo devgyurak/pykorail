@@ -7,6 +7,10 @@
 
 from __future__ import annotations
 
+import importlib
+
+import pytest
+
 import pykorail.api
 import pykorail.client
 import pykorail.resources
@@ -30,6 +34,163 @@ from pykorail._sync.resources.reservations import ReservationResource as SyncRes
 from pykorail._sync.resources.stations import StationResource as SyncStationResource
 from pykorail._sync.resources.tickets import TicketResource as SyncTicketResource
 from pykorail._sync.resources.trains import TrainResource as SyncTrainResource
+
+#: develop(v0.3.x) 시점에 각 모듈이 모듈 속성으로 노출하던 이름의 스냅숏입니다.
+#: I/O 계층을 ``_async``/``_sync`` 로 가르면서 이 이름들이 조용히 사라진 적이 있어
+#: (``pykorail.client.create_session`` · ``pykorail.api.ACCESS_RESTRICTED_CODE`` ·
+#: ``pykorail.resources.membership.DEFAULT_PERIOD``), 다시는 빠지지 않게 고정합니다.
+#: 표준 라이브러리·typing 에서 온 이름(``Any`` · ``json`` 등)은 공개 표면이 아니라 뺐습니다.
+DEVELOP_PUBLIC_NAMES = {
+    "pykorail.client": [
+        "API_ENDPOINTS",
+        "API_KEY",
+        "APP_DISPLAY_VERSION",
+        "APP_VERSION",
+        "AirportBusResource",
+        "ApiClient",
+        "DEFAULT_HEADERS",
+        "DEVICE",
+        "EMAIL_REGEX",
+        "HYPHENLESS_PHONE_REGEX",
+        "Korail",
+        "LoginFailedError",
+        "MembershipResource",
+        "PHONE_NUMBER_REGEX",
+        "PasswordChangeRequiredError",
+        "RequestSigner",
+        "ReservationResource",
+        "StationResource",
+        "TicketResource",
+        "TrainResource",
+        "create_session",
+        "encrypt_password",
+        "validate_android_id",
+    ],
+    "pykorail.api": [
+        "ACCESS_RESTRICTED_CODE",
+        "API_KEY",
+        "APP_DISPLAY_VERSION",
+        "APP_VERSION",
+        "AccessRestrictedError",
+        "Account",
+        "ApiClient",
+        "DEVICE",
+        "HttpStatusError",
+        "TransportError",
+        "error_for_code",
+        "logger",
+        "text",
+    ],
+    "pykorail.resources": [
+        "AirportBusResource",
+        "MembershipResource",
+        "ReservationResource",
+        "Resource",
+        "StationResource",
+        "TicketResource",
+        "TrainResource",
+        "to_kst",
+    ],
+    "pykorail.resources.stations": [
+        "API_ENDPOINTS",
+        "Resource",
+        "Station",
+        "StationNotFoundError",
+        "StationResource",
+        "parse_stations",
+    ],
+    "pykorail.resources.trains": [
+        "API_ENDPOINTS",
+        "APP_VERSION",
+        "AdultPassenger",
+        "Car",
+        "CarSeat",
+        "ChildPassenger",
+        "DEVICE",
+        "Disability1To3Passenger",
+        "Disability4To6Passenger",
+        "Fare",
+        "KST",
+        "MAX_PAGES",
+        "NoResultsError",
+        "PAST_TOLERANCE",
+        "Passenger",
+        "PastDepartureError",
+        "Resource",
+        "SeatClass",
+        "SeniorPassenger",
+        "ToddlerPassenger",
+        "Train",
+        "TrainResource",
+        "TrainType",
+        "Transfer",
+        "TransferStation",
+        "parse_transfers",
+        "records",
+        "to_kst",
+        "without_blanks",
+    ],
+    "pykorail.resources.tickets": [
+        "API_ENDPOINTS",
+        "NoResultsError",
+        "RefundFee",
+        "Resource",
+        "Ticket",
+        "TicketResource",
+        "records",
+        "train_info_of",
+    ],
+    "pykorail.resources.reservations": [
+        "API_ENDPOINTS",
+        "AdultPassenger",
+        "CarSeat",
+        "Card",
+        "KorailError",
+        "NoResultsError",
+        "Passenger",
+        "Reservation",
+        "ReservationResource",
+        "ReserveOption",
+        "Resource",
+        "Seat",
+        "SeatClass",
+        "Transfer",
+        "records",
+        "text",
+        "without_blanks",
+    ],
+    "pykorail.resources.membership": [
+        "API_ENDPOINTS",
+        "Coupon",
+        "DEFAULT_PERIOD",
+        "MembershipResource",
+        "Mileage",
+        "MileageInquiry",
+        "MileageType",
+        "NoResultsError",
+        "Resource",
+        "records",
+        "to_kst",
+    ],
+    "pykorail.resources.airport_bus": [
+        "API_ENDPOINTS",
+        "AdultPassenger",
+        "AirportBus",
+        "AirportBusResource",
+        "BusStop",
+        "CarSeat",
+        "NoResultsError",
+        "Passenger",
+        "Resource",
+        "StationNotFoundError",
+        "parse_bus_stops",
+        "records",
+        "text",
+        "to_kst",
+    ],
+    "pykorail.resources.base": ["Resource", "without_blanks"],
+    "pykorail.resources.clock": ["KST", "KST_OFFSET_HOURS", "to_kst"],
+}
 
 
 def test_client_reexports_the_generated_sync_class() -> None:
@@ -73,3 +234,22 @@ def test_shared_helpers_are_re_exposed_at_the_old_paths() -> None:
     assert pykorail.resources.trains.KST is sync_trains.KST
     assert pykorail.resources.trains.MAX_PAGES == sync_trains.MAX_PAGES
     assert pykorail.resources.trains.PAST_TOLERANCE == sync_trains.PAST_TOLERANCE
+
+
+@pytest.mark.parametrize("module_name", sorted(DEVELOP_PUBLIC_NAMES), ids=lambda name: name.removeprefix("pykorail."))
+def test_develop_public_names_stay_reachable(module_name: str) -> None:
+    """리팩터링 전에 접근되던 이름이 옛 경로로 계속 접근돼야 합니다."""
+    # given
+    module = importlib.import_module(module_name)
+
+    # when
+    missing = [name for name in DEVELOP_PUBLIC_NAMES[module_name] if not hasattr(module, name)]
+
+    # then
+    assert missing == []
+
+
+def test_api_logger_keeps_its_name() -> None:
+    """``verbose`` 로그를 ``pykorail.api`` 로거에 걸어 둔 사용자가 계속 받아야 합니다."""
+    # when & then
+    assert pykorail.api.logger.name == "pykorail.api"
