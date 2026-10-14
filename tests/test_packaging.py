@@ -8,6 +8,8 @@
 from __future__ import annotations
 
 import re
+import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -15,7 +17,8 @@ import pytest
 
 import pykorail
 
-PYPROJECT = Path(__file__).resolve().parent.parent / "pyproject.toml"
+ROOT = Path(__file__).resolve().parent.parent
+PYPROJECT = ROOT / "pyproject.toml"
 #: ``pyproject.toml`` 을 구조로 읽습니다. 문자열 검사는 주석이나 다른 표에 같은 글자가
 #: 있어도 통과하므로, 키 하나하나를 봅니다.
 PYPROJECT_DATA = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
@@ -138,8 +141,25 @@ class TestCoverageGate:
         assert "--cov-fail-under=90" in addopts
 
 
+class TestGeneratedSyncStaysInSync:
+    """``_sync`` 는 ``_async`` 에서 생성합니다 — 생성물이 뒤처진 채 머지되면 안 됩니다."""
+
+    def test_generated_sync_is_up_to_date(self) -> None:
+        # when
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "unasync.py"), "--check"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+
+        # then
+        assert result.returncode == 0, result.stdout + result.stderr
+
+
 class TestWorkflows:
-    WORKFLOWS = Path(__file__).resolve().parent.parent / ".github/workflows"
+    WORKFLOWS = ROOT / ".github/workflows"
 
     @pytest.mark.parametrize("name", ["ci.yml", "release.yml"])
     def test_checkout_fetches_tags(self, name: str) -> None:

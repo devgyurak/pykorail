@@ -58,6 +58,13 @@ jobs:
       - name: ty check
         run: uv run ty check
 
+      - name: 생성물 최신인지 (unasync --check)
+        # src/pykorail/_sync · tests/_sync 는 _async 에서 생성합니다. 생성물이 뒤처진
+        # 채 머지되면 사람이 _sync 를 직접 고친 것과 같아져 다음 생성에서 사라지거나,
+        # 생성 규칙이 조용히 갈라집니다. tests/test_packaging.py 도 같은 검사를 하지만
+        # 그쪽은 파이썬 매트릭스마다 돌아 비용이 큽니다 — 여기서 한 번만 봅니다.
+        run: uv run python scripts/unasync.py --check
+
       - name: 워크플로 린트 (actionlint)
         # "워크플로를 고쳤으면 actionlint 를 돌려라"(AGENTS.md §6)는 사람에게만
         # 통하는 규칙입니다. Dependabot 은 그 문장을 읽지 않고 두 워크플로의 액션
