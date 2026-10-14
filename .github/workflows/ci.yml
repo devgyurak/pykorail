@@ -132,6 +132,19 @@ jobs:
     # 0.16.x 로 돌았고 Dependabot 은 하한을 건드리지 않기 때문입니다.
     # 3.11 한 곳만 보는 이유: 문제는 파이썬 버전이 아니라 의존성 하한이므로, 가장
     # 오래된 지원 버전에서 한 번만 확인하면 충분합니다.
+    #
+    # 이 환경변수 하나가 잡 전체의 해석 모드를 고정합니다. `uv sync --resolution
+    # lowest-direct` 뒤에 그냥 `uv run pytest` 를 돌리면, `uv run` 이 기본 해석
+    # (highest)으로 되돌리면서 최신 버전을 다시 깔아 **하한 테스트가 조용히 최신
+    # 버전 테스트가 됩니다** — 처음 이 잡을 그렇게 썼다가 0.7.0 하한에서도
+    # 초록으로 지나가는 걸 확인했습니다. 단계마다 `--no-sync` 를 붙이는 방법도
+    # 있지만, 앞으로 단계를 추가할 때마다 같은 함정에 빠집니다.
+    #
+    # 부수 효과로 dev 의존성(pytest==8.0.0 · pytest-cov==5.0.0 등)도 하한으로
+    # 깔립니다. 새 pytest 기능을 쓰는 테스트가 들어오면 이 잡이 먼저 빨개지는데,
+    # 그건 dev 하한도 정직하게 지킨다는 뜻이라 의도한 동작입니다.
+    env:
+      UV_RESOLUTION: lowest-direct
     steps:
       - uses: actions/checkout@v7
         with:
@@ -143,15 +156,19 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
+          # test (3.11) 과 Python·uv.lock 해시가 같아 캐시 키가 겹칩니다. 두 잡의
+          # 해석 결과(lowest vs highest)가 다르므로 캐시를 분리합니다.
+          cache-suffix: lowest
           python-version: "3.11"
 
       - name: 하한 버전으로 설치
         # `--frozen` 을 붙이지 않습니다 — lowest-direct 는 러너 안에서 uv.lock 을
         # 다시 써야 하기 때문입니다 (커밋되지 않으므로 저장소에는 영향이 없습니다).
-        run: uv sync --resolution lowest-direct --all-extras
+        run: uv sync --all-extras
 
       - name: 테스트 + 커버리지
         # 커버리지 하한(90%)은 pyproject 의 addopts 에 있어 여기서 다시 지정하지 않습니다.
+        # 해석 모드는 잡 env 의 UV_RESOLUTION 이 잡아 줍니다.
         run: uv run pytest
 
   build:
