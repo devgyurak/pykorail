@@ -26,7 +26,6 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -151,29 +150,32 @@ def generate(verbose: bool = True) -> None:
 
 
 def check() -> None:
-    """원본에서 다시 만든 결과가 커밋된 파일과 같은지 봅니다."""
+    """원본에서 다시 만든 결과가 커밋된 파일과 같은지 봅니다.
+
+    생성물을 **제자리에** 다시 만들고 ruff 를 건 뒤 커밋본과 비교합니다. 임시
+    디렉터리에 만들면 ruff 의 first-party 판정(``[tool.ruff] src``)이 파일 위치에
+    따라 달라져, 제자리 생성과 결과가 어긋납니다. 비교가 끝나면 원래 내용으로
+    되돌립니다.
+    """
     pairs = source_files()
     for source, target in pairs:
         check_leftovers(target.relative_to(ROOT).as_posix(), render(source))
     check_usages()
 
+    originals = {target: (target.read_text(encoding="utf-8") if target.exists() else "") for _, target in pairs}
     problems: list[str] = []
-    # 저장소 안에 임시로 만들어 ruff 가 pyproject 설정을 그대로 쓰게 합니다.
-    with tempfile.TemporaryDirectory(dir=ROOT, prefix=".unasync-check-") as tmp:
-        tmp_root = Path(tmp)
-        staged: list[tuple[Path, Path]] = []
+    try:
         for source, target in pairs:
-            staged_file = tmp_root / target.relative_to(ROOT)
-            staged_file.parent.mkdir(parents=True, exist_ok=True)
-            staged_file.write_text(render(source), encoding="utf-8")
-            staged.append((staged_file, target))
-        ruff_fix([staged_file for staged_file, _ in staged])
-
-        for staged_file, target in staged:
-            generated = staged_file.read_text(encoding="utf-8")
-            committed = target.read_text(encoding="utf-8") if target.exists() else ""
-            if generated != committed:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(render(source), encoding="utf-8")
+        ruff_fix([target for _, target in pairs])
+        for _, target in pairs:
+            generated = target.read_text(encoding="utf-8")
+            if generated != originals[target]:
                 problems.append(target.relative_to(ROOT).as_posix())
+    finally:
+        for target, text in originals.items():
+            target.write_text(text, encoding="utf-8")
 
     # 원본 없는 생성물(고아)도 잡습니다.
     expected = {target.resolve() for _, target in pairs}
