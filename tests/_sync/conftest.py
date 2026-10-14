@@ -89,6 +89,10 @@ class FakeSession:
         return self._respond("POST", url, kwargs)
 
     def close(self) -> None:
+        # 실제 curl_cffi 세션은 두 번째 close() 에서 TypeError 를 냅니다. 가짜도 똑같이 굴어
+        # 이중 close 보호가 실제로 일하는지 테스트가 잡을 수 있게 합니다.
+        if self.closed:
+            raise TypeError("세션을 두 번 닫았습니다")
         self.closed = True
 
     # ------------------------------------------------------------------ 헬퍼

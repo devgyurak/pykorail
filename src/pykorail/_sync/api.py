@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from pykorail.auth.signer import RequestSigner
     from pykorail.transport import HttpSession, Response
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("pykorail.api")
 
 
 @dataclass
@@ -62,6 +62,7 @@ class ApiClient:
         self._signer = signer
         self.verbose = verbose
         self.account = Account()
+        self._closed = False
 
     # ------------------------------------------------------------------- 전송
     def sign(self, url: str, *, include_sid: bool = True) -> tuple[dict[str, str], str | None]:
@@ -94,6 +95,12 @@ class ApiClient:
         return self._parse(self._session.post(url, **_kwargs(data=data, params=params, headers=headers)))
 
     def close(self) -> None:
+        # close() 를 두 번 불러도 안전하게 합니다. ``with`` 블록 안에서 직접 close() 를
+        # 부르면 블록을 나갈 때 __exit__ 이 한 번 더 닫습니다 — curl_cffi 의 세션은 그때
+        # TypeError 를 낼 수 있습니다.
+        if self._closed:
+            return
+        self._closed = True
         self._session.close()
 
     # ------------------------------------------------------------------- 해석

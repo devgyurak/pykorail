@@ -666,3 +666,30 @@ class TestDeviceProfile:
 
         # then
         assert before == DEFAULT_HEADERS
+
+
+class TestDoubleClose:
+    """curl_cffi 세션은 두 번째 close() 에서 납니다 — 두 번 닫아도 안전해야 합니다."""
+
+    def test_closing_twice_is_safe(self, make_korail) -> None:
+        # given
+        client, session = make_korail({})
+
+        # when
+        client.close()
+        client.close()
+
+        # then
+        assert session.closed
+
+    def test_leaving_the_context_after_an_explicit_close(self, make_korail) -> None:
+        """블록 안에서 close() 를 부른 뒤 나가도 __exit__ 이 한 번 더 닫지 않습니다."""
+        # given
+        client, session = make_korail({})
+
+        # when
+        with client:
+            client.close()
+
+        # then
+        assert session.closed
