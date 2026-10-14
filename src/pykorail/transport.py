@@ -4,6 +4,10 @@
 기본이고, 그걸 못 쓰는 환경(주로 Windows 의 libcurl DLL 로드 실패)에서만
 requests 로 내려앉습니다 — 이때는 python-requests 지문이 나가 로그인이 거부될 수
 있으므로 경고를 남깁니다.
+
+비동기 세션(:func:`create_async_session`)에는 이 폴백이 없습니다 — requests 에는
+비동기 세션이 없고, 폴백을 만들려면 httpx 같은 새 의존성이 필요한데 그 지문으로도
+로그인이 거부될 수 있어서입니다.
 """
 
 from __future__ import annotations
@@ -59,6 +63,33 @@ class HttpSession(Protocol):
     def close(self) -> None: ...
 
 
+class AsyncResponse(Protocol):
+    """curl_cffi ``AsyncSession`` 응답의 공통 최소 표면."""
+
+    @property
+    def status_code(self) -> int: ...
+
+    @property
+    def text(self) -> str: ...
+
+
+class AsyncHttpSession(Protocol):
+    """curl_cffi ``AsyncSession`` 의 최소 표면.
+
+    :class:`HttpSession` 과 달리 폴백이 없습니다 — requests 에는 비동기 세션이
+    없고, httpx 같은 새 의존성을 들이면 TLS 지문이 달라져 로그인이 거부될 수
+    있습니다. 그래서 메서드가 전부 코루틴입니다.
+    """
+
+    headers: MutableMapping[str, str]
+
+    async def get(self, url: str, **kwargs: Any) -> AsyncResponse: ...
+
+    async def post(self, url: str, **kwargs: Any) -> AsyncResponse: ...
+
+    async def close(self) -> None: ...
+
+
 def resolve_ca_bundle() -> str | None:
     """존재가 확인된 CA 번들 경로, 없으면 ``None``.
 
@@ -111,6 +142,31 @@ def create_session(headers: Mapping[str, str] | None = None, impersonate: str = 
     else:  # pragma: no cover - 환경 의존
         session = _create_fallback_session()
 
+    if headers:
+        session.headers.update(dict(headers))
+    return session
+
+
+def create_async_session(headers: Mapping[str, str] | None = None, impersonate: str = IMPERSONATE) -> AsyncHttpSession:
+    """기본 헤더가 적용된 비동기 HTTP 세션을 만듭니다.
+
+    :func:`create_session` 과 달리 requests 폴백이 없습니다. curl_cffi 를 쓸 수 없으면
+    :class:`~pykorail.exceptions.TransportError` 로 안내합니다.
+
+    ``headers`` 는 복사해서 적용하므로 호출자의 dict 를 오염시키지 않습니다.
+    """
+    if curl_cffi is None:
+        # 동기 쪽은 requests 로 내려앉지만, 여기서는 그럴 곳이 없습니다.
+        raise TransportError(
+            f"비동기 세션은 curl_cffi 가 필요합니다. `pip install curl_cffi` 를 실행하세요: {CURL_CFFI_IMPORT_ERROR}"
+        )
+
+    ca_bundle = resolve_ca_bundle()
+    # 앱의 UA만 덮어쓰면 Chrome 탐색용 Sec-Fetch/Client-Hint 헤더가 섞입니다.
+    kwargs: dict[str, Any] = {"impersonate": impersonate, "default_headers": False}
+    if ca_bundle:
+        kwargs["verify"] = ca_bundle
+    session = cast("AsyncHttpSession", curl_cffi.AsyncSession(**kwargs))
     if headers:
         session.headers.update(dict(headers))
     return session
