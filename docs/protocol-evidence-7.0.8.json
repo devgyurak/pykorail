@@ -1239,7 +1239,7 @@
           "values": "0–9 · Y · N (한 글자씩)"
         },
         "result": "13번 모두 strResult=SUCC · h_msg_cd=IRG000000 에 42행. 행 · 잔여 좌석 수(gnrmRestSeatNum) · 봉투(strResult · h_msg_cd · h_msg_txt · msgCd · msgTxt · lgtmShtmDvCd · fllwPgExt)가 모두 같았음.",
-        "inference": "ScdlQryIn 안에서 0 · 1 · 2 · 4 · 5 는 rsvSaleDvCd 의 기본값과 다른 암호문 호출로 쓰임. 전제(같은 클래스의 같은 문자열은 같은 호출)의 역은 검증하지 않았으나, 그 전제가 맞다면 앱의 값은 이 다섯이 아님 — 추론.",
+        "inference": "ScdlQryIn 안에서 0 · 1 · 2 · 4 · 5 는 rsvSaleDvCd 의 기본값과 다른 암호문 호출로 쓰임. 모델 클래스 파일에서 같은 숫자가 호출 하나로만 쓰인 것이 5,857쌍 가운데 5,847쌍이라, 앱의 값은 이 다섯이 아닐 가능성이 높음 — 예외가 10쌍 있어 추론.",
         "conclusion": "이 구간 · 날짜에서 값의 유무와 0–9 · Y · N 이 응답에 드러나는 차이를 만들지 않음. 앱이 싣는 평문은 여전히 미상이라 pykorail 은 필드를 넣지 않는 쪽을 유지.",
         "limits": [
           "광명역 → 인천공항T1 의 2026-10-15 하루치 한 구간만 봄.",
