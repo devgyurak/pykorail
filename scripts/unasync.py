@@ -41,6 +41,9 @@ PAIRS = (
 #: ``create_async_session`` 이 ``_async`` 규칙보다 먼저 와야 합니다. 반대로 두면
 #: ``create_async_session`` 이 ``create_sync_session`` 이 되어 버립니다.
 RAW_SUBS: tuple[tuple[str, str], ...] = (
+    # 로거 이름은 문자열 리터럴로만 바꿉니다. import 경로(`from pykorail._async.api import ...`)는
+    # 건드리지 않아야 합니다 — 따옴표까지 포함해 그 줄만 겨냥합니다.
+    (r'"pykorail\._async\.api"', '"pykorail.api"'),
     (r"create_async_session", "create_session"),
     # ``Async`` 뒤에 대문자 이름이 올 때만 뗍니다. ``unasync`` 같은 소문자 단어와
     # ``asyncio`` 는 건드리지 않습니다.
@@ -164,7 +167,7 @@ def check() -> None:
         check_leftovers(target.relative_to(ROOT).as_posix(), render(source))
     check_usages()
 
-    originals = {target: (target.read_text(encoding="utf-8") if target.exists() else "") for _, target in pairs}
+    originals = {target: (target.read_text(encoding="utf-8") if target.exists() else None) for _, target in pairs}
     problems: list[str] = []
     try:
         for source, target in pairs:
@@ -176,8 +179,12 @@ def check() -> None:
             if generated != originals[target]:
                 problems.append(target.relative_to(ROOT).as_posix())
     finally:
+        # 원래 없던 생성물은 빈 파일로 남기지 않고 지웁니다.
         for target, text in originals.items():
-            target.write_text(text, encoding="utf-8")
+            if text is None:
+                target.unlink(missing_ok=True)
+            else:
+                target.write_text(text, encoding="utf-8")
 
     # 원본 없는 생성물(고아)도 잡습니다.
     expected = {target.resolve() for _, target in pairs}
