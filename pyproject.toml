@@ -26,7 +26,11 @@ classifiers = [
 ]
 dependencies = [
     "certifi>=2024.2.2",
-    "curl-cffi>=0.7.0",
+    # 하한을 0.10.0 으로 두는 이유: 0.9.x 이하에는 최상위 `curl_cffi.Session` 이
+    # 없습니다 (0.10.0 에서 처음 생겼습니다). transport.py 가 그 이름을 직접 쓰므로
+    # 하한을 낮추면 `Korail()` 이 `AttributeError` 로 즉시 죽습니다 — 폴백도 안 탑니다
+    # (import 자체는 성공하니까요). CI 의 `lowest` 잡이 이 하한을 실제로 검증합니다.
+    "curl-cffi>=0.10.0",
     "pycryptodome>=3.20.0",
 ]
 

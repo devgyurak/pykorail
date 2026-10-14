@@ -122,6 +122,38 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  lowest:
+    name: 하한 의존성 (3.11)
+    runs-on: ubuntu-latest
+    # `pyproject.toml` 의 `>=` 하한을 실제로 검증하는 유일한 잡입니다. 나머지 잡은
+    # uv.lock 의 최신 버전으로만 돌아서, **선언한 하한이 깨져 있어도 초록**입니다.
+    # 실제로 curl-cffi 를 `>=0.7.0` 으로 선언해 두고도 0.7.0 에는 최상위
+    # `curl_cffi.Session` 이 없어 `Korail()` 이 즉시 죽는 걸 놓쳤습니다 — CI 는 늘
+    # 0.16.x 로 돌았고 Dependabot 은 하한을 건드리지 않기 때문입니다.
+    # 3.11 한 곳만 보는 이유: 문제는 파이썬 버전이 아니라 의존성 하한이므로, 가장
+    # 오래된 지원 버전에서 한 번만 확인하면 충분합니다.
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # hatch-vcs 가 태그를 읽어야 버전이 나옵니다 (test_packaging 이 요구).
+          fetch-depth: 0
+
+      - name: uv 설치
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          python-version: "3.11"
+
+      - name: 하한 버전으로 설치
+        # `--frozen` 을 붙이지 않습니다 — lowest-direct 는 러너 안에서 uv.lock 을
+        # 다시 써야 하기 때문입니다 (커밋되지 않으므로 저장소에는 영향이 없습니다).
+        run: uv sync --resolution lowest-direct --all-extras
+
+      - name: 테스트 + 커버리지
+        # 커버리지 하한(90%)은 pyproject 의 addopts 에 있어 여기서 다시 지정하지 않습니다.
+        run: uv run pytest
+
   build:
     name: 빌드 · 설치 확인
     runs-on: ubuntu-latest
@@ -283,7 +315,7 @@ jobs:
   ci-ok:
     name: ci-ok
     runs-on: ubuntu-latest
-    needs: [lint, test, build, security, release-source]
+    needs: [lint, test, lowest, build, security, release-source]
     if: always()
     steps:
       - name: 선행 잡 결과 확인
