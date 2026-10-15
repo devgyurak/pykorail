@@ -16,9 +16,11 @@ model: sonnet
 의존은 한 방향입니다:
 `client → resources → api → auth → crypto/transport`, 그리고 모두가
 `models`/`exceptions`/`constants`/`options`/`device`/`_shared` 에 의존할 수 있습니다.
+`netfunnel.py` 는 예외로 `ApiClient` 없이 `transport` 를 직접 씁니다(대기열은 앱
+엔드포인트가 아니라 별도 게이트입니다).
 I/O 계층은 비동기 원본(`src/pykorail/_async`)과 생성물(`src/pykorail/_sync`)로만
 갈라집니다 — 둘은 같은 내용이어야 하고, 공개 경로(`client.py`·`api.py`·
-`resources/`)는 `_sync` 를 재수출하는 shim 입니다.
+`resources/`·`auth/netfunnel.py`)는 `_sync` 를 재수출하는 shim 입니다.
 
 위반 예:
 - `models/` 나 `exceptions/` 가 `resources`/`api`/`client`/`transport` 를 import

@@ -33,7 +33,7 @@ from importlib import metadata
 
 from pykorail import _compat as _compat  # 최소 파이썬 버전 강제 — 다른 임포트보다 먼저
 from pykorail._async.client import AsyncKorail
-from pykorail.auth import NetFunnelHelper
+from pykorail.auth import AsyncNetFunnelHelper, NetFunnelHelper
 from pykorail.client import Korail
 from pykorail.device import DeviceProfile, DeviceProfileLike, profile_by_id, random_profile
 from pykorail.exceptions import (
@@ -121,6 +121,7 @@ __all__ = [
     "AdultPassenger",
     "AirportBus",
     "AsyncKorail",
+    "AsyncNetFunnelHelper",
     "BusStop",
     "Car",
     "CarSeat",

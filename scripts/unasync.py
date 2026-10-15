@@ -46,6 +46,9 @@ RAW_SUBS: tuple[tuple[str, str], ...] = (
     # import 경로(`from pykorail._async.api import ...`)는 건드리지 않아야 하므로 따옴표까지
     # 포함해 그 줄만 겨냥합니다.
     (r'"pykorail\.api\.async"', '"pykorail.api"'),
+    # NetFunnel 대기열의 로거도 같은 방식입니다 — 동기 쪽 ``pykorail.auth.netfunnel``,
+    # 원본은 그 하위인 ``pykorail.auth.netfunnel.async``.
+    (r'"pykorail\.auth\.netfunnel\.async"', '"pykorail.auth.netfunnel"'),
     (r"create_async_session", "create_session"),
     # ``Async`` 뒤에 대문자 이름이 올 때만 뗍니다. ``unasync`` 같은 소문자 단어와
     # ``asyncio`` 는 건드리지 않습니다.
@@ -55,6 +58,13 @@ RAW_SUBS: tuple[tuple[str, str], ...] = (
     (r"\bawait\b +", ""),
     (r"__aenter__", "__enter__"),
     (r"__aexit__", "__exit__"),
+    # 폴링 대기만 겨냥합니다. 치환 패턴을 ``\basyncio\b`` 로 넓히면 ``asyncio.gather``
+    # 같은 다른 사용까지 ``time`` 으로 잘못 바뀝니다 — 못 바꾼 자리는 아래 흔적
+    # 검사(``\basyncio\b``)가 잡습니다.
+    (r"\basyncio\.sleep\b", "time.sleep"),
+    # 생성물에는 ``import time`` 이 이미 있습니다. 여기서 한 줄 더 만들지만,
+    # ``ruff_fix`` 의 isort(``--select I``)가 같은 import 를 합쳐 줍니다.
+    (r"(?m)^import asyncio$", "import time"),
     (r"_async", "_sync"),
 )
 
@@ -69,6 +79,9 @@ LEFTOVERS = (
     re.compile(r"create_async_session"),
     re.compile(r"_async"),
     re.compile(r"비동기"),
+    # ``asyncio`` 는 ``\basync\b`` 에 걸리지 않습니다(뒤에 ``i`` 가 붙어 단어 경계가
+    # 없음). ``sleep`` 말고 다른 ``asyncio`` 사용이 동기 파일로 새는 것을 잡습니다.
+    re.compile(r"\basyncio\b"),
 )
 
 HEADER = (

@@ -1,140 +1,34 @@
-"""NetFunnel 대기열 게이트 (``nf.letskorail.com``).
+"""NetFunnel 대기열 재수출 shim.
 
-접속 폭주 때 코레일 앞단에 서는 대기열입니다. 통과 티켓(key)을 받아 두면
-잠깐 재사용할 수 있어 캐시합니다.
-
-**클라이언트는 이 모듈을 쓰지 않습니다 — 의도된 것입니다.** 대기열은 코레일 웹
-프런트가 통과하는 관문이고, 이 패키지가 쓰는 스마트 앱 엔드포인트
-(``smart.letskorail.com``)는 대기열 뒤에 있지 않습니다. 명절 예매처럼 앱 경로에도
-대기열이 붙는 상황을 만나면 직접 꺼내 쓸 수 있도록 공개 유틸리티로 남겨 둡니다::
-
-    from pykorail import NetFunnelHelper
-
-    key = NetFunnelHelper().run()  # 통과할 때까지 블로킹
-
-:class:`~pykorail.client.Korail` 에 자동으로 엮지 않은 이유는, 필요 없는 상황에서
-매 요청마다 외부 게이트를 때리는 비용과 실패 지점이 생기기 때문입니다.
+실제 구현은 :mod:`pykorail._sync.netfunnel`(동기)과 :mod:`pykorail._async.netfunnel`
+(비동기) 에 있습니다. ``pykorail.auth.netfunnel`` 을 직접 import 하던 코드가 옛 이름을
+계속 찾을 수 있도록, develop 이 모듈 속성으로 노출하던 이름을 그대로 다시 실어 둡니다.
+빠진 이름은 :func:`__getattr__` 이 ``_impl`` 에서 위임합니다.
 """
 
 from __future__ import annotations
 
-import logging
-import time
-from typing import ClassVar, Final
+from pykorail._async.netfunnel import AsyncNetFunnelHelper
+from pykorail._sync import netfunnel as _impl
 
-from pykorail.exceptions import NetFunnelError
-from pykorail.transport import create_session
+NETFUNNEL_HEADERS = _impl.NETFUNNEL_HEADERS
+NETFUNNEL_URL = _impl.NETFUNNEL_URL
+NetFunnelError = _impl.NetFunnelError
+NetFunnelHelper = _impl.NetFunnelHelper
+create_session = _impl.create_session
+logger = _impl.logger
 
-logger = logging.getLogger(__name__)
+__all__ = [
+    "NETFUNNEL_HEADERS",
+    "NETFUNNEL_URL",
+    "AsyncNetFunnelHelper",
+    "NetFunnelError",
+    "NetFunnelHelper",
+    "create_session",
+    "logger",
+]
 
-NETFUNNEL_URL: Final = "http://nf.letskorail.com/ts.wseq"
 
-NETFUNNEL_HEADERS: Final[dict[str, str]] = {
-    "Host": "nf.letskorail.com",
-    "Connection": "Keep-Alive",
-    "User-Agent": "Apache-HttpClient/UNAVAILABLE (java 1.4)",
-}
-
-
-class NetFunnelHelper:
-    """대기열을 통과해 티켓(key)을 얻습니다.
-
-    :meth:`run` 이 유일한 진입점입니다. 대기 줄이 있으면 통과할 때까지 1초 간격으로
-    폴링하므로 **블로킹**됩니다.
-    """
-
-    WAIT_STATUS_PASS: ClassVar[str] = "200"
-    WAIT_STATUS_FAIL: ClassVar[str] = "201"
-    ALREADY_COMPLETED: ClassVar[str] = "502"
-
-    OP_CODE: ClassVar[dict[str, str]] = {
-        "getTidchkEnter": "5101",
-        "chkEnter": "5002",
-        "setComplete": "5004",
-    }
-
-    #: 티켓 재사용 시간(초). 서버 만료보다 짧게 잡아 아슬아슬한 재사용을 피합니다.
-    CACHE_TTL: ClassVar[float] = 50.0
-
-    def __init__(self) -> None:
-        self._session = create_session(NETFUNNEL_HEADERS)
-        self._cached_key: str | None = None
-        self._last_fetch_time = 0.0
-
-    def run(self) -> str | None:
-        """통과 티켓을 돌려줍니다. 캐시가 살아 있으면 재사용합니다.
-
-        Raises:
-            NetFunnelError: 대기열 통과에 실패했습니다. 캐시는 비워집니다.
-        """
-        now = time.time()
-        if self._is_cache_valid(now):
-            return self._cached_key
-
-        try:
-            status, self._cached_key, nwait = self._start()
-            self._last_fetch_time = now
-
-            while status == self.WAIT_STATUS_FAIL:
-                logger.debug("현재 %s명 대기중", nwait)
-                time.sleep(1)
-                status, self._cached_key, nwait = self._check()
-
-            status, _, _ = self._complete()
-            if status in (self.WAIT_STATUS_PASS, self.ALREADY_COMPLETED):
-                return self._cached_key
-
-            self.clear()
-            raise NetFunnelError("Failed to complete NetFunnel")
-
-        except NetFunnelError:
-            self.clear()
-            raise
-        except Exception as exc:
-            self.clear()
-            raise NetFunnelError(str(exc)) from exc
-
-    def clear(self) -> None:
-        """캐시된 티켓을 버립니다."""
-        self._cached_key = None
-        self._last_fetch_time = 0.0
-
-    # ------------------------------------------------------------------- 내부
-    def _start(self) -> tuple[str | None, str | None, str | None]:
-        return self._make_request("getTidchkEnter")
-
-    def _check(self) -> tuple[str | None, str | None, str | None]:
-        return self._make_request("chkEnter")
-
-    def _complete(self) -> tuple[str | None, str | None, str | None]:
-        return self._make_request("setComplete")
-
-    def _make_request(self, operation: str) -> tuple[str | None, str | None, str | None]:
-        params = self._build_params(self.OP_CODE[operation])
-        parsed = self._parse(self._session.get(NETFUNNEL_URL, params=params).text)
-        return parsed.get("status"), parsed.get("key"), parsed.get("nwait")
-
-    def _build_params(self, opcode: str, key: str | None = None) -> dict[str, str]:
-        params: dict[str, str] = {"opcode": opcode}
-
-        if opcode in (self.OP_CODE["getTidchkEnter"], self.OP_CODE["chkEnter"]):
-            params.update({"sid": "service_1", "aid": "act_8"})
-            if opcode == self.OP_CODE["chkEnter"]:
-                params.update({"key": key or self._cached_key or "", "ttl": "1"})
-        elif opcode == self.OP_CODE["setComplete"]:
-            params["key"] = key or self._cached_key or ""
-
-        return params
-
-    @staticmethod
-    def _parse(response: str) -> dict[str, str]:
-        status, _, params_str = response.partition(":")
-        if not params_str:
-            raise NetFunnelError("Failed to parse NetFunnel response")
-
-        parsed = dict(param.split("=", 1) for param in params_str.split("&") if "=" in param)
-        parsed["status"] = status
-        return parsed
-
-    def _is_cache_valid(self, now: float) -> bool:
-        return bool(self._cached_key) and (now - self._last_fetch_time) < self.CACHE_TTL
+def __getattr__(name: str) -> object:
+    """``_impl`` 이 노출하는 나머지 이름을 위임합니다 (하위 호환)."""
+    return getattr(_impl, name)

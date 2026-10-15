@@ -1,6 +1,7 @@
 """테스트가 공유하는 코레일 응답 페이로드 샘플.
 
 필드 이름과 모양은 실제 응답에서 온 것입니다 — 새 필드를 지어내지 마세요.
+맨 아래의 NetFunnel 골든만 요청(헤더·params)이고, 그 밖의 값은 응답입니다.
 """
 
 from __future__ import annotations
@@ -703,3 +704,26 @@ TRANSFER_FARE_PAYLOAD = {
         },
     ],
 }
+
+#: NetFunnel 대기열 게이트에 실려 나가는 헤더. 이 값이 바뀌면 코레일 앞단이 거절합니다.
+NETFUNNEL_HEADERS_GOLDEN = {
+    "Host": "nf.letskorail.com",
+    "Connection": "Keep-Alive",
+    "User-Agent": "Apache-HttpClient/UNAVAILABLE (java 1.4)",
+}
+
+#: 대기 → 대기 → 통과 → 완료 흐름에서 나가야 하는 요청 순서(url + params).
+#: opcode 순서(5101 → 5002 → 5004)와 sid·aid·key·ttl 이 하나라도 달라지면 대기열을
+#: 통과하지 못합니다. 동기판과 비동기판이 **같은** 이 값을 만족해야 합니다.
+NETFUNNEL_CALLS_GOLDEN = [
+    {"url": "http://nf.letskorail.com/ts.wseq", "params": {"opcode": "5101", "sid": "service_1", "aid": "act_8"}},
+    {
+        "url": "http://nf.letskorail.com/ts.wseq",
+        "params": {"opcode": "5002", "sid": "service_1", "aid": "act_8", "key": "TICKET-1", "ttl": "1"},
+    },
+    {
+        "url": "http://nf.letskorail.com/ts.wseq",
+        "params": {"opcode": "5002", "sid": "service_1", "aid": "act_8", "key": "TICKET-1", "ttl": "1"},
+    },
+    {"url": "http://nf.letskorail.com/ts.wseq", "params": {"opcode": "5004", "key": "TICKET-1"}},
+]

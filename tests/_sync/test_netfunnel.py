@@ -1,13 +1,18 @@
+# 이 파일은 생성물입니다 — 직접 고치지 마세요.
+# 원본: tests/_async/test_netfunnel.py
+# 다시 만들려면: uv run python scripts/unasync.py
 """NetFunnel 대기열 게이트."""
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import Any
 
 import pytest
 
-from pykorail.auth.netfunnel import NETFUNNEL_URL, NetFunnelHelper
+from pykorail._sync.netfunnel import NETFUNNEL_URL, NetFunnelHelper
 from pykorail.exceptions import NetFunnelError
+from tests.payloads import NETFUNNEL_CALLS_GOLDEN, NETFUNNEL_HEADERS_GOLDEN
 
 PASS = "200:key=TICKET-1&nwait=0"
 WAIT = "201:key=TICKET-1&nwait=42"
@@ -40,11 +45,30 @@ class FakeSession:
         pass
 
 
+class Sleeper:
+    """폴링 대기(``sleep``)를 가로채 호출 기록만 남깁니다.
+
+    동기 생성물은 반환값을 버리고, 이 원본은 기다려야 하므로 대역 자체가
+    ``__await__`` 을 갖습니다 — 그래야 양쪽에서 안전합니다. 진짜 ``sleep`` 을 놔두면
+    이 시험 하나가 몇 초를 잡아먹습니다.
+    """
+
+    def __init__(self) -> None:
+        self.calls: list[float] = []
+
+    def __call__(self, seconds: float) -> Sleeper:
+        self.calls.append(seconds)
+        return self
+
+    def __await__(self) -> Iterator[None]:
+        return iter(())
+
+
 @pytest.fixture
 def make_helper(monkeypatch: pytest.MonkeyPatch):
     def factory(script: list[str]) -> tuple[NetFunnelHelper, FakeSession]:
         session = FakeSession(script)
-        monkeypatch.setattr("pykorail.auth.netfunnel.create_session", lambda headers: session)
+        monkeypatch.setattr("pykorail._sync.netfunnel.create_session", lambda headers: session)
         return NetFunnelHelper(), session
 
     return factory
@@ -74,7 +98,8 @@ class TestRun:
 
     def test_polls_while_queued(self, make_helper, monkeypatch) -> None:
         # given
-        monkeypatch.setattr("pykorail.auth.netfunnel.time.sleep", lambda _: None)
+        sleeper = Sleeper()
+        monkeypatch.setattr("pykorail._sync.netfunnel.time.sleep", sleeper)
         helper, session = make_helper([WAIT, WAIT, PASS, COMPLETE])
 
         # when
@@ -83,6 +108,7 @@ class TestRun:
         # then
         assert key == "TICKET-1"
         assert len(session.calls) == 4, "대기 두 번 + 통과 + 완료"
+        assert sleeper.calls == [1, 1], "폴링은 주입한 sleep 대역을 거쳐야 합니다"
 
     def test_uses_the_queue_url(self, make_helper) -> None:
         # given
@@ -121,7 +147,7 @@ class TestRun:
             def get(self, url: str, **kwargs: Any) -> FakeResponse:
                 raise OSError("연결 실패")
 
-        monkeypatch.setattr("pykorail.auth.netfunnel.create_session", lambda headers: Exploding())
+        monkeypatch.setattr("pykorail._sync.netfunnel.create_session", lambda headers: Exploding())
 
         # when & then
         with pytest.raises(NetFunnelError, match="연결 실패"):
@@ -222,3 +248,35 @@ class TestParams:
 
         # then
         assert params["key"] == ""
+
+
+class TestWireGolden:
+    """같은 요청을 보내는지 겨루는 기준선 — 구현이 어긋나면 여기서 드러납니다."""
+
+    def test_headers_match_the_golden(self, monkeypatch) -> None:
+        # given
+        captured: dict[str, str] = {}
+
+        def fake_create_session(headers: dict[str, str]) -> FakeSession:
+            captured.update(headers)
+            return FakeSession([PASS, COMPLETE])
+
+        monkeypatch.setattr("pykorail._sync.netfunnel.create_session", fake_create_session)
+
+        # when
+        NetFunnelHelper().run()
+
+        # then
+        assert captured == NETFUNNEL_HEADERS_GOLDEN
+
+    def test_requests_match_the_golden(self, make_helper, monkeypatch) -> None:
+        # given
+        monkeypatch.setattr("pykorail._sync.netfunnel.time.sleep", Sleeper())
+        helper, session = make_helper([WAIT, WAIT, PASS, COMPLETE])
+
+        # when
+        helper.run()
+
+        # then
+        calls = [{"url": call["url"], "params": call["params"]} for call in session.calls]
+        assert calls == NETFUNNEL_CALLS_GOLDEN

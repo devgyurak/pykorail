@@ -697,7 +697,7 @@ class TestDoubleClose:
 
 class TestNoRunningLoopRequired:
     def test_the_client_can_be_created_outside_an_event_loop(self, make_korail) -> None:
-        """생성자는 동기라 asyncio.run 안이 아니어도 객체를 만들 수 있어야 합니다."""
+        """생성자는 요청을 보내지 않으니 이벤트 루프 밖에서도 객체를 만들 수 있어야 합니다."""
         # when
         client, session = make_korail({})
 

@@ -1,0 +1,279 @@
+"""NetFunnel 대기열 게이트."""
+
+from __future__ import annotations
+
+from collections.abc import Iterator
+from typing import Any
+
+import pytest
+
+from pykorail._async.netfunnel import NETFUNNEL_URL, AsyncNetFunnelHelper
+from pykorail.exceptions import NetFunnelError
+from tests.payloads import NETFUNNEL_CALLS_GOLDEN, NETFUNNEL_HEADERS_GOLDEN
+
+PASS = "200:key=TICKET-1&nwait=0"
+WAIT = "201:key=TICKET-1&nwait=42"
+COMPLETE = "200:key=TICKET-1"
+ALREADY = "502:key=TICKET-1"
+BROKEN = "200"
+
+
+class FakeResponse:
+    def __init__(self, text: str) -> None:
+        self.text = text
+
+
+class FakeSession:
+    """미리 정한 순서대로 응답을 돌려주는 세션."""
+
+    def __init__(self, script: list[str]) -> None:
+        self.headers: dict[str, str] = {}
+        self.script = list(script)
+        self.calls: list[dict[str, Any]] = []
+
+    async def get(self, url: str, **kwargs: Any) -> FakeResponse:
+        self.calls.append({"url": url, **kwargs})
+        return FakeResponse(self.script.pop(0))
+
+    async def post(self, url: str, **kwargs: Any) -> FakeResponse:  # pragma: no cover - 미사용
+        raise AssertionError("NetFunnel 은 GET 만 씁니다")
+
+    async def close(self) -> None:  # pragma: no cover - 미사용
+        pass
+
+
+class Sleeper:
+    """폴링 대기(``sleep``)를 가로채 호출 기록만 남깁니다.
+
+    동기 생성물은 반환값을 버리고, 이 원본은 기다려야 하므로 대역 자체가
+    ``__await__`` 을 갖습니다 — 그래야 양쪽에서 안전합니다. 진짜 ``sleep`` 을 놔두면
+    이 시험 하나가 몇 초를 잡아먹습니다.
+    """
+
+    def __init__(self) -> None:
+        self.calls: list[float] = []
+
+    def __call__(self, seconds: float) -> Sleeper:
+        self.calls.append(seconds)
+        return self
+
+    def __await__(self) -> Iterator[None]:
+        return iter(())
+
+
+@pytest.fixture
+def make_helper(monkeypatch: pytest.MonkeyPatch):
+    def factory(script: list[str]) -> tuple[AsyncNetFunnelHelper, FakeSession]:
+        session = FakeSession(script)
+        monkeypatch.setattr("pykorail._async.netfunnel.create_async_session", lambda headers: session)
+        return AsyncNetFunnelHelper(), session
+
+    return factory
+
+
+class TestRun:
+    async def test_passes_straight_through(self, make_helper) -> None:
+        # given
+        helper, session = make_helper([PASS, COMPLETE])
+
+        # when
+        key = await helper.run()
+
+        # then
+        assert key == "TICKET-1"
+        assert len(session.calls) == 2
+
+    async def test_already_completed_counts_as_success(self, make_helper) -> None:
+        # given
+        helper, _ = make_helper([PASS, ALREADY])
+
+        # when
+        key = await helper.run()
+
+        # then
+        assert key == "TICKET-1"
+
+    async def test_polls_while_queued(self, make_helper, monkeypatch) -> None:
+        # given
+        sleeper = Sleeper()
+        monkeypatch.setattr("pykorail._async.netfunnel.asyncio.sleep", sleeper)
+        helper, session = make_helper([WAIT, WAIT, PASS, COMPLETE])
+
+        # when
+        key = await helper.run()
+
+        # then
+        assert key == "TICKET-1"
+        assert len(session.calls) == 4, "대기 두 번 + 통과 + 완료"
+        assert sleeper.calls == [1, 1], "폴링은 주입한 sleep 대역을 거쳐야 합니다"
+
+    async def test_uses_the_queue_url(self, make_helper) -> None:
+        # given
+        helper, session = make_helper([PASS, COMPLETE])
+
+        # when
+        await helper.run()
+
+        # then
+        assert session.calls[0]["url"] == NETFUNNEL_URL
+
+    async def test_completion_failure_raises_and_clears(self, make_helper) -> None:
+        # given
+        helper, _ = make_helper([PASS, "999:key=X"])
+
+        # when
+        with pytest.raises(NetFunnelError, match="complete"):
+            await helper.run()
+
+        # then
+        assert helper._cached_key is None
+
+    async def test_unparseable_response_raises(self, make_helper) -> None:
+        # given
+        helper, _ = make_helper([BROKEN])
+
+        # when & then
+        with pytest.raises(NetFunnelError, match="parse"):
+            await helper.run()
+
+    async def test_transport_failure_is_wrapped(self, monkeypatch) -> None:
+        # given
+        class Exploding:
+            headers: dict[str, str] = {}
+
+            async def get(self, url: str, **kwargs: Any) -> FakeResponse:
+                raise OSError("연결 실패")
+
+        monkeypatch.setattr("pykorail._async.netfunnel.create_async_session", lambda headers: Exploding())
+
+        # when & then
+        with pytest.raises(NetFunnelError, match="연결 실패"):
+            await AsyncNetFunnelHelper().run()
+
+
+class TestCache:
+    async def test_second_run_reuses_the_ticket(self, make_helper) -> None:
+        # given
+        helper, session = make_helper([PASS, COMPLETE])
+        await helper.run()
+
+        # when
+        key = await helper.run()
+
+        # then
+        assert key == "TICKET-1"
+        assert len(session.calls) == 2, "캐시가 살아 있으면 추가 요청이 없어야 합니다"
+
+    async def test_clear_forces_a_refetch(self, make_helper) -> None:
+        # given
+        helper, session = make_helper([PASS, COMPLETE, PASS, COMPLETE])
+        await helper.run()
+
+        # when
+        helper.clear()
+        await helper.run()
+
+        # then
+        assert len(session.calls) == 4
+
+    async def test_expired_cache_refetches(self, make_helper) -> None:
+        # given
+        helper, session = make_helper([PASS, COMPLETE, PASS, COMPLETE])
+        await helper.run()
+
+        # when
+        helper._last_fetch_time -= helper.CACHE_TTL + 1
+        await helper.run()
+
+        # then
+        assert len(session.calls) == 4
+
+
+class TestParams:
+    @pytest.mark.parametrize(
+        ("operation", "expected_opcode"),
+        [("getTidchkEnter", "5101"), ("chkEnter", "5002"), ("setComplete", "5004")],
+    )
+    def test_opcodes(self, make_helper, operation: str, expected_opcode: str) -> None:
+        # given
+        helper, _ = make_helper([])
+
+        # when
+        params = helper._build_params(helper.OP_CODE[operation])
+
+        # then
+        assert params["opcode"] == expected_opcode
+
+    def test_enter_carries_service_ids(self, make_helper) -> None:
+        # given
+        helper, _ = make_helper([])
+
+        # when
+        params = helper._build_params(helper.OP_CODE["getTidchkEnter"])
+
+        # then
+        assert params["sid"] == "service_1"
+        assert params["aid"] == "act_8"
+
+    def test_check_carries_the_key(self, make_helper) -> None:
+        # given
+        helper, _ = make_helper([])
+
+        # when
+        params = helper._build_params(helper.OP_CODE["chkEnter"], key="K")
+
+        # then
+        assert params["key"] == "K"
+        assert params["ttl"] == "1"
+
+    def test_complete_carries_the_key(self, make_helper) -> None:
+        # given
+        helper, _ = make_helper([])
+
+        # when
+        params = helper._build_params(helper.OP_CODE["setComplete"], key="K")
+
+        # then
+        assert params["key"] == "K"
+
+    def test_missing_key_becomes_empty_string(self, make_helper) -> None:
+        # given
+        helper, _ = make_helper([])
+
+        # when
+        params = helper._build_params(helper.OP_CODE["setComplete"])
+
+        # then
+        assert params["key"] == ""
+
+
+class TestWireGolden:
+    """같은 요청을 보내는지 겨루는 기준선 — 구현이 어긋나면 여기서 드러납니다."""
+
+    async def test_headers_match_the_golden(self, monkeypatch) -> None:
+        # given
+        captured: dict[str, str] = {}
+
+        def fake_create_async_session(headers: dict[str, str]) -> FakeSession:
+            captured.update(headers)
+            return FakeSession([PASS, COMPLETE])
+
+        monkeypatch.setattr("pykorail._async.netfunnel.create_async_session", fake_create_async_session)
+
+        # when
+        await AsyncNetFunnelHelper().run()
+
+        # then
+        assert captured == NETFUNNEL_HEADERS_GOLDEN
+
+    async def test_requests_match_the_golden(self, make_helper, monkeypatch) -> None:
+        # given
+        monkeypatch.setattr("pykorail._async.netfunnel.asyncio.sleep", Sleeper())
+        helper, session = make_helper([WAIT, WAIT, PASS, COMPLETE])
+
+        # when
+        await helper.run()
+
+        # then
+        calls = [{"url": call["url"], "params": call["params"]} for call in session.calls]
+        assert calls == NETFUNNEL_CALLS_GOLDEN

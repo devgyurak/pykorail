@@ -12,7 +12,9 @@ import importlib
 import pytest
 
 import pykorail._async.api
+import pykorail._async.netfunnel
 import pykorail.api
+import pykorail.auth.netfunnel
 import pykorail.client
 import pykorail.resources
 import pykorail.resources.airport_bus
@@ -26,6 +28,7 @@ import pykorail.resources.trains
 from pykorail._shared import ACCESS_RESTRICTED_CODE, KST, Account, to_kst, without_blanks
 from pykorail._sync.api import ApiClient as SyncApiClient
 from pykorail._sync.client import Korail as SyncKorail
+from pykorail._sync.netfunnel import NetFunnelHelper as SyncNetFunnelHelper
 from pykorail._sync.resources import Resource as SyncResource
 from pykorail._sync.resources import trains as sync_trains
 from pykorail._sync.resources.airport_bus import AirportBusResource as SyncAirportBusResource
@@ -81,6 +84,14 @@ DEVELOP_PUBLIC_NAMES = {
         "error_for_code",
         "logger",
         "text",
+    ],
+    "pykorail.auth.netfunnel": [
+        "NETFUNNEL_HEADERS",
+        "NETFUNNEL_URL",
+        "NetFunnelError",
+        "NetFunnelHelper",
+        "create_session",
+        "logger",
     ],
     "pykorail.resources": [
         "AirportBusResource",
@@ -204,6 +215,15 @@ def test_api_reexports_the_generated_sync_class() -> None:
     assert pykorail.api.ApiClient is SyncApiClient
 
 
+def test_netfunnel_reexports_the_generated_sync_class() -> None:
+    """동기 NetFunnel 은 생성물이고, 비동기 짝은 ``_async`` 에 있어야 합니다."""
+    # when & then
+    assert pykorail.NetFunnelHelper is SyncNetFunnelHelper
+    assert pykorail.auth.NetFunnelHelper is SyncNetFunnelHelper
+    assert pykorail.auth.netfunnel.NetFunnelHelper is SyncNetFunnelHelper
+    assert pykorail.auth.netfunnel.AsyncNetFunnelHelper is pykorail._async.netfunnel.AsyncNetFunnelHelper
+
+
 def test_api_and_async_share_the_same_account_class() -> None:
     """동기·비동기가 같은 로그인 상태 클래스를 써야 합니다 (#90 의 목적)."""
     # when & then
@@ -268,6 +288,13 @@ def test_async_logger_has_its_own_name() -> None:
     """비동기 호출은 동기 로거를 덮지 않고 별도 이름으로 나갑니다."""
     # when & then
     assert pykorail._async.api.logger.name == "pykorail.api.async"
+
+
+def test_netfunnel_logger_keeps_its_name() -> None:
+    """``pykorail.auth.netfunnel`` 에 건 핸들러가 두 구현의 로그를 계속 받아야 합니다."""
+    # when & then
+    assert pykorail.auth.netfunnel.logger.name == "pykorail.auth.netfunnel"
+    assert pykorail._async.netfunnel.logger.name == "pykorail.auth.netfunnel.async"
 
 
 def test_async_classes_are_reachable_from_the_public_packages() -> None:

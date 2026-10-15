@@ -46,10 +46,13 @@ _async/ ──(scripts/unasync.py)──▶ _sync/     ← _sync 는 생성물, 
    │                    │                       └── transport.py
    │                    └── models/  (불변 응답 모델)
    │
+   ├── netfunnel.py  (NetFunnel 대기열 — 클라이언트에 엮지 않은 공개 유틸리티.
+   │                  ApiClient 를 거치지 않고 세션을 직접 씁니다)
+   │
    └── _shared/   without_blanks · clock · account · response   ← 두 계층이 함께 쓰는 순수 헬퍼
 
-client.py · api.py · resources/   ← 공개 경로. 동기 객체는 _sync, Async* 객체는 _async 를
-                                    재수출할 뿐입니다.
+client.py · api.py · resources/ · auth/netfunnel.py   ← 공개 경로. 동기 객체는 _sync,
+                                                       Async* 객체는 _async 를 재수출할 뿐입니다.
 
 exceptions/ · constants.py · options.py · device/   ← 누구나 의존 가능, 아무에게도 의존 안 함
 ```
@@ -98,8 +101,8 @@ exceptions/ · constants.py · options.py · device/   ← 누구나 의존 가�
    `uv run python scripts/unasync.py` 를 돌린 뒤, 생성물이 최신인지
    `uv run python scripts/unasync.py --check` 로 확인하세요(`tests/test_packaging.py` 와
    CI 린트 잡도 같은 검사를 돌립니다). 공개 경로(`client.py` · `api.py` ·
-   `resources/`)는 shim 이니 동기 객체는 `_sync`, `Async*` 객체는 `_async` 를
-   재수출합니다. I/O 를 바꾸려면 `_async` 입니다.
+   `resources/` · `auth/netfunnel.py`)는 shim 이니 동기 객체는 `_sync`, `Async*`
+   객체는 `_async` 를 재수출합니다. I/O 를 바꾸려면 `_async` 입니다.
 
 ---
 
