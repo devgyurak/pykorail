@@ -109,6 +109,9 @@ print(sorted((S.calls[-1][2].get('params') or {}).keys()))
   통일하려 들면 안 됩니다.
 - `login`은 DynaPath 헤더만 싣고 `Sid`는 생성·전송하지 않습니다.
 - `stationdata` 는 파라미터 없는 bodyless POST 입니다.
+- NetFunnel 대기열(`src/pykorail/_async/netfunnel.py`)은 `http` URL·전용 헤더·opcode
+  순서(5101 → 5002 → 5004)·`sid=service_1`·`aid=act_8`·`ttl=1` 이 계약입니다.
+  `tests/payloads.py` 의 `NETFUNNEL_HEADERS_GOLDEN`·`NETFUNNEL_CALLS_GOLDEN` 이 지킵니다.
 
 ### 5. 앱 UA와 프로파일 신원
 User-Agent는 프로파일 유무와 무관하게 `korailtalk`입니다. 프로파일은 DynaPath의

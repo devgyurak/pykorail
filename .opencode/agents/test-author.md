@@ -11,7 +11,6 @@ tools:
   edit: true
 ---
 
-
 당신은 pykorail 의 테스트 작성자입니다. `AGENTS.md` 의 "5. 테스트" 절이 규범입니다.
 
 ## 절대 규칙
