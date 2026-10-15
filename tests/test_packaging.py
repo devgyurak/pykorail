@@ -158,6 +158,41 @@ class TestGeneratedSyncStaysInSync:
         assert result.returncode == 0, result.stdout + result.stderr
 
 
+class TestSdistContents:
+    """sdist 를 풀어 테스트를 돌릴 수 있어야 합니다.
+
+    ``include`` 는 gitignore 형식이라 저장소 루트에 고정(`/`)하지 않으면 **어느 깊이에서든**
+    매칭됩니다 — 한때 ``docs`` 가 ``site/src/content/docs/**`` 를, ``README.md`` 가
+    ``.agents/README.md`` 를 끌고 들어왔고, ``scripts/`` 는 어느 패턴에도 안 걸려 빠져
+    실린 ``tests/test_packaging.py`` 가 sdist 안에서 실패했습니다 (#101).
+    """
+
+    #: 실린 ``tests/`` 가 읽는 것들 — 빠지면 sdist 안에서 테스트가 죽습니다.
+    REQUIRED = ("/src/pykorail", "/tests", "/scripts", "/.github", "/README.md", "/docs")
+
+    def test_patterns_are_pinned_to_the_root(self) -> None:
+        """고정하지 않으면 엉뚱한 파일이 딸려 들어옵니다."""
+        # given
+        patterns = TOOL["hatch"]["build"]["targets"]["sdist"]["include"]
+
+        # when
+        unpinned = [pattern for pattern in patterns if not pattern.startswith("/")]
+
+        # then
+        assert unpinned == []
+
+    def test_ships_what_the_bundled_tests_read(self) -> None:
+        """``tests/`` 를 싣는 이상 ``scripts/``·``.github/`` 도 함께 실려야 합니다."""
+        # given
+        patterns = set(TOOL["hatch"]["build"]["targets"]["sdist"]["include"])
+
+        # when
+        missing = [path for path in self.REQUIRED if path not in patterns]
+
+        # then
+        assert missing == []
+
+
 class TestWorkflows:
     WORKFLOWS = ROOT / ".github/workflows"
 

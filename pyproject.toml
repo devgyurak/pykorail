@@ -63,7 +63,11 @@ version-file = "src/pykorail/_version.py"
 packages = ["src/pykorail"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/pykorail", "tests", "README.md", "docs", "LICENSE"]
+# gitignore 형식 패턴이라 앞에 `/` 가 없으면 **어느 깊이에서든** 매칭됩니다 — 한때 `docs`
+# 가 `site/src/content/docs/**` 를, `README.md` 가 `.agents/README.md` 를 끌고 들어왔고
+# `scripts/` 는 어느 패턴에도 안 걸려 빠졌습니다(#101). `/scripts` 는 실린 `tests/` 가
+# `unasync.py --check` 로 부르는 파일이고, `/.github` 는 워크플로 검사가 읽습니다.
+include = ["/src/pykorail", "/tests", "/scripts", "/README.md", "/docs", "/LICENSE", "/.github"]
 
 [dependency-groups]
 dev = [
