@@ -374,7 +374,7 @@ uv run ruff format && uv run ruff check && uv run ty check && uv run pytest
 ```
 
 네 개를 전부 통과해야 합니다. 커버리지 하한 90%는 `pytest` 가 강제하고, 지금 수치는
-CI 에서 볼 수 있습니다.
+[CI](https://github.com/devgyurak/pykorail/actions/workflows/ci.yml) 에서 볼 수 있습니다.
 
 기여를 환영합니다 — [`CONTRIBUTING.md`](CONTRIBUTING.md) 부터 보세요. 새 엔드포인트는
 **공식 코레일톡+ APK 를 디컴파일해 경로와 폼 필드를 확인한 뒤에만** 추가합니다.
