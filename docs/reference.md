@@ -984,7 +984,8 @@ ID 형식이 잘못되면 `ValueError`를 발생시킵니다. 후자는 프로�
 ```python
 from pykorail import NetFunnelHelper
 
-key = NetFunnelHelper().run()  # 통과할 때까지 블로킹
+with NetFunnelHelper() as nf:
+    key = nf.run()  # 통과할 때까지 블로킹
 ```
 
 비동기 코드에서는 `AsyncNetFunnelHelper` 를 `await` 합니다. 리소스와 달리
@@ -993,8 +994,12 @@ key = NetFunnelHelper().run()  # 통과할 때까지 블로킹
 ```python
 from pykorail import AsyncNetFunnelHelper
 
-key = await AsyncNetFunnelHelper().run()
+async with AsyncNetFunnelHelper() as nf:
+    key = await nf.run()
 ```
+
+컨텍스트 매니저로 나가면 `close()` 가 연 HTTP 세션을 정리합니다. 이중 `close()` 는
+조용히 넘어갑니다.
 
 제약:
 
@@ -1003,4 +1008,5 @@ key = await AsyncNetFunnelHelper().run()
 - 한 인스턴스를 여러 코루틴이 동시에 쓰면 `run()` 이 각자 게이트를 통과합니다. 캐시는
   **통과를 마친** 티켓만 공유하므로, 대기 중에 끼어든 호출이 미완성 티켓을 빌려 오는
   일은 없습니다. 대신 그만큼 대기열을 여러 번 때립니다.
-- 동기·비동기 모두 연 HTTP 세션을 닫는 `close()` 를 제공하지 않습니다.
+- 비동기 인스턴스는 처음 쓴 이벤트 루프에 묶입니다. 다른 이벤트 루프에서 다시 쓰면
+  `attached to a different loop` 오류가 납니다.

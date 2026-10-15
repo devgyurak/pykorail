@@ -23,6 +23,15 @@ class FakeResponse:
         self.text = text
 
 
+def _noop() -> None:
+    """첫 ``close()`` 는 그대로 통과합니다."""
+
+
+def _double_close_error() -> None:
+    """실제 curl_cffi 세션은 두 번째 ``close()`` 에서 TypeError 를 냅니다."""
+    raise TypeError("세션을 두 번 닫았습니다")
+
+
 class FakeSession:
     """미리 정한 순서대로 응답을 돌려주는 세션."""
 
@@ -30,6 +39,7 @@ class FakeSession:
         self.headers: dict[str, str] = {}
         self.script = list(script)
         self.calls: list[dict[str, Any]] = []
+        self.closed = False
 
     async def get(self, url: str, **kwargs: Any) -> FakeResponse:
         self.calls.append({"url": url, **kwargs})
@@ -38,8 +48,13 @@ class FakeSession:
     async def post(self, url: str, **kwargs: Any) -> FakeResponse:  # pragma: no cover - 미사용
         raise AssertionError("NetFunnel 은 GET 만 씁니다")
 
-    async def close(self) -> None:  # pragma: no cover - 미사용
-        pass
+    async def close(self) -> None:
+        # 실제 curl_cffi 세션처럼 두 번째 close() 에서 TypeError 를 냅니다 — 이중 close
+        # 보호가 실제로 일하는지 테스트가 잡습니다. 테스트 파일은 제어 흐름 금지 규칙이
+        # 있어 if 대신 조건식으로 분기합니다.
+        was_closed = self.closed
+        self.closed = True
+        (_noop, _double_close_error)[was_closed]()
 
 
 class Sleeper:
@@ -187,6 +202,52 @@ class TestCache:
 
         # then
         assert len(session.calls) == 4
+
+
+class TestClose:
+    async def test_close_closes_session(self, make_helper) -> None:
+        # given
+        helper, session = make_helper([])
+
+        # when
+        await helper.close()
+
+        # then
+        assert session.closed
+
+    async def test_double_close_is_safe(self, make_helper) -> None:
+        # given
+        helper, session = make_helper([])
+        await helper.close()
+
+        # when
+        await helper.close()
+
+        # then
+        assert session.closed
+
+    async def test_context_manager_closes_session(self, make_helper) -> None:
+        # given
+        helper, session = make_helper([PASS, COMPLETE])
+
+        # when
+        async with helper as entered:
+            await entered.run()
+
+        # then
+        assert entered is helper
+        assert session.closed
+
+    async def test_leaving_the_context_after_an_explicit_close(self, make_helper) -> None:
+        # given
+        helper, session = make_helper([])
+
+        # when
+        async with helper:
+            await helper.close()
+
+        # then
+        assert session.closed
 
 
 class TestParams:

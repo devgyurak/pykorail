@@ -10,7 +10,8 @@
 
     from pykorail import AsyncNetFunnelHelper
 
-    key = await AsyncNetFunnelHelper().run()
+    async with AsyncNetFunnelHelper() as nf:
+        key = await nf.run()
 
 :class:`~pykorail.AsyncKorail` 에 자동으로 엮지 않은 이유는, 필요 없는 상황에서
 매 요청마다 외부 게이트를 때리는 비용과 실패 지점이 생기기 때문입니다.
@@ -21,10 +22,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import ClassVar, Final
+from typing import TYPE_CHECKING, ClassVar, Final
 
 from pykorail.exceptions import NetFunnelError
 from pykorail.transport import create_async_session
+
+if TYPE_CHECKING:
+    from types import TracebackType
+    from typing import Self
 
 #: 로거 이름은 ``__name__`` 대신 문자열로 고정합니다. ``scripts/unasync.py`` 가 이
 #: 리터럴만 동기 이름으로 바꿔, 예전 ``pykorail.auth.netfunnel`` 핸들러가 두 모듈의
@@ -64,6 +69,7 @@ class AsyncNetFunnelHelper:
         self._session = create_async_session(NETFUNNEL_HEADERS)
         self._cached_key: str | None = None
         self._last_fetch_time = 0.0
+        self._closed = False
 
     async def run(self) -> str | None:
         """통과 티켓을 돌려줍니다. 캐시가 살아 있으면 재사용합니다.
@@ -105,9 +111,31 @@ class AsyncNetFunnelHelper:
             raise NetFunnelError(str(exc)) from exc
 
     def clear(self) -> None:
-        """캐시된 티켓을 버립니다."""
+        """캐시된 티켓을 버립니다. 연결은 그대로 둡니다 — 정리는 :meth:`close` 가 맡습니다."""
         self._cached_key = None
         self._last_fetch_time = 0.0
+
+    # ------------------------------------------------------------- 컨텍스트 관리
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        await self.close()
+
+    async def close(self) -> None:
+        """연 HTTP 세션을 닫습니다. 캐시(:meth:`clear`)와는 별개입니다."""
+        # close() 를 두 번 불러도 안전하게 합니다. ``async with`` 블록 안에서 직접
+        # close() 를 부르면 블록을 나갈 때 __aexit__ 이 한 번 더 닫는데, curl_cffi 의
+        # 세션은 그때 TypeError 를 냅니다.
+        if self._closed:
+            return
+        self._closed = True
+        await self._session.close()
 
     # ------------------------------------------------------------------- 내부
     async def _start(self) -> tuple[str | None, str | None, str | None]:
