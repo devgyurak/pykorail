@@ -28,7 +28,7 @@ def _noop() -> None:
 
 
 def _double_close_error() -> None:
-    """실제 curl_cffi 세션은 두 번째 ``close()`` 에서 TypeError 를 냅니다."""
+    """실제 curl_cffi 의 코루틴 세션도 두 번째 ``close()`` 에서 TypeError 를 냅니다."""
     raise TypeError("세션을 두 번 닫았습니다")
 
 
@@ -49,12 +49,12 @@ class FakeSession:
         raise AssertionError("NetFunnel 은 GET 만 씁니다")
 
     async def close(self) -> None:
-        # 실제 curl_cffi 세션처럼 두 번째 close() 에서 TypeError 를 냅니다 — 이중 close
-        # 보호가 실제로 일하는지 테스트가 잡습니다. 테스트 파일은 제어 흐름 금지 규칙이
-        # 있어 if 대신 조건식으로 분기합니다.
+        # 두 번째 close() 에서 실패시켜 이중 close 가드가 실제로 일하는지 드러냅니다.
+        # 테스트 파일은 헬퍼 클래스까지 제어 흐름 금지 규칙(tests/test_style.py)이 걸려
+        # 있어 if 문을 쓸 수 없습니다 — 조건식으로 분기합니다.
         was_closed = self.closed
         self.closed = True
-        (_noop, _double_close_error)[was_closed]()
+        _noop() if not was_closed else _double_close_error()
 
 
 class Sleeper:

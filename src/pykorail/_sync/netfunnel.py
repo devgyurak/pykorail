@@ -133,7 +133,7 @@ class NetFunnelHelper:
         """연 HTTP 세션을 닫습니다. 캐시(:meth:`clear`)와는 별개입니다."""
         # close() 를 두 번 불러도 안전하게 합니다. ``with`` 블록 안에서 직접
         # close() 를 부르면 블록을 나갈 때 __exit__ 이 한 번 더 닫는데, curl_cffi 의
-        # 세션은 그때 TypeError 를 냅니다.
+        # 코루틴 세션은 그때 TypeError 를 냅니다(동기 세션은 두 번 닫아도 괜찮습니다).
         if self._closed:
             return
         self._closed = True
