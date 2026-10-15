@@ -70,6 +70,11 @@ class NetFunnelHelper:
     def run(self) -> str | None:
         """통과 티켓을 돌려줍니다. 캐시가 살아 있으면 재사용합니다.
 
+        키는 끝까지 지역 변수로 들고 다니고, **통과를 확인한 뒤에만** 캐시에 씁니다.
+        통과 전에 공유 캐시(`self._cached_key`)를 채우면, 아직 게이트를 통과하지 않은
+        키가 대기 중에 들어온 다른 호출에 새어 나가거나, 중간에 중단된 실행이 그 키를
+        캐시에 남깁니다.
+
         Raises:
             NetFunnelError: 대기열 통과에 실패했습니다. 캐시는 비워집니다.
         """
@@ -78,17 +83,18 @@ class NetFunnelHelper:
             return self._cached_key
 
         try:
-            status, self._cached_key, nwait = self._start()
-            self._last_fetch_time = now
+            status, key, nwait = self._start()
 
             while status == self.WAIT_STATUS_FAIL:
                 logger.debug("현재 %s명 대기중", nwait)
                 time.sleep(1)
-                status, self._cached_key, nwait = self._check()
+                status, key, nwait = self._check(key)
 
-            status, _, _ = self._complete()
+            status, _, _ = self._complete(key)
             if status in (self.WAIT_STATUS_PASS, self.ALREADY_COMPLETED):
-                return self._cached_key
+                self._cached_key = key
+                self._last_fetch_time = now
+                return key
 
             self.clear()
             raise NetFunnelError("Failed to complete NetFunnel")
@@ -109,27 +115,30 @@ class NetFunnelHelper:
     def _start(self) -> tuple[str | None, str | None, str | None]:
         return self._make_request("getTidchkEnter")
 
-    def _check(self) -> tuple[str | None, str | None, str | None]:
-        return self._make_request("chkEnter")
+    def _check(self, key: str | None) -> tuple[str | None, str | None, str | None]:
+        return self._make_request("chkEnter", key)
 
-    def _complete(self) -> tuple[str | None, str | None, str | None]:
-        return self._make_request("setComplete")
+    def _complete(self, key: str | None) -> tuple[str | None, str | None, str | None]:
+        return self._make_request("setComplete", key)
 
-    def _make_request(self, operation: str) -> tuple[str | None, str | None, str | None]:
-        params = self._build_params(self.OP_CODE[operation])
+    def _make_request(self, operation: str, key: str | None = None) -> tuple[str | None, str | None, str | None]:
+        params = self._build_params(self.OP_CODE[operation], key)
         response = self._session.get(NETFUNNEL_URL, params=params)
         parsed = self._parse(response.text)
         return parsed.get("status"), parsed.get("key"), parsed.get("nwait")
 
     def _build_params(self, opcode: str, key: str | None = None) -> dict[str, str]:
+        """``key`` 는 호출자가 넘긴 값만 씁니다. 캐시를 되읽으면 다른 실행이 덮어쓴
+        키나 만료된 옛 키가 응답에 실려 나갑니다.
+        """
         params: dict[str, str] = {"opcode": opcode}
 
         if opcode in (self.OP_CODE["getTidchkEnter"], self.OP_CODE["chkEnter"]):
             params.update({"sid": "service_1", "aid": "act_8"})
             if opcode == self.OP_CODE["chkEnter"]:
-                params.update({"key": key or self._cached_key or "", "ttl": "1"})
+                params.update({"key": key or "", "ttl": "1"})
         elif opcode == self.OP_CODE["setComplete"]:
-            params["key"] = key or self._cached_key or ""
+            params["key"] = key or ""
 
         return params
 
