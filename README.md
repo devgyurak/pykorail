@@ -8,7 +8,6 @@
 코레일 스마트 예매(코레일톡) API 를 감싼 비공식 클라이언트
 
 [![CI](https://github.com/devgyurak/pykorail/actions/workflows/ci.yml/badge.svg)](https://github.com/devgyurak/pykorail/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/devgyurak/pykorail/badges/coverage.json)](https://github.com/devgyurak/pykorail/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/pykorail?color=3775A9&logo=pypi&logoColor=white&cacheSeconds=10800)](https://pypi.org/project/pykorail/)
 [![Python](https://img.shields.io/pypi/pyversions/pykorail?color=3776AB&logo=python&logoColor=white&cacheSeconds=10800)](https://pypi.org/project/pykorail/)
 [![License](https://img.shields.io/badge/license-MIT%20%EA%B8%B0%EB%B0%98%20%C2%B7%20%EC%83%81%EC%97%85%EC%A0%81%20%EC%9D%B4%EB%93%9D%20%EA%B8%88%EC%A7%80-orange)](LICENSE)
@@ -45,17 +44,42 @@ with Korail.logged_in("me@example.com", "password") as korail:
 [KTX 105]  04/01 11:00~14:35  서울~부산  특실 가능, 일반실 매진 (3시간 35분)
 ```
 
-비동기로도 쓸 수 있습니다. 리소스와 시그니처가 같고, 호출만 `await` 입니다.
+<details>
+<summary>비동기로 쓰기 (<code>AsyncKorail</code>)</summary>
+
+시그니처와 리소스가 동기판과 같고, 호출만 `await` 입니다.
 
 ```python
+import asyncio
+from datetime import datetime, timedelta, timezone
+
 from pykorail import AsyncKorail
 
-async with await AsyncKorail.logged_in("me@example.com", "password") as korail:
-    trains = await korail.trains.search("서울", "부산", depart_after=departure)
+
+async def main() -> None:
+    kst = timezone(timedelta(hours=9))
+    departure = (datetime.now(kst) + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
+    async with await AsyncKorail.logged_in("me@example.com", "password") as korail:
+        trains = await korail.trains.search("서울", "부산", depart_after=departure)
+        print(trains[0])
+
+
+asyncio.run(main())
 ```
 
-asyncio 전용이고 `curl_cffi` 가 필요합니다. 이벤트 루프·동시성 같은 나머지 제약은
-[API 레퍼런스](docs/reference.md#asynckorail)에 있습니다.
+제약:
+
+- **asyncio 전용입니다.** `curl_cffi` 의 비동기 세션이 asyncio 만 지원하므로 trio 는
+  지원하지 않습니다.
+- **인스턴스 하나는 이벤트 루프 하나에서만** 쓰세요. 로그인 상태를 태스크들이 공유합니다.
+  생성자는 루프 밖에서도 됩니다(네트워크를 치지 않습니다).
+- **동시에 `login` 을 부르는 것은 지원하지 않습니다.**
+- **`requests` 폴백이 없습니다.** `curl_cffi` 를 못 쓰면 `AsyncKorail()` 이
+  `TransportError` 로 안내합니다(`pip install curl_cffi`).
+- **요청 순서는 앱과 같습니다.** `reservations.all()` 처럼 예약마다 상세를 조회하는
+  흐름을 `gather` 로 묶지 않았습니다. 동시성은 여러 호출을 직접 묶어서 얻으세요.
+
+</details>
 
 > [!CAUTION]
 > **승차권 재판매 목적으로 쓰지 마세요.** pykorail 은 본인이 탈 표를 예매하기 위한
@@ -143,68 +167,6 @@ from_yongsan = [t for t in trains if t.dep_name == "용산"]
 </details>
 
 <details>
-<summary><b>환승 조회 · 예매하기</b></summary>
-
-직통이 없는 구간은 한 번 갈아타는 여정으로 찾습니다. 조회는 로그인하지 않아도 됩니다.
-
-```python
-for transfer in korail.trains.search_transfers("강릉", "목포"):
-    first, second = transfer.legs
-    print(first.train_no, "→", transfer.station_name, "→", second.train_no)
-
-transfer = korail.trains.search_transfers("강릉", "목포")[0]
-first, second = korail.reservations.create_transfer(transfer)
-
-print(first.rsv_id == second.rsv_id)  # True — 예약번호는 하나입니다
-```
-
-구간을 따로 `create()` 하면 첫 구간만 잡히고 둘째가 매진될 수 있습니다. 이쪽은 한 구간이라도
-안 되면 서버가 통째로 거절하고, `cancel()` 은 예약번호 단위라 둘 중 어느 것을 넘겨도 두
-구간이 함께 취소됩니다.
-
-</details>
-
-<details>
-<summary><b>운임 조회</b></summary>
-
-예약하기 전에 값을 봅니다. **로그인하지 않아도 됩니다.**
-
-```python
-train = korail.trains.search("서울", "부산")[0]
-
-for fare in korail.trains.fares(train):
-    print(fare.seat_class_name, fare.total)
-# 일반실 59800
-# 특실 83700
-```
-
-할인 전의 기준 운임입니다. 실제로 낼 금액은 예약한 뒤 `Reservation.price` 에 있습니다.
-
-</details>
-
-<details>
-<summary><b>호차 · 좌석을 골라 예매하기</b></summary>
-
-`create()` 는 좌석을 서버가 정합니다. 자리를 직접 고르려면 호차 목록 다음에 좌석 배치를
-받아 `create_with_seats()` 에 넘깁니다. **둘 다 로그인이 필요합니다.**
-
-```python
-from pykorail import AdultPassenger
-
-train = korail.trains.search("서울", "부산")[0]
-
-car = next(car for car in korail.trains.cars(train) if car.has_seat())
-window = [seat for seat in korail.trains.seats(train, car) if seat.is_available][:2]
-
-reservation = korail.reservations.create_with_seats(train, window, [AdultPassenger(2)])
-```
-
-좌석 수가 승객 수와 다르거나, 같은 좌석을 두 번 넘기거나, 객실이 섞이면 요청 전에
-`ValueError` 로 막습니다.
-
-</details>
-
-<details>
 <summary><b>내 예약·승차권 보기</b></summary>
 
 ```python
@@ -277,10 +239,14 @@ SSAID 계산 방식과 코레일 공개 서명 인증서로 생성한 합성 값
 
 ## 알아두면 좋은 것
 
-- **역은 이름으로** — `"서울역"` 이 아니라 `"서울"`. 오타면 요청 전에 막고 비슷한 역을 알려줍니다.
-- **시각은 항상 KST** — tz 없는 `datetime` 은 실행 머신의 타임존과 무관하게 한국시간으로 해석됩니다.
-- **지난 시각은 거부** — 서버가 과거에도 빈 결과만 줘서 "떠난 열차"와 "열차 없음"이 구분되지 않습니다.
-- **실패는 예외로** — `cancel()` · `pay()` 는 성공 시 아무것도 반환하지 않습니다.
+
+|                |                                                      |
+| -------------- | ---------------------------------------------------- |
+| **역은 이름으로**    | `"서울역"` 이 아니라 `"서울"`. 오타면 요청 전에 막고 비슷한 역을 알려줍니다.     |
+| **시각은 항상 KST** | tz 없는 `datetime` 은 실행 머신의 타임존과 무관하게 한국시간으로 해석됩니다. |
+| **지난 시각은 거부**  | 서버가 과거에도 빈 결과만 줘서 "떠난 열차"와 "열차 없음"이 구분되지 않습니다.       |
+| **실패는 예외로**    | `cancel()` · `pay()` 는 성공 시 아무것도 반환하지 않습니다.          |
+
 
 ```python
 from pykorail import KorailError, SoldOutError
@@ -297,12 +263,15 @@ except KorailError as exc:
 
 ## 문서
 
-- 🌐 [**문서 사이트**](https://pykorail.devgyurak.com) — 이 문서들을 한곳에서: 검색 · 다크 모드
-- 📖 [**API 레퍼런스**](docs/reference.md) — 전체 메서드 · 모델 · 옵션 · 예외
-- 🤝 [기여 가이드](CONTRIBUTING.md) — 개발 환경, 테스트 규칙, PR 절차
-- 🏛 [아키텍처 규약](AGENTS.md) — 계층 구조, 외부 API 불변식
-- 🤖 [에이전트 설정](.agents/README.md) — Codex · Claude Code · Pi · Cursor · OpenCode
-- 🔐 [보안 정책](SECURITY.md) · [행동 강령](CODE_OF_CONDUCT.md)
+
+|                                                       |                                              |
+| ----------------------------------------------------- | -------------------------------------------- |
+| 🌐 [**문서 사이트**](https://pykorail.devgyurak.com)        | 이 문서들을 한곳에서 — 검색 · 다크 모드                     |
+| 📖 [**API 레퍼런스**](docs/reference.md)                  | 전체 메서드 · 모델 · 옵션 · 예외                        |
+| 🤝 [기여 가이드](CONTRIBUTING.md)                          | 개발 환경, 테스트 규칙, PR 절차                         |
+| 🏛 [아키텍처 규약](AGENTS.md)                               | 계층 구조, 외부 API 불변식                            |
+| 🤖 [에이전트 설정](.agents/README.md)                       | Codex · Claude Code · Pi · Cursor · OpenCode |
+| 🔐 [보안 정책](SECURITY.md) · [행동 강령](CODE_OF_CONDUCT.md) |                                              |
 
 
 ---
@@ -370,12 +339,21 @@ uv sync --all-extras
 uv run ruff format && uv run ruff check && uv run ty check && uv run pytest
 ```
 
-네 개를 전부 통과해야 합니다. 커버리지 하한 90%는 `pytest` 가 강제하고, 지금 수치는
-위쪽 배지에 있습니다.
+네 개를 전부 통과해야 합니다. 커버리지 하한 90%, 현재 96%.
 
 기여를 환영합니다 — [`CONTRIBUTING.md`](CONTRIBUTING.md) 부터 보세요. 새 엔드포인트는
 **공식 코레일톡+ APK 를 디컴파일해 경로와 폼 필드를 확인한 뒤에만** 추가합니다.
-릴리스 절차는 [CONTRIBUTING 의 릴리스 절](CONTRIBUTING.md#릴리스-메인테이너용)에 있습니다.
+
+### 릴리스
+
+버전의 유일한 출처는 **git 태그**입니다. 파일을 손으로 고칠 필요가 없습니다.
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+태그를 밀면 전 버전 게이트 → 보안 스캔 → 빌드 → PyPI 업로드 → 릴리스 노트 생성이
+자동으로 돕니다.
 
 ---
 
@@ -396,7 +374,7 @@ MIT 에 **상업적 이득 금지** 조항을 더한 자체 라이선스입니�
 
 <div align="center">
 
-<sub>코레일과 무관한 비공식 프로젝트</sub>
+<sub>MIT 기반 자체 라이선스 · 상업적 이득 금지 · 코레일과 무관한 비공식 프로젝트</sub>
 
 </div>
 
