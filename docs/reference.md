@@ -353,10 +353,12 @@ print([seat.label for seat in seats if seat.is_available])
 
 ```python
 train = korail.trains.search("서울", "부산")[0]
-car = next(car for car in korail.trains.cars(train) if car.has_seat())
-window = [seat for seat in korail.trains.seats(train, car) if seat.is_available][:2]
 
-reservation = korail.reservations.create_with_seats(train, window, [AdultPassenger(2)])
+# 좌석은 승객 한 명에 하나씩이라, 두 자리가 남은 호차를 고릅니다.
+car = next(car for car in korail.trains.cars(train) if car.remaining_seats >= 2)
+picked = [seat for seat in korail.trains.seats(train, car) if seat.is_available][:2]
+
+reservation = korail.reservations.create_with_seats(train, picked, [AdultPassenger(2)])
 ```
 
 | 인자 | 설명 |
