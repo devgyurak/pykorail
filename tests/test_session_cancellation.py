@@ -109,7 +109,7 @@ class TestCancellation:
         # then
         assert closing.cancelled(), "취소는 shield 가 삼키지 않고 호출자에게 올라가야 합니다"
 
-    async def test_retry_after_cancel_does_not_close_twice(self) -> None:
+    async def test_second_close_after_cancel_does_not_reach_the_inner_session(self) -> None:
         # given
         inner = GatedSession()
         session = AsyncIdempotentSession(inner)
@@ -122,7 +122,7 @@ class TestCancellation:
         await session.close()
 
         # then
-        assert inner.closes == 1, "가드는 안쪽 close 를 두 번 부르지 않아야 합니다"
+        assert inner.closes == 1, "취소가 가드를 무력화해 안쪽 close 를 다시 부르면 안 됩니다"
 
     async def test_timeout_during_close_raises_timeout_error(self) -> None:
         # given
@@ -133,9 +133,10 @@ class TestCancellation:
         with pytest.raises(TimeoutError):
             async with asyncio.timeout(0.05):
                 await session.close()
+        # shield 로 살아남은 안쪽 정리를 끝까지 돌려 태스크를 정리합니다.
+        inner.release.set()
+        await asyncio.wait_for(inner.finished.wait(), timeout=1)
 
         # then
         assert inner.closes == 1
-        inner.release.set()
-        await asyncio.wait_for(inner.finished.wait(), timeout=1)
         assert inner.finished.is_set()
