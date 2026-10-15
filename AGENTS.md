@@ -32,7 +32,7 @@ uv build                 # 배포 아티팩트
 ## 2. 아키텍처 — 절대 어기지 말 것
 
 계층은 **한 방향으로만** 의존합니다. 화살표를 거스르는 import 를 추가하지 마세요.
-I/O 계층(`client` · `api` · `transport` · `resources`)은 비동기 원본(`_async`)과
+I/O 계층(`client` · `api` · `transport` · `session` · `resources`)은 비동기 원본(`_async`)과
 생성물(`_sync`)로만 갈라지고, 규칙은 지금까지와 같습니다.
 
 ```
@@ -48,6 +48,8 @@ _async/ ──(scripts/unasync.py)──▶ _sync/     ← _sync 는 생성물, 
    │
    ├── netfunnel.py  (NetFunnel 대기열 — 클라이언트에 엮지 않은 공개 유틸리티.
    │                  ApiClient 를 거치지 않고 세션을 직접 씁니다)
+   │
+   ├── session.py  (세션 래퍼 — 두 번 닫아도 안전한 close. api·netfunnel 이 함께 씁니다)
    │
    └── _shared/   without_blanks · clock · account · response   ← 두 계층이 함께 쓰는 순수 헬퍼
 

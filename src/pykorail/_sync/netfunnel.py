@@ -26,6 +26,7 @@ import logging
 import time
 from typing import TYPE_CHECKING, ClassVar, Final
 
+from pykorail._sync.session import IdempotentSession
 from pykorail.exceptions import NetFunnelError
 from pykorail.transport import create_session
 
@@ -68,10 +69,9 @@ class NetFunnelHelper:
     CACHE_TTL: ClassVar[float] = 50.0
 
     def __init__(self) -> None:
-        self._session = create_session(NETFUNNEL_HEADERS)
+        self._session = IdempotentSession(create_session(NETFUNNEL_HEADERS))
         self._cached_key: str | None = None
         self._last_fetch_time = 0.0
-        self._closed = False
 
     def run(self) -> str | None:
         """통과 티켓을 돌려줍니다. 캐시가 살아 있으면 재사용합니다.
@@ -131,12 +131,7 @@ class NetFunnelHelper:
 
     def close(self) -> None:
         """연 HTTP 세션을 닫습니다. 캐시(:meth:`clear`)와는 별개입니다."""
-        # close() 를 두 번 불러도 안전하게 합니다. ``with`` 블록 안에서 직접
-        # close() 를 부르면 블록을 나갈 때 __exit__ 이 한 번 더 닫는데, curl_cffi 의
-        # 코루틴 세션은 그때 TypeError 를 냅니다(동기 세션은 두 번 닫아도 괜찮습니다).
-        if self._closed:
-            return
-        self._closed = True
+        # 이중 close 가드는 세션 래퍼가 집니다.
         self._session.close()
 
     # ------------------------------------------------------------------- 내부
