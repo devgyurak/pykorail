@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -42,9 +43,15 @@ class AsyncIdempotentSession:
         닫으므로 가드가 필요합니다. 동기 세션은 두 번 닫아도 괜찮습니다.
         """
         # ``_closed`` 를 안쪽 close 호출 전에 세웁니다. 그래야 동시에 들어온 두 번째
-        # 호출이 안쪽 close 를 다시 부르지 않습니다. 그 대가로, 닫는 도중 취소되면
-        # 세션이 정리되지 않은 채 남습니다(별도 이슈).
+        # 호출이 안쪽 close 를 다시 부르지 않습니다.
         if self._closed:
             return
         self._closed = True
-        await self._session.close()
+        # ``shield`` 로 감싸는 것은 코루틴 세션에만 해당합니다. curl_cffi 의 커넥션 정리
+        # 루틴은 대기 지점에서 들어온 ``CancelledError`` 를 ``contextlib.suppress`` 로
+        # 삼켜서, 그대로 두면 호출자의 timeout 컨텍스트 매니저가 만료를 감지하지 못하고
+        # 태스크에 처리되지 않은 취소만 남습니다. shield 를 쓰면 취소가 안쪽 코루틴이
+        # 아니라 shield 에 걸려 호출자에게 그대로 올라가고, 안쪽 정리는 별도 태스크로
+        # 끝까지 돕니다 — 취소되더라도 세션이 반쯤 닫힌 채 남지 않습니다. 취소가 없는
+        # 동기판에서는 이 줄이 안쪽 close 호출만 남습니다.
+        await asyncio.shield(self._session.close())

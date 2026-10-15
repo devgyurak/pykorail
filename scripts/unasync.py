@@ -56,14 +56,20 @@ RAW_SUBS: tuple[tuple[str, str], ...] = (
     (r"\basync def\b", "def"),
     (r"\basync with\b", "with"),
     (r"\bawait\b +", ""),
+    # ``await asyncio.shield(X)`` 는 동기판에 대응물이 없습니다. 취소가 없는 동기
+    # 코드에서는 감쌀 이유가 사라지므로 껍데기만 벗겨 ``X`` 를 그대로 남깁니다.
+    # ``await`` 제거 규칙 **뒤**에 와야 합니다 — 앞에 두면 ``await`` 가 남아 매치되지
+    # 않습니다. 여러 줄로 쓰면 흔적 검사(``\basyncio\b``)가 잡아 줍니다.
+    (r"(?m)^(\s*)asyncio\.shield\((.*)\)$", r"\1\2"),
     (r"__aenter__", "__enter__"),
     (r"__aexit__", "__exit__"),
     # 폴링 대기만 겨냥합니다. 치환 패턴을 ``\basyncio\b`` 로 넓히면 ``asyncio.gather``
     # 같은 다른 사용까지 ``time`` 으로 잘못 바뀝니다 — 못 바꾼 자리는 아래 흔적
     # 검사(``\basyncio\b``)가 잡습니다.
     (r"\basyncio\.sleep\b", "time.sleep"),
-    # 생성물에는 ``import time`` 이 이미 있습니다. 여기서 한 줄 더 만들지만,
-    # ``ruff_fix`` 의 isort(``--select I``)가 같은 import 를 합쳐 줍니다.
+    # 비동기 원본의 ``import asyncio`` 는 생성물에서 ``import time`` 이 됩니다.
+    # ``time.sleep`` 을 쓰지 않는 생성물(예: ``session.py``)에서는 이 import 가
+    # 미사용이 되어 ``ruff_fix`` 가 F401 로 걷어냅니다.
     (r"(?m)^import asyncio$", "import time"),
     (r"_async", "_sync"),
 )
@@ -127,11 +133,18 @@ def ruff_fix(paths: list[Path]) -> None:
     ``pykorail._shared`` 와의 isort 순서가 뒤집힙니다(``_async < _shared < _sync``).
     원본은 ``_async`` 가 앞이라 정렬돼 있지만 생성물은 ``_shared`` 가 앞이어야 하므로,
     import 정렬(``--select I``)까지 생성 단계에서 마저 해 줍니다.
+
+    ``F401``(미사용 import)도 함께 켭니다. ``import asyncio`` 가 ``import time`` 으로
+    바뀌지만 ``time`` 을 쓰지 않는 생성물이 있어(``session.py``), isort 만으로는 그
+    줄이 남아 린트가 실패합니다. 생성물 전체에 걸어도 현재 ``_sync`` 는 이미 F401 이
+    없어 다른 파일은 바뀌지 않습니다 — ``--check`` 가 이를 확인합니다.
     """
     if not paths:
         return
     arguments = [str(path) for path in paths]
-    subprocess.run([sys.executable, "-m", "ruff", "check", "--fix", "--select", "I", "--quiet", *arguments], check=True)
+    subprocess.run(
+        [sys.executable, "-m", "ruff", "check", "--fix", "--select", "I,F401", "--quiet", *arguments], check=True
+    )
     subprocess.run([sys.executable, "-m", "ruff", "format", "--quiet", *arguments], check=True)
 
 
