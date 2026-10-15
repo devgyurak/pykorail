@@ -45,7 +45,8 @@ with Korail.logged_in("me@example.com", "password") as korail:
 [KTX 105]  04/01 11:00~14:35  서울~부산  특실 가능, 일반실 매진 (3시간 35분)
 ```
 
-비동기로도 쓸 수 있습니다. 리소스와 시그니처가 같고, 호출만 `await` 입니다.
+비동기로도 쓸 수 있습니다. 리소스와 시그니처가 같고, 호출만 `await` 입니다. 아래는
+`async` 함수 안에서 부르는 부분만 적었습니다.
 
 ```python
 from pykorail import AsyncKorail
@@ -148,12 +149,13 @@ from_yongsan = [t for t in trains if t.dep_name == "용산"]
 직통이 없는 구간은 한 번 갈아타는 여정으로 찾습니다. 조회는 로그인하지 않아도 됩니다.
 
 ```python
-for transfer in korail.trains.search_transfers("강릉", "목포"):
+transfers = korail.trains.search_transfers("강릉", "목포")
+
+for transfer in transfers:
     first, second = transfer.legs
     print(first.train_no, "→", transfer.station_name, "→", second.train_no)
 
-transfer = korail.trains.search_transfers("강릉", "목포")[0]
-first, second = korail.reservations.create_transfer(transfer)
+first, second = korail.reservations.create_transfer(transfers[0])
 
 print(first.rsv_id == second.rsv_id)  # True — 예약번호는 하나입니다
 ```
@@ -193,10 +195,11 @@ from pykorail import AdultPassenger
 
 train = korail.trains.search("서울", "부산")[0]
 
-car = next(car for car in korail.trains.cars(train) if car.has_seat())
-window = [seat for seat in korail.trains.seats(train, car) if seat.is_available][:2]
+# 좌석은 승객 한 명에 하나씩이라, 두 자리가 남은 호차를 고릅니다.
+car = next(car for car in korail.trains.cars(train) if car.remaining_seats >= 2)
+picked = [seat for seat in korail.trains.seats(train, car) if seat.is_available][:2]
 
-reservation = korail.reservations.create_with_seats(train, window, [AdultPassenger(2)])
+reservation = korail.reservations.create_with_seats(train, picked, [AdultPassenger(2)])
 ```
 
 좌석 수가 승객 수와 다르거나, 같은 좌석을 두 번 넘기거나, 객실이 섞이면 요청 전에
@@ -371,7 +374,7 @@ uv run ruff format && uv run ruff check && uv run ty check && uv run pytest
 ```
 
 네 개를 전부 통과해야 합니다. 커버리지 하한 90%는 `pytest` 가 강제하고, 지금 수치는
-위쪽 배지에 있습니다.
+CI 에서 볼 수 있습니다.
 
 기여를 환영합니다 — [`CONTRIBUTING.md`](CONTRIBUTING.md) 부터 보세요. 새 엔드포인트는
 **공식 코레일톡+ APK 를 디컴파일해 경로와 폼 필드를 확인한 뒤에만** 추가합니다.
