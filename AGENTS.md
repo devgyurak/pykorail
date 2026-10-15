@@ -286,6 +286,11 @@ def test_individual_by_default(self) -> None:
   (`.github/rulesets/`).
 - **CI** (`.github/workflows/ci.yml`) — 린트·타입 검사, Python **3.11–3.15** 테스트,
   하한 의존성(`lowest`, 3.11) 테스트, 빌드·설치 확인, Trivy 스캔.
+  커버리지 배지(`coverage-badge`)는 develop 푸시에서만 돌아 숫자를 담은 JSON 을
+  `badges` 브랜치에 강제 푸시합니다 — shields.io 의 endpoint 배지가 그 파일을
+  읽습니다. 그래서 `badges` 는 손으로 고치지 말고, ruleset 보호 대상도 아닙니다
+  (보호하면 배지 갱신이 막힙니다). `ci-ok` 의 `needs` 에는 넣지 않습니다 — 배지
+  갱신 실패로 머지를 막을 이유가 없습니다.
   **전부 우분투에서만 돕니다** — `src/` 에 플랫폼 분기가 없고, Windows 러너가 실제로
   잡아주던 인코딩 기본값 문제는 `tests/test_style.py` 의 `test_text_io_declares_encoding`
   이 AST 로 대신합니다.
