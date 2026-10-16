@@ -291,7 +291,7 @@
     "decision": "현재 생성 방식을 유지. 성능 보장이 아닌 단일 개발 환경의 참고 측정."
   },
   "endpoints_added": {
-    "basis": "경로와 필드 이름은 같은 7.0.8 APK 의 정적 분석(NetworkApi 선언, 요청·응답 모델)에서 확인. 앱이 넣는 값은 문자열 상수가 보호(AppSuit/AlienGuard)돼 있어 읽지 못하므로, korail-mobile-api 2.5.0 의 7.0.8 실서버 검증 기록(docs/verification-708.md, docs/evidence/live-708)에서 성공한 요청의 필드 구성과 대조함. 운임 · 마일리지 · 할인쿠폰 조회에서는 value_recovery 의 방법으로 읽히는 값(십진 정수로 된 상수)을 APK 에서 직접 읽음.",
+    "basis": "경로와 필드 이름은 같은 7.0.8 APK 의 정적 분석(NetworkApi 선언, 요청·응답 모델)에서 확인. 앱이 넣는 값은 문자열 상수가 보호(AppSuit/AlienGuard)돼 있어 읽지 못하므로, 외부 비공식 클라이언트의 7.0.8 실서버 검증 기록에서 성공한 요청의 필드 구성과 대조함. 운임 · 마일리지 · 할인쿠폰 조회에서는 value_recovery 의 방법으로 읽히는 값(십진 정수로 된 상수)을 APK 에서 직접 읽음.",
     "limits": [
       "호차 · 좌석 조회는 아래 live_validation 의 한 차례 실서버 조회로 확인함. 그 밖의 조건(특실, 여러 명, 차종별 차이)은 확인하지 않음.",
       "DynaPath 서명 대상 경로 집합은 앱에서 보호돼 읽지 못함. 서명 없이 성공한다는 것은 실서버 조회로 확인함.",
@@ -660,7 +660,7 @@
         },
         "signed": true,
         "login_required": true,
-        "verification": "2026-10-13 실서버에서 두 번 확인 (seat_reservation_live_validation). 좌석 하나(어른 1)와 좌석 둘(어른 2) 모두 pykorail 의 요청 그대로 예약됐고(SUCC/IRR000018), 돌려받은 예약의 좌석이 고른 좌석과 같았으며, 바로 취소해 예약이 남지 않음. 필드 구성과 순서는 korail-mobile-api 의 7.0.8 실서버 기록(reserve_seat_designated)과도 같음. 두 확인의 요청은 015 를 실었으나 그때 열차 행의 hSeatAttCd 는 기록하지 않았음 — 값이 다른 행은 미확인."
+        "verification": "2026-10-13 실서버에서 두 번 확인 (seat_reservation_live_validation). 좌석 하나(어른 1)와 좌석 둘(어른 2) 모두 pykorail 의 요청 그대로 예약됐고(SUCC/IRR000018), 돌려받은 예약의 좌석이 고른 좌석과 같았으며, 바로 취소해 예약이 남지 않음. 필드 구성과 순서는 외부 비공식 클라이언트의 7.0.8 실서버 기록(reserve_seat_designated)과도 같음. 두 확인의 요청은 015 를 실었으나 그때 열차 행의 hSeatAttCd 는 기록하지 않았음 — 값이 다른 행은 미확인."
       },
       {
         "resource": "airport_bus.stops",
@@ -847,7 +847,7 @@
         },
         "signed": true,
         "login_required": true,
-        "verification": "2026-10-13 실서버에서 두 번 확인 (transfer_reservation_live_validation). pykorail 의 요청 그대로 두 구간이 예약번호 하나로 예약됨(SUCC/IRR000018). 목록 · 상세가 여정 번호를 같은 값으로 실어 구간별 좌석이 맞게 나뉨. 첫 번째 확인에서 기존 cancel() 의 고정값이 거절돼(ERR800052) 고쳤고, 두 번째 확인에서 고친 cancel(first) 로 두 구간이 함께 취소됨. 필드 구성과 순서는 korail-mobile-api 의 7.0.8 실서버 기록(reserve_transfer)과도 같음."
+        "verification": "2026-10-13 실서버에서 두 번 확인 (transfer_reservation_live_validation). pykorail 의 요청 그대로 두 구간이 예약번호 하나로 예약됨(SUCC/IRR000018). 목록 · 상세가 여정 번호를 같은 값으로 실어 구간별 좌석이 맞게 나뉨. 첫 번째 확인에서 기존 cancel() 의 고정값이 거절돼(ERR800052) 고쳤고, 두 번째 확인에서 고친 cancel(first) 로 두 구간이 함께 취소됨. 필드 구성과 순서는 외부 비공식 클라이언트의 7.0.8 실서버 기록(reserve_transfer)과도 같음."
       },
       {
         "resource": "trains.run_dates",
