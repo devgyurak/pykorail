@@ -176,6 +176,11 @@ class NetFunnelHelper:
         params = self._build_params(self.OP_CODE[operation], key)
         # 앱은 값을 query 에 실어 보내고 본문은 비웁니다. ``post`` 에 ``params`` 를 주면
         # curl_cffi 가 URL 뒤에 붙이고 ``Content-Length: 0`` 을 씁니다.
+        #
+        # 응답의 ``ip`` · ``port`` 는 일부러 따르지 않습니다. SDK 의 ``makeURL`` 은
+        # ``host_notmodify=false`` 일 때만 그 값으로 호스트를 바꾸는데, 앱은 기본값
+        # ``true`` 를 바꾸지 않습니다. 근거는 docs/protocol-evidence-7.0.8.json 의
+        # netfunnel.host_redirect.
         response = self._session.post(NETFUNNEL_URL, params=params)
         parsed = self._parse(response.text)
         return parsed.get("status"), parsed.get("key"), parsed.get("nwait"), parsed.get("ttl")

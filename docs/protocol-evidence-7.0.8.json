@@ -1369,6 +1369,21 @@
       },
       "wait_seconds": "응답 ttl 을 1–30초로 자름. 정수가 아니거나 없으면 1초. SDK 의 getTTL(max_ttl=30, min=1) 과 같고, 앱이 상한을 원격 설정에서 불러오지 않으므로 30 은 고정. 관측된 요청 간격도 약 1초였음."
     },
+    "host_redirect": {
+      "conclusion": "응답에 실린 ip · port 로 다음 요청을 보내지 않습니다. 늘 고정 호스트(nf.letskorail.com:443 = NETFUNNEL_URL)를 씁니다.",
+      "sdk": [
+        "CommandClient.java:33-38 makeURL 은 response != null && !property.isHostNotmodify() && response.getHost().length() > 0 && response.getPort() > 0 일 때만 응답의 host:port 로 URL 을 만듭니다. 그 밖에는 property 의 고정 URL(URL.make(property))입니다.",
+        "makeURL 호출 지점: :109 CheckedEnter(5002) · :166 Complete(5004) · :209 AliveNotice(5003 — 이 패키지는 보내지 않음). :47 GetTidCheckedEnter(5101)는 응답 이전이라 늘 고정 URL 입니다.",
+        "Property.java:23 host_notmodify_ = true — 기본값이 재지정을 따르지 않는 쪽입니다."
+      ],
+      "app": [
+        "AppSuitLinker6.java:618-638 의 Property 설정자 일곱 개(setProtocol · setHost · setPort · setServiceID · setActionID · setTimeout · setRetry)에 setHostNotmodify 가 없습니다.",
+        "host_notmodify 값을 바꾸는 유일한 경로는 LoadProperty.java:93(서버 JSON 의 server.host_notmodify)인데, LoadProperty.java:108 은 URL 이 비어 있으면 불러오지 않고 끝납니다.",
+        "jadx 전체에서 setHostNotmodify · isHostNotmodify 참조는 com.netfunnel.api 안뿐입니다(LoadProperty.java:93, Property.java:246, CommandClient.java:34). 앱 코드가 값을 바꾸는 곳은 없습니다."
+      ],
+      "captures": "두 캡처의 모든 ts.wseq 응답에 ip=nf.letskorail.com · port=443 이 실렸고, 다음 요청도 모두 nf.letskorail.com:443 이었습니다. 다만 재지정 값이 원래 호스트와 같아, 캡처만으로는 '따른다/따르지 않는다'를 구분할 수 없습니다 — 판단은 위 정적 근거에 기댑니다.",
+      "guard": "tests/_async/test_netfunnel.py::TestRun::test_ignores_host_redirect_in_responses (생성물 tests/_sync)."
+    },
     "local_check": {
       "what": "코레일 서버 없이 로컬 수신기로 본문 없는 POST 를 보내 확인함.",
       "observed": "params 는 query(?opcode=5101)로, 본문은 비고 Content-Length: 0, Content-Type 은 한 번만 나감. Host 는 클라이언트가 URL 에서 붙임."
@@ -1383,11 +1398,12 @@
       "서버가 기존 GET/http 요청을 거부하는지, 아니면 받아주는지. 2026-10-16 확인은 새 형태가 평시(200)에 수용된다는 것만 보임 — 대기(201) 상태에서 옛 형태와 새 형태가 어떻게 다른지는 알 수 없음.",
       "5002 에 남는 필드(sid · aid · ttl)를 서버가 무시하는지 — 앱은 보내지 않음.",
       "NetFunnel SDK 의 HttpURLConnection 과 이 패키지의 curl_cffi 임퍼소네이션 사이의 TLS · ALPN 지문 차이를 서버가 교차 검증하는지. 이 이슈에서는 바꾸지 않음.",
-      "2026-09-23 캡처에서 대기열 통과 직후 ScheduleView 가 403 이었던 이유."
+      "2026-09-23 캡처에서 대기열 통과 직후 ScheduleView 가 403 이었던 이유.",
+      "링커 바깥의 런타임 경로(리플렉션, 다른 난독화 링커)에서 host_notmodify 를 바꾸는지 — 정적으로 찾은 범위에서는 없음.",
+      "서버가 실제로 다른 ip 를 내려 주는 상황이 있는지 — 두 캡처에서는 늘 nf.letskorail.com:443 이었음."
     ],
     "deferred": {
-      "#104": "5101 이 대기열 대상 동작을 정하는 방식과 동작별 aid 값 — 10/03 캡처는 act_8, 09/23 캡처는 act_8_2.",
-      "#113": "응답이 지시하는 ip · port 로 재접속하지 않는다는 근거와 회귀 방지."
+      "#104": "5101 이 대기열 대상 동작을 정하는 방식과 동작별 aid 값 — 10/03 캡처는 act_8, 09/23 캡처는 act_8_2."
     }
   },
   "login_password_change_gate": {

@@ -134,6 +134,18 @@ class TestRun:
         # then
         assert session.calls[0]["url"] == NETFUNNEL_URL
 
+    async def test_ignores_host_redirect_in_responses(self, make_helper, monkeypatch) -> None:
+        # given
+        monkeypatch.setattr("pykorail._async.netfunnel.asyncio.sleep", Sleeper())
+        redirect = "&ip=other.example&port=8443"
+        helper, session = make_helper([WAIT + redirect, PASS + redirect, COMPLETE + redirect])
+
+        # when
+        await helper.run()
+
+        # then
+        assert [call["url"] for call in session.calls] == [NETFUNNEL_URL] * 3
+
     async def test_poll_interval_follows_the_response_ttl(self, make_helper, monkeypatch) -> None:
         # given
         sleeper = Sleeper()
