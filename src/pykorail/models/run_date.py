@@ -22,7 +22,8 @@ if TYPE_CHECKING:
     from pykorail.options import NetFunnelActionCode
 
 #: 성수기를 뜻하는 ``bizDdStgCd``. 코레일+ 7.0.8 의 ``RunDateOutItem.isPeakSeason`` 이
-#: 이 값과의 일치로 판정하고, 실서버 조회로도 확인했습니다 (#117).
+#: 등호 비교라는 것은 정적 분석으로 확인했고, 상수 ``"5"`` 는 캡처에서 유도했습니다
+#: (#117). 실측이 확인한 것은 ``1``–``3`` 이 ``act_8`` 로 이어진다는 점뿐입니다.
 _PEAK_SEASON = "5"
 
 
@@ -31,9 +32,10 @@ class RunDate:
     """운행 달력의 하루.
 
     ``run_date`` 와 ``is_peak_season`` 만 뜻을 확인했습니다. 나머지 필드는 의미를
-    확인하지 못해 **앱 ``RunDateOutItem`` 의 필드명 그대로** 원문 문자열을 담습니다 —
-    ``day_dv_cd`` · ``hldy_dv_cd`` · ``sale_dd_dv_cd`` 와 ``*TrnOpFlg`` 입니다. 플래그는
-    ``"Y"`` · ``"N"`` 외에 빈 문자열(``""``)도 오므로 불리언으로 바꾸지 않습니다.
+    확인하지 못해 **앱 ``RunDateOutItem`` 의 원문 필드명을 snake_case 로 옮긴 이름**에
+    원문 문자열을 담습니다 — ``day_dv_cd`` · ``hldy_dv_cd`` · ``sale_dd_dv_cd`` 와
+    ``*TrnOpFlg`` 입니다. 플래그는 ``"Y"`` · ``"N"`` 외에 빈 문자열(``""``)도 오므로
+    불리언으로 바꾸지 않습니다.
     """
 
     run_date: str

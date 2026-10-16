@@ -335,11 +335,13 @@ netfunnel_action_for(run_dates: Sequence[RunDate], departure: date | datetime) -
 ```
 
 `RunDate` 는 하루입니다. `run_date`(운행일 `YYYYMMDD`)와 성수기 여부
-(`is_peak_season`) 말고는 앱의 필드명을 그대로 둔 값들(`day_dv_cd` · `hldy_dv_cd` ·
-`sale_dd_dv_cd` 와 `o_trn_op_flg` … `x_trn_op_flg`)이라 뜻을 지어 붙이지 않았습니다.
-플래그는 `"Y"` · `"N"` 외에 빈 문자열일 수 있어 불리언이 아닙니다.
+(`is_peak_season`) 말고는 앱의 원문 필드명을 snake_case 로 옮긴 값들(`day_dv_cd` ·
+`hldy_dv_cd` · `sale_dd_dv_cd` 와 `o_trn_op_flg` … `x_trn_op_flg`)이라 뜻을 지어 붙이지
+않았습니다. 플래그는 `"Y"` · `"N"` 외에 빈 문자열일 수 있어 불리언이 아닙니다.
 
-NetFunnel 대기열의 `aid` 는 출발일이 성수기인지로 갈립니다([NetFunnel 대기열](#netfunnel-대기열)).
+**일반 열차 조회**의 NetFunnel `aid` 는 출발일이 성수기인지로 갈립니다. 할인상품은
+`act_6`(`TRAIN_SEARCH_SPECIAL_OFFER`), 관광열차는 대기열을 거치지 않으므로 이 판정을
+쓰지 않습니다 — 자세한 규칙은 [NetFunnel 대기열](#netfunnel-대기열) 참고.
 `netfunnel_action_for()` 가 그 판정을 대신합니다 — 성수기면 `act_8_2`, 그 밖이거나
 달력에 그날이 없으면 `act_8` 입니다. `datetime` 을 넘기면 KST 로 바꿔 날짜만 봅니다.
 
