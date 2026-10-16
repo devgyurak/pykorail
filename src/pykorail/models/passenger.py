@@ -140,3 +140,32 @@ class Disability4To6Passenger(Passenger):
 
     TYPE_CODE = "1"
     DEFAULT_DISCOUNT = "112"
+
+
+class GuideDogPassenger(Passenger):
+    """안내견 동반 승객 (시각장애인).
+
+    유형 코드가 어른과 같은 ``1`` 이지만 **:class:`AdultPassenger` 의 하위가 아닙니다** —
+    예매 폼에서는 할인 코드가 달라 별도 블록으로 나가고, 조회 폼에서는 어른 칸
+    (``txtPsgFlg_1``)에 더해집니다. 어른과 합치는 것은 :func:`Passenger.reduce` 의 몫이
+    아니라 :meth:`TrainResource.search <pykorail.resources.trains.TrainResource.search>` 가
+    조회 폼을 만들 때 합니다 (코레일톡+ 7.0.8 ``TrainScheduleViewModel`` 의 인원 칸 합산).
+
+    앱의 인원 선택기는 안내견 수가 중증 · 경증 장애인 합계를 넘지 못하게 막지만,
+    pykorail 은 그 제약을 걸지 않고 서버 거절에 맡깁니다. 인원 제약을 클라이언트에서
+    흉내 내면 앱이 나중에 조건을 바꿀 때 우리만 막는 요청이 생깁니다.
+
+    .. warning::
+        :attr:`DEFAULT_DISCOUNT` (``173``)는 외부 비공식 클라이언트 기록에 근거한
+        값이고 **실서버로 확인되지 않았습니다.** 2026-10-16 중증 1 + 안내견 1 예약이
+        서버에서 ``ERR299943``("예약할인이 지원되지 않습니다")로 거절됐지만, 같은
+        열차의 중증 단독 예약도 할인이 적용되지 않아(적용 코드 ``000``) 이 거절이
+        ``173`` 때문인지 계정 자격 때문인지 가리지 못했습니다. 그래서 이 승객으로
+        :meth:`ReservationResource.create <pykorail.resources.reservations.ReservationResource.create>`
+        가 실패할 수 있습니다 — 자세한 것은 ``docs/protocol-evidence-7.0.8.json``.
+    """
+
+    TYPE_CODE = "1"
+    # 외부 비공식 클라이언트에서 온 값. APK 에서는 보호 문자열이라 읽히지 않았고
+    # 실서버 예약도 거절되어 아직 확인되지 않았다 (위 경고 · protocol-evidence).
+    DEFAULT_DISCOUNT = "173"

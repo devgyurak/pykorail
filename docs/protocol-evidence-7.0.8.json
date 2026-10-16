@@ -175,11 +175,82 @@
     "전체 앱 설정 초기화 및 에뮬레이터 화면·API레벨 고정값",
     "is_emulator 주입 옵션"
   ],
+  "guide_dog_passenger": {
+    "what": "안내견 동반 승객(GuideDogPassenger). 열차 조회 · 예매 폼에서 어른과 어떻게 다른지.",
+    "apk": {
+      "package": "com.korail.talk",
+      "version": "7.0.8",
+      "source": "jadx 디컴파일 트리. PassengerType · ReqDiscount · TrainScheduleViewModel · Passengers · PassengersBottomSheetKt · TrainScheduleIn.",
+      "psg_tp_cd": "1. PassengerType.GUIDE_DOG 의 psgTpCd 는 ADULT · SENIOR · DISABILITY_* 와 같은 암호문 호출(같은 클래스의 같은 문자열)이라 값이 같음. PassengerType.Companion.basicList() 의 7종에 GUIDE_DOG 가 들어감.",
+      "search_flag": "txtPsgFlg_1 에 어른 · 청소년과 함께 합산됨. TrainScheduleViewModel.buildTrainScheduleIn 의 $EnumSwitchMapping$2 가 GUIDE_DOG 에 6 을 주고, case 6 이 어른 · 청소년과 같은 합계(iIntValue)에 더함. iIntValue 는 TrainScheduleIn 의 txtPsgFlg_1 자리에 들어감.",
+      "seat_count": "안내견은 좌석 · 인원 계산에서 한 명으로 셈. Passengers.sum() 이 dataMap 의 모든 유형을 더하고, 좌석 조회의 txtTotPsgCnt / totPsgCnt 가 그 값을 그대로 씀 (TrainSeatMapViewModel · TrainResearchIn · TResidualSeatsResearchIn).",
+      "reservation_total": "예매 폼 txtTotPsgCnt 도 passengers.sum() 이라 안내견을 포함. toTicketReservationInput 이 유형마다 블록을 만듦.",
+      "client_constraint": "앱은 안내견 수가 중증 · 경증 장애인 합계를 넘지 못하게 막음 (PassengersBottomSheetKt.warningPassengerType). pykorail 은 이 제약을 강제하지 않음 — 서버 거절에 맡김.",
+      "airport_bus": "PassengerType.airportList() 는 어른 · 어린이 두 종류뿐. 안내견은 공항버스 승객 목록에 없음."
+    },
+    "discount_code": {
+      "value": "173",
+      "status": "미확인. 외부 비공식 클라이언트의 요청 값이고 APK 로는 읽지 못했다. 이 계정의 실서버 예약은 ERR299943 로 거절됐지만, 같은 계정·열차의 중증 단독 예약도 할인이 적용되지 않아(아래) 계정 자격 문제와 구분하지 못한다.",
+      "basis": "외부에 공개된 비공식 클라이언트가 txtDiscKndCd=173 (요청 할인)으로 기록한다. 그 클라이언트의 실서버 현황표에는 안내견 예약을 확인한 기록이 없다.",
+      "apk": "확인하지 못함. ReqDiscount.GUIDE_DOG.discKndCd 는 보호(AppSuit/AlienGuard) 문자열(3바이트)이고, value_recovery 의 정수 비교식으로도 쓰이지 않아 읽히지 않음.",
+      "live": "2026-10-16 실서버. 중증 1 + 안내견 1 예약은 ERR299943 로 거절됐다. 같은 열차에서 중증 1명만 보낸 예약은 SUCC 였지만, 응답 원문에서 적용 할인 코드가 h_dcnt_knd_cd2=000(미적용)이고 승객 유형명이 '어른'이었다 — 이 계정에서는 장애인 할인 자체가 적용되지 않는다. 따라서 이 계정으로는 173 이 맞는지 틀린지 판정할 수 없다 (live_validation 참조). 외부 비공식 클라이언트의 동작 문서는 ERR299943 을 '지원하지 않는 예약 할인'으로 분류하며, 청소년 P11 도 같은 코드로 거절됐다. 173 이 앱의 요청 값이라는 근거는 있으나, 이 값으로 예약이 성공한다는 증거는 아직 없다."
+    }
+  },
+  "live_validation": [
+    {
+      "case": "guide dog search (serious 1 + guide dog 1)",
+      "endpoint": "search_schedule",
+      "result": "SUCC",
+      "route": [
+        "서울",
+        "부산"
+      ],
+      "train_count": 10,
+      "sent": {
+        "txtPsgFlg_1": 1,
+        "txtPsgFlg_4": 1,
+        "txtPsgFlg_2": 0,
+        "txtPsgFlg_3": 0,
+        "txtPsgFlg_5": 0
+      },
+      "observed_at_kst": "2026-10-16T17:35+09:00",
+      "note": "매진도 포함(include_no_seats)으로 조회. 조회 칸 조합이 서버에서 정상 처리됨."
+    },
+    {
+      "case": "guide dog reservation (serious 1 + guide dog 1)",
+      "endpoint": "reserve",
+      "result": "rejected",
+      "h_msg_cd": "ERR299943",
+      "h_msg_txt": "예약할인이 지원되지 않습니다",
+      "seat_class": "일반실",
+      "job_id": "1101",
+      "observed_at_kst": "2026-10-16T17:35+09:00",
+      "note": "예약 전 1회 시도, 결제하지 않음. 실패해 예약은 만들어지지 않았고 취소도 필요 없었음. 좌석 지정 예매 · 공항버스 · 제약 위반 거절 확인은 이번 범위가 아님."
+    },
+    {
+      "case": "serious-only reservation on the same train + raw discount codes (diagnostic for ERR299943)",
+      "endpoint": "reserve",
+      "result": "SUCC",
+      "route": [
+        "서울",
+        "부산"
+      ],
+      "seat_class": "일반실",
+      "job_id": "1101",
+      "amount": 14300,
+      "cancelled": true,
+      "applied_discount": "h_dcnt_knd_cd2=000 (미적용), h_psg_tp_cd=1, h_psg_tp_dv_nm=어른",
+      "observed_at_kst": "2026-10-16T17:53:22+09:00",
+      "note": "중증 1명(요청 할인코드 111)만 보내 같은 열차에서 성공하고 즉시 취소함. 다만 응답 원문에서 적용 할인 코드가 000(미적용)이고 승객 유형명이 '어른'이었다 — 이 계정에서는 장애인 할인이 적용되지 않는다. 그래서 중증+안내견의 ERR299943 이 안내견 173 때문인지 계정 자격 때문인지 가릴 수 없다."
+    }
+  ],
   "limits": [
     "각 헤더·폼 변경의 독립적인 필수성은 검증하지 않음.",
     "ID 비교는 동일 계정·시점·프록시 경로에서 수행.",
     "긴 비밀번호 벡터는 오프라인 앱 인코딩 일치 검증이며 서버의 비밀번호 길이 허용 정책 검증이 아님.",
-    "원본 캡처와 실제 계정·기기 ID는 저장소에 포함하지 않음."
+    "원본 캡처와 실제 계정·기기 ID는 저장소에 포함하지 않음.",
+    "안내견 승객(GuideDogPassenger)의 할인 코드 173 은 APK 보호 문자열이라 value_recovery 로 읽지 못했고, 실서버 예약도 ERR299943 로 거절됨. 같은 열차의 중증 단독 예약도 할인이 적용되지 않아(적용 코드 000) 계정 자격 문제와 구분하지 못해 미확인 — 외부 비공식 클라이언트 기록 근거만 있음.",
+    "안내견 조합에 대한 서버의 거절 조건(인원 제약 위반 등), 좌석 지정 예매, 공항버스에서의 동작은 확인하지 않음 (guide_dog_passenger · live_validation 참조)."
   ],
   "review_followup_validation": [
     {

@@ -19,6 +19,7 @@ from pykorail.models.passenger import (
     ChildPassenger,
     Disability1To3Passenger,
     Disability4To6Passenger,
+    GuideDogPassenger,
     Passenger,
     SeniorPassenger,
     ToddlerPassenger,
@@ -183,7 +184,10 @@ class AsyncTrainResource(AsyncResource):
             "txtGoEnd": arr,
             "txtGoAbrdDt": moment.strftime("%Y%m%d"),
             "txtGoHour": moment.strftime("%H%M%S"),
-            "txtPsgFlg_1": total(AdultPassenger),
+            # 안내견은 별도 칸이 없고 **어른 칸에 더해집니다** (코레일톡+ 7.0.8
+            # TrainScheduleViewModel.buildTrainScheduleIn: GUIDE_DOG 와 어른 · 청소년이 같은
+            # 합계로 txtPsgFlg_1 에 들어갑니다). 청소년(TEENAGER)은 pykorail 이 다루지 않습니다.
+            "txtPsgFlg_1": total(AdultPassenger) + total(GuideDogPassenger),
             "txtPsgFlg_2": total(ChildPassenger) + total(ToddlerPassenger),
             "txtPsgFlg_3": total(SeniorPassenger),
             "txtPsgFlg_4": total(Disability1To3Passenger),

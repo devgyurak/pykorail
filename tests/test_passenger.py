@@ -10,6 +10,7 @@ from pykorail.models import (
     AdultPassenger,
     ChildPassenger,
     Disability1To3Passenger,
+    GuideDogPassenger,
     Passenger,
     SeniorPassenger,
     ToddlerPassenger,
@@ -29,6 +30,7 @@ class TestDefaults:
             (ToddlerPassenger, "3", "321"),
             (SeniorPassenger, "1", "131"),
             (Disability1To3Passenger, "1", "111"),
+            (GuideDogPassenger, "1", "173"),
         ],
     )
     def test_type_and_discount_codes(self, passenger_type: type[Passenger], type_code: str, discount: str) -> None:
@@ -79,6 +81,17 @@ class TestReduce:
 
         # then
         assert counts(merged) == [("ChildPassenger", 1), ("ToddlerPassenger", 1)]
+
+    def test_keeps_guide_dog_and_adult_apart(self) -> None:
+        """안내견과 어른도 유형 코드(`1`)는 같지만 할인 코드가 달라 합쳐지면 안 됩니다."""
+        # given
+        passengers = [AdultPassenger(1), GuideDogPassenger(1)]
+
+        # when
+        merged = Passenger.reduce(passengers)
+
+        # then
+        assert counts(merged) == [("AdultPassenger", 1), ("GuideDogPassenger", 1)]
 
     def test_keeps_different_cards_apart(self) -> None:
         # given

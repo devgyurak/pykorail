@@ -60,6 +60,7 @@ PASSENGER_TYPES = [
     "SeniorPassenger",
     "Disability1To3Passenger",
     "Disability4To6Passenger",
+    "GuideDogPassenger",
 ]
 
 
