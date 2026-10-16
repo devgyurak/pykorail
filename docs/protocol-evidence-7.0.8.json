@@ -1421,12 +1421,19 @@
         {"apk": "ACTION_RESERVATION_TICKET_ID", "aid": "act_21", "pykorail": "NetFunnelAction.RESERVATION_VIEW", "ciphertext": [129, 87, 39, 70, 210, 5]}
       ],
       "unused": "ACTION_TEST_ID 는 act_4 로 풀리지만 어떤 화면 호출 지점에서도 쓰이지 않아 상수로 옮기지 않았다.",
-      "call_sites": {
-        "reserve": "TrainScheduleViewModel:5145,5246 · TrainSeatMapViewModel:2700,2792 · ReservationWaitViewModel:575 · HomeViewModel:6240",
-        "pay": "PayViewModel:6479 · FPayViewModel:802",
-        "reservation_view": "MyReservationViewModel:2482",
-        "train_search": "TrainScheduleViewModel.netFunnelTrainSchedule (5386 근처)"
-      },
+      "call_sites_note": "각 화면은 NetworkConstants$Netfunnel 상수를 참조하지 않고 자기 자리에서 같은 바이트 배열을 직접 복호해 aid 로 넘긴다. 그래서 동작↔aid 대응의 근거는 상수 정의가 아니라 아래 호출 지점의 암호문이다.",
+      "call_sites": [
+        {"where": "TrainScheduleViewModel:5145,5246", "aid": "act_14", "pykorail": "NetFunnelAction.RESERVE", "ciphertext": [102, 75, 179, 218, 54, 28]},
+        {"where": "TrainSeatMapViewModel:2700,2792", "aid": "act_14", "pykorail": "NetFunnelAction.RESERVE", "ciphertext": [21, 210, 143, 12, 69, 133]},
+        {"where": "ReservationWaitViewModel:575", "aid": "act_14", "pykorail": "NetFunnelAction.RESERVE", "ciphertext": [110, 113, 137, 130, 62, 38]},
+        {"where": "HomeViewModel:6240", "aid": "act_14", "pykorail": "NetFunnelAction.RESERVE", "ciphertext": [133, 60, 129, 131, 213, 107]},
+        {"where": "PayViewModel:6479", "aid": "act_18", "pykorail": "NetFunnelAction.PAY", "ciphertext": [142, 119, 110, 61, 222, 44]},
+        {"where": "FPayViewModel:802", "aid": "act_18", "pykorail": "NetFunnelAction.PAY", "ciphertext": [38, 50, 185, 25, 118, 105]},
+        {"where": "MyReservationViewModel:2482", "aid": "act_21", "pykorail": "NetFunnelAction.RESERVATION_VIEW", "ciphertext": [178, 68, 206, 132, 225, 22]},
+        {"where": "TrainScheduleViewModel.netFunnelTrainSchedule (평시)", "aid": "act_8", "pykorail": "NetFunnelAction.TRAIN_SEARCH", "ciphertext": [172, 148, 42, 53, 245]},
+        {"where": "TrainScheduleViewModel.netFunnelTrainSchedule (성수기)", "aid": "act_8_2", "pykorail": "NetFunnelAction.TRAIN_SEARCH_PEAK", "ciphertext": [133, 130, 89, 202, 220, 190, 31]},
+        {"where": "TrainScheduleViewModel.netFunnelTrainSchedule (할인상품)", "aid": "act_6", "pykorail": "NetFunnelAction.TRAIN_SEARCH_SPECIAL_OFFER", "ciphertext": [201, 97, 132, 178, 158]}
+      ],
       "selection_rule": {
         "train_search": [
           "할인상품(SpecialOffer)을 골랐고 그것이 ACCOMPANY_4 가 아니면 ACTION_PRODUCT_ID(act_6).",
@@ -1436,15 +1443,14 @@
         "peak_flag": "RunDateOutItem.isPeakSeason() 은 bizDdStgCd 를 한 글자 상수와 비교한다. 그 상수는 한 바이트라 XOR 로 확정하지 못했다. 캡처로 확인: 2026-09-23(추석 직전) 캡처의 출발일 bizDdStgCd=5 일 때 5101 이 act_8_2, 2026-10-03 캡처의 출발일 bizDdStgCd=4 일 때 act_8.",
         "source": "TrainScheduleViewModel.netFunnelTrainSchedule, RunDateOutItem.isPeakSeason"
       },
-      "guard": "tests/test_netfunnel_actions.py 가 이 암호문을 act_ 접두로 풀어 NetFunnelAction 상수와 대조한다.",
+      "guard": "tests/test_netfunnel_actions.py 가 known_plaintexts 로 4바이트 반복 키를, constants 와 call_sites 의 암호문을 상수와 대조하고, NetFunnelActionCode 리터럴이 상수 집합과 같은지 검사한다.",
       "unverified": [
         "isPeakSeason() 의 비교가 등호라는 것은 추정이다 — 다른 비교일 근거는 없다.",
         "bizDdStgCd 5 외의 값(1·2·3)이 출발일인 날의 실제 aid 는 캡처가 없어 확인하지 못했다. 1–3 은 성수기가 아닌 날에 나왔지만 그 날짜로 조회한 캡처는 없다.",
         "날짜 정보가 없거나 조회일에 해당하는 RunDateOutItem 이 없을 때 앱이 어느 aid 를 고르는지는 난독화된 술어 때문에 확정하지 못했다.",
         "2026-09-23 캡처에서 대기열 통과 직후 ScheduleView 가 403 이었던 이유."
       ]
-    },
-    "deferred": {}
+    }
   },
   "login_password_change_gate": {
     "observed_at_kst": "2026-10-13",
