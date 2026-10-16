@@ -1441,7 +1441,7 @@
           "그 밖에는 schedule.runDt 응답의 출발일 항목(RunDateOutItem)을 찾아 isPeakSeason() 이 참이면 ACTION_PEAK_SEASON_ID(act_8_2), 아니면 ACTION_ID(act_8)."
         ],
         "peak_flag": "RunDateOutItem.isPeakSeason() 은 bizDdStgCd 를 한 글자 상수와 Intrinsics.areEqual(등호)로 비교한다. 그 상수는 한 바이트라 XOR 로 직접 복호하지 못했고, 등호와 캡처로부터 \"5\" 로 유도했다: 2026-09-23(추석 직전) 캡처의 출발일 bizDdStgCd=5 에서 5101 이 act_8_2 였고, 2026-10-03 캡처의 출발일 bizDdStgCd=4 에서 act_8 이었다. 등호이므로 성수기 상수는 \"5\" 하나뿐이고 1–4 는 성수기가 아니다.",
-        "unnamed_item": "schedule.runDt 응답에 조회일(출발일)에 해당하는 RunDateOutItem 이 없으면 act_8 이다. 아래 linker_basis 의 술어 해석으로 확정했고 실측하지 못했다(live_check.limit 참조).",
+        "missing_run_date_item": "schedule.runDt 응답에 조회일(출발일)에 해당하는 RunDateOutItem 이 없으면 act_8 이다. 아래 linker_basis 의 술어 해석으로 확정했고 실측하지 못했다(live_check.limit 참조).",
         "source": "TrainScheduleViewModel.netFunnelTrainSchedule, RunDateOutItem.isPeakSeason"
       },
       "linker_basis": {
