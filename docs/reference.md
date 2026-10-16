@@ -1009,9 +1009,10 @@ with NetFunnelHelper() as nf:
 
 1. 할인상품(`SpecialOffer`)을 골랐고 그것이 `ACCOMPANY_4` 가 아니면 `act_6`.
 2. 관광열차(`trainGroup.tour`)면 대기열을 거치지 않습니다(빈 `aid`).
-3. 그 밖에는 조회일 항목의 성수기 플래그가 참이면 `act_8_2`, 아니면 `act_8`.
-   플래그는 `schedule.runDt` 응답의 `bizDdStgCd` 에서 오는데, 그 엔드포인트는 이
-   패키지에 없습니다 — 그래서 어느 `aid` 를 쓸지는 호출자가 정합니다.
+3. 그 밖에는 `schedule.runDt` 응답의 출발일 항목 성수기 플래그가 참이면 `act_8_2`,
+   아니면 `act_8` 입니다. 플래그는 `bizDdStgCd == "5"` 이고, 그 밖의 값(`1`–`4`)과
+   조회일 항목이 없을 때는 `act_8` 입니다. 그 엔드포인트는 이 패키지에 없습니다 —
+   그래서 어느 `aid` 를 쓸지는 호출자가 정합니다.
 
 비동기 코드에서는 `AsyncNetFunnelHelper` 를 `await` 합니다. 리소스와 달리
 `AsyncKorail` 에 엮여 있지 않은 것은 동기판과 같습니다.

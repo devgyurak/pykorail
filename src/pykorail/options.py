@@ -101,8 +101,9 @@ class NetFunnelAction:
     """
 
     #: 열차 조회 (평시). 앱 ``TrainScheduleViewModel.netFunnelTrainSchedule``.
+    #: 출발일의 ``bizDdStgCd`` 가 ``"5"`` 가 아니거나 조회일 항목이 없을 때도 이 값을 씁니다.
     TRAIN_SEARCH: Final = "act_8"
-    #: 열차 조회 (성수기). 출발일의 ``bizDdStgCd`` 가 성수기일 때 씁니다.
+    #: 열차 조회 (성수기). 출발일의 ``bizDdStgCd`` 가 ``"5"`` 일 때 씁니다.
     TRAIN_SEARCH_PEAK: Final = "act_8_2"
     #: 열차 조회 (할인상품). 앱에서 ``ACCOMPANY_4`` 가 아닌 할인상품을 골랐을 때.
     TRAIN_SEARCH_SPECIAL_OFFER: Final = "act_6"

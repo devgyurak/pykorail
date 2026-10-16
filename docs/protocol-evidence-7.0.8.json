@@ -1440,14 +1440,40 @@
           "관광열차(trainGroup.tour)면 aid 가 빈 문자열이고 대기열을 거치지 않는다.",
           "그 밖에는 schedule.runDt 응답의 출발일 항목(RunDateOutItem)을 찾아 isPeakSeason() 이 참이면 ACTION_PEAK_SEASON_ID(act_8_2), 아니면 ACTION_ID(act_8)."
         ],
-        "peak_flag": "RunDateOutItem.isPeakSeason() 은 bizDdStgCd 를 한 글자 상수와 비교한다. 그 상수는 한 바이트라 XOR 로 확정하지 못했다. 캡처로 확인: 2026-09-23(추석 직전) 캡처의 출발일 bizDdStgCd=5 일 때 5101 이 act_8_2, 2026-10-03 캡처의 출발일 bizDdStgCd=4 일 때 act_8.",
+        "peak_flag": "RunDateOutItem.isPeakSeason() 은 bizDdStgCd 를 한 글자 상수와 Intrinsics.areEqual(등호)로 비교한다. 그 상수는 한 바이트라 XOR 로 직접 복호하지 못했고, 등호와 캡처로부터 \"5\" 로 유도했다: 2026-09-23(추석 직전) 캡처의 출발일 bizDdStgCd=5 에서 5101 이 act_8_2 였고, 2026-10-03 캡처의 출발일 bizDdStgCd=4 에서 act_8 이었다. 등호이므로 성수기 상수는 \"5\" 하나뿐이고 1–4 는 성수기가 아니다.",
+        "unnamed_item": "schedule.runDt 응답에 조회일(출발일)에 해당하는 RunDateOutItem 이 없으면 act_8 이다. 아래 linker_basis 의 술어 해석으로 확정했고 실측하지 못했다(live_check.limit 참조).",
         "source": "TrainScheduleViewModel.netFunnelTrainSchedule, RunDateOutItem.isPeakSeason"
+      },
+      "linker_basis": {
+        "what": "RunDateOutItem.isPeakSeason() 과 TrainScheduleViewModel.netFunnelTrainSchedule 의 분기가 부르는 AppSuitLinker1 의 디스패치 상수 200개도 AlienGuard 4바이트 반복 XOR 로 암호화돼 있다. 값이 전부 -13578… 로 시작해 접두 -135 로 키가 나오고, 200개 전부가 실제 case 라벨로 풀린다.",
+        "constants": [
+          {"constant": "GAXYLALVWQJPDOSYYJADJMIUCLYWYUQU", "value": -1357815058, "body": "Intrinsics.areEqual(objArr[0], objArr[1]) — isPeakSeason() 의 성수기 비교"},
+          {"constant": "KLCGPKBQAJVFWEVXZFGOXBWZOYTCOUXV", "value": -1357815049, "body": "((Map) obj).get(objArr[0]) — 출발일 항목 조회"},
+          {"constant": "QGBKVNACRFGZIUGRHCKAKROTGORDTDCP", "value": -1357814990, "body": "((CharSequence) obj).length() — 빈 aid 검사"}
+        ],
+        "predicates": "분기에는 한 글자 숫자 문자열을 parseInt 하는 불투명 술어가 둘 끼어 있다 — P = parseInt(method_name_2(-687730656, 246841685, {68})) > 0, Q = parseInt(method_name_3(-1293188141, {90}, -219769120, -1814047807)) > 1. 같은 메서드가 new Object[P ? 1 : 0] 로 배열을 만들고 objArr[Q ? 1 : 0] 에 출발일을 넣어 Map.get 을 부른다. 배열이 비거나 범위를 벗어나면 앱이 죽으므로 P 는 참, Q 는 거짓이다 — 같은 인자의 술어가 APK 전체에서 new Object[P ? 1 : 0] 꼴로 64곳, objArr[Q ? 1 : 0] 꼴로 120곳 넘게 반복되는 난독화 관용구다.",
+        "branch": "P 를 참, Q 를 거짓으로 대입하면 분기는 성수기 → act_8_2, 평시 → act_8 이고, 출발일 항목이 없을 때의 가지(Q ? act_8_2 : act_8)는 act_8 이다."
+      },
+      "peak_season": {
+        "what": "출발일의 bizDdStgCd 값에 따른 5101 aid 관측과 근거.",
+        "observations": [
+          {"bizDdStgCd": "1", "aid": "act_8", "basis": "2026-10-16 실측 (10/16 출발)"},
+          {"bizDdStgCd": "2", "aid": "act_8", "basis": "2026-10-16 실측 (10/20 출발)"},
+          {"bizDdStgCd": "3", "aid": "act_8", "basis": "2026-10-16 실측 (10/17 출발)"},
+          {"bizDdStgCd": "4", "aid": "act_8", "basis": "2026-10-03 캡처"},
+          {"bizDdStgCd": "5", "aid": "act_8_2", "basis": "2026-09-23 캡처"},
+          {"bizDdStgCd": "(출발일 항목 없음)", "aid": "act_8", "basis": "정적 분석만 (linker_basis)"}
+        ]
+      },
+      "live_check": {
+        "observed_at_kst": "2026-10-16",
+        "scope": "사용자가 이 건에 한해 승인한 korail_clean 에뮬레이터의 코레일톡+ 7.0.8 확인. 로그인 없이 광명→동대구 열차 조회 3회. 예약·결제 없음. 키 값은 저장소에 넣지 않고 길이만 봄.",
+        "capture": "capture/korail-20261016-153631.mitm (흐름 26건)",
+        "result": "세 조회 모두 5101 aid=act_8, 이어 5004 와 ScheduleView 가 200. 같은 세션의 runDt 응답 bizDdStgCd 는 1(금·월)·2(화–목)·3(토·일) 주기였고 출발일은 10/16(1)·10/17(3)·10/20(2).",
+        "limit": "출발일 항목이 없을 때, act_6(할인상품), 관광열차(빈 aid)는 실측 범위 밖이다. runDt 응답이 판매 기간보다 넓은 약 두 달을 덮어 앱 UI 로는 출발일 항목 없음 상황을 만들 수 없다."
       },
       "guard": "tests/test_netfunnel_actions.py 가 known_plaintexts 로 4바이트 반복 키를, constants 와 call_sites 의 암호문을 상수와 대조하고, NetFunnelActionCode 리터럴이 상수 집합과 같은지 검사한다. 한계: 키를 접두(act_ 등)에서 뽑으므로 각 암호문의 앞 4바이트는 이 테스트로 검증되지 않는다 — 그 부분은 APK 원본과 직접 대조해야 한다(137→135 오타가 그렇게 새 나갔다).",
       "unverified": [
-        "isPeakSeason() 의 비교가 등호라는 것은 추정이다 — 다른 비교일 근거는 없다.",
-        "bizDdStgCd 5 외의 값(1·2·3)이 출발일인 날의 실제 aid 는 캡처가 없어 확인하지 못했다. 1–3 은 성수기가 아닌 날에 나왔지만 그 날짜로 조회한 캡처는 없다.",
-        "날짜 정보가 없거나 조회일에 해당하는 RunDateOutItem 이 없을 때 앱이 어느 aid 를 고르는지는 난독화된 술어 때문에 확정하지 못했다.",
         "2026-09-23 캡처에서 대기열 통과 직후 ScheduleView 가 403 이었던 이유."
       ]
     }
