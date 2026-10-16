@@ -1425,7 +1425,7 @@
       "call_sites": [
         {"where": "TrainScheduleViewModel:5145,5246", "aid": "act_14", "pykorail": "NetFunnelAction.RESERVE", "ciphertext": [102, 75, 179, 218, 54, 28]},
         {"where": "TrainSeatMapViewModel:2700,2792", "aid": "act_14", "pykorail": "NetFunnelAction.RESERVE", "ciphertext": [21, 210, 143, 12, 69, 133]},
-        {"where": "ReservationWaitViewModel:575", "aid": "act_14", "pykorail": "NetFunnelAction.RESERVE", "ciphertext": [110, 113, 137, 130, 62, 38]},
+        {"where": "ReservationWaitViewModel:575", "aid": "act_14", "pykorail": "NetFunnelAction.RESERVE", "ciphertext": [110, 113, 135, 130, 62, 38]},
         {"where": "HomeViewModel:6240", "aid": "act_14", "pykorail": "NetFunnelAction.RESERVE", "ciphertext": [133, 60, 129, 131, 213, 107]},
         {"where": "PayViewModel:6479", "aid": "act_18", "pykorail": "NetFunnelAction.PAY", "ciphertext": [142, 119, 110, 61, 222, 44]},
         {"where": "FPayViewModel:802", "aid": "act_18", "pykorail": "NetFunnelAction.PAY", "ciphertext": [38, 50, 185, 25, 118, 105]},
@@ -1443,7 +1443,7 @@
         "peak_flag": "RunDateOutItem.isPeakSeason() 은 bizDdStgCd 를 한 글자 상수와 비교한다. 그 상수는 한 바이트라 XOR 로 확정하지 못했다. 캡처로 확인: 2026-09-23(추석 직전) 캡처의 출발일 bizDdStgCd=5 일 때 5101 이 act_8_2, 2026-10-03 캡처의 출발일 bizDdStgCd=4 일 때 act_8.",
         "source": "TrainScheduleViewModel.netFunnelTrainSchedule, RunDateOutItem.isPeakSeason"
       },
-      "guard": "tests/test_netfunnel_actions.py 가 known_plaintexts 로 4바이트 반복 키를, constants 와 call_sites 의 암호문을 상수와 대조하고, NetFunnelActionCode 리터럴이 상수 집합과 같은지 검사한다.",
+      "guard": "tests/test_netfunnel_actions.py 가 known_plaintexts 로 4바이트 반복 키를, constants 와 call_sites 의 암호문을 상수와 대조하고, NetFunnelActionCode 리터럴이 상수 집합과 같은지 검사한다. 한계: 키를 접두(act_ 등)에서 뽑으므로 각 암호문의 앞 4바이트는 이 테스트로 검증되지 않는다 — 그 부분은 APK 원본과 직접 대조해야 한다(137→135 오타가 그렇게 새 나갔다).",
       "unverified": [
         "isPeakSeason() 의 비교가 등호라는 것은 추정이다 — 다른 비교일 근거는 없다.",
         "bizDdStgCd 5 외의 값(1·2·3)이 출발일인 날의 실제 aid 는 캡처가 없어 확인하지 못했다. 1–3 은 성수기가 아닌 날에 나왔지만 그 날짜로 조회한 캡처는 없다.",
