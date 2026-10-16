@@ -756,6 +756,113 @@ class TestTransferStations:
         assert stations == []
 
 
+class TestRunDates:
+    """운행 달력 — ``schedule.runDt``."""
+
+    def test_sends_exact_form_fields(self, korail) -> None:
+        """폼 필드 이름이 바뀌면 서버가 조용히 다른 달력을 줍니다."""
+        # given
+        client, session = korail
+
+        # when
+        client.trains.run_dates()
+
+        # then
+        assert set(session.kwargs_for("run_dates")["data"]) == {
+            "Device",
+            "Version",
+            "AppVersion",
+            "Key",
+            "timeStamp",
+        }
+
+    def test_timestamp_is_the_request_time_in_epoch_milliseconds(self, korail, monkeypatch) -> None:
+        # given
+        client, session = korail
+        monkeypatch.setattr(trains.time, "time_ns", lambda: 1_700_000_000_123_000_000)
+
+        # when
+        client.trains.run_dates()
+
+        # then
+        assert session.kwargs_for("run_dates")["data"]["timeStamp"] == "1700000000123"
+
+    def test_goes_in_the_form_body_and_unsigned(self, korail) -> None:
+        # given
+        client, session = korail
+
+        # when
+        client.trains.run_dates()
+
+        # then
+        kwargs = session.kwargs_for("run_dates")
+        assert "params" not in kwargs
+        assert "x-dynapath-m-token" not in kwargs.get("headers", {})
+
+    def test_parses_every_field_verbatim(self, korail) -> None:
+        # given
+        client, _ = korail
+
+        # when
+        run_dates = client.trains.run_dates()
+
+        # then
+        first = run_dates[0]
+        assert (first.run_date, first.biz_dd_stg_cd, first.day_dv_cd) == ("20261016", "1", "6")
+        assert (first.hldy_dv_cd, first.sale_dd_dv_cd) == ("", "5")
+        assert (first.o_trn_op_flg, first.v_trn_op_flg, first.s_trn_op_flg) == ("Y", "N", "Y")
+        assert (first.d_trn_op_flg, first.a_trn_op_flg, first.g_trn_op_flg, first.x_trn_op_flg) == ("N", "N", "N", "N")
+
+    def test_blank_item_keeps_empty_strings(self, korail) -> None:
+        """플래그의 세 번째 상태(빈 값)를 불리언으로 접지 않습니다."""
+        # given
+        client, _ = korail
+
+        # when
+        run_dates = client.trains.run_dates()
+
+        # then
+        blank = run_dates[2]
+        assert (blank.run_date, blank.biz_dd_stg_cd, blank.s_trn_op_flg) == ("", "", "")
+
+    def test_peak_season_flag_is_biz_dd_stg_cd_5(self, korail) -> None:
+        # given
+        client, _ = korail
+
+        # when
+        run_dates = client.trains.run_dates()
+
+        # then
+        assert [day.is_peak_season for day in run_dates] == [False, True, False]
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            {"strResult": "SUCC"},
+            {"strResult": "SUCC", "runningCalendar": None},
+            {"strResult": "SUCC", "runningCalendar": []},
+        ],
+        ids=["absent", "null", "empty"],
+    )
+    def test_no_calendar_is_an_empty_list(self, make_korail, body: dict[str, object]) -> None:
+        # given
+        client, _ = make_korail({"run_dates": body})
+
+        # when
+        run_dates = client.trains.run_dates()
+
+        # then
+        assert run_dates == []
+
+    def test_failure_response_raises(self, make_korail) -> None:
+        # given
+        client, _ = make_korail({"run_dates": NO_RESULTS})
+
+        # when & then
+        with pytest.raises(KorailError):
+            client.trains.run_dates()
+
+
 class TestTransferSearch:
     """환승 여정 — 직통 조회와 같은 엔드포인트, 여정 종류만 다릅니다."""
 

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import dataclasses
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -14,6 +15,7 @@ from pykorail.models import (
     CarSeat,
     Fare,
     Reservation,
+    RunDate,
     Schedule,
     Seat,
     SeatAttribute,
@@ -22,6 +24,7 @@ from pykorail.models import (
     Train,
     Transfer,
     TransferStation,
+    netfunnel_action_for,
     parse_stations,
     parse_transfers,
     train_info_of,
@@ -33,7 +36,9 @@ from tests.payloads import (
     CAR_SEAT_INFO,
     FIRST_LEG_INFO,
     GENERAL_FARE_INFO,
+    PEAK_RUN_DATE_ITEM,
     RESERVATION_INFO,
+    RUN_DATE_ITEM,
     SEAT_INFO,
     SEATABLE_TRAIN_INFO,
     SECOND_LEG_INFO,
@@ -52,6 +57,7 @@ class TestImmutability:
             (Seat.from_response(SEAT_INFO), "seat"),
             (Ticket.from_response(TICKET_RAW), "seat_no"),
             (Reservation.from_response(RESERVATION_INFO), "rsv_id"),
+            (RunDate.from_response(RUN_DATE_ITEM), "run_date"),
             (Transfer.from_response([FIRST_LEG_INFO, SECOND_LEG_INFO]), "legs"),
         ],
     )
@@ -844,3 +850,51 @@ class TestAmount:
 
         # then
         assert found == 0
+
+
+class TestNetfunnelActionFor:
+    """출발일의 NetFunnel ``aid`` 선택 — 성수기 판정은 #117."""
+
+    @pytest.mark.parametrize(
+        ("biz_dd_stg_cd", "expected"),
+        [("5", "act_8_2"), ("1", "act_8"), ("2", "act_8"), ("3", "act_8"), ("4", "act_8"), ("", "act_8")],
+        ids=["peak", "stage-1", "stage-2", "stage-3", "stage-4", "blank"],
+    )
+    def test_peak_code_picks_the_peak_queue(self, biz_dd_stg_cd: str, expected: str) -> None:
+        # given
+        day = RunDate.from_response({**RUN_DATE_ITEM, "bizDdStgCd": biz_dd_stg_cd})
+
+        # when
+        aid = netfunnel_action_for([day], date(2026, 10, 16))
+
+        # then
+        assert aid == expected
+
+    def test_missing_date_falls_back_to_the_default_queue(self) -> None:
+        # given
+        calendar = [RunDate.from_response(PEAK_RUN_DATE_ITEM)]  # 2026-10-17
+
+        # when
+        aid = netfunnel_action_for(calendar, date(2026, 10, 16))
+
+        # then
+        assert aid == "act_8"
+
+    def test_empty_calendar_falls_back_to_the_default_queue(self) -> None:
+        # when
+        aid = netfunnel_action_for([], date(2026, 10, 16))
+
+        # then
+        assert aid == "act_8"
+
+    def test_aware_datetime_is_judged_by_the_kst_date(self) -> None:
+        """UTC 자정 직후는 KST 로는 이미 다음 날입니다 — 그날 항목을 봐야 합니다."""
+        # given
+        calendar = [RunDate.from_response(PEAK_RUN_DATE_ITEM)]  # 2026-10-17 성수기
+        departure = datetime(2026, 10, 16, 15, 30, tzinfo=UTC)  # KST 2026-10-17 00:30
+
+        # when
+        aid = netfunnel_action_for(calendar, departure)
+
+        # then
+        assert aid == "act_8_2"

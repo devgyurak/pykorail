@@ -705,6 +705,40 @@ TRANSFER_FARE_PAYLOAD = {
     ],
 }
 
+# ---------------------------------------------------------------- 운행 달력
+# 필드 이름은 코레일+ 7.0.8 의 ``RunDateOutItem`` 선언 그대로이고, 목록 키
+# (``runningCalendar``)와 값의 **모양**(Y·N 플래그, 빈 문자열로 오는 필드)은
+# 2026-09-23 · 10-03 · 10-16 캡처에서 본 그대로입니다. 값 자체는 예시입니다.
+
+RUN_DATE_ITEM = {
+    "runDt": "20261016",
+    "dayDvCd": "6",
+    "bizDdStgCd": "1",
+    "hldyDvCd": "",
+    "saleDdDvCd": "5",
+    "oTrnOpFlg": "Y",
+    "vTrnOpFlg": "N",
+    "sTrnOpFlg": "Y",
+    "dTrnOpFlg": "N",
+    "aTrnOpFlg": "N",
+    "gTrnOpFlg": "N",
+    "xTrnOpFlg": "N",
+}
+
+#: ``bizDdStgCd == "5"`` 인 성수기 날짜.
+PEAK_RUN_DATE_ITEM = {**RUN_DATE_ITEM, "runDt": "20261017", "dayDvCd": "7", "bizDdStgCd": "5"}
+
+#: 모든 필드가 빈 문자열인 항목. 2026-09-23 캡처에 실제로 있었습니다 — 플래그가
+#: 불리언이 아니라 세 번째 상태(빈 값)를 가질 수 있다는 근거입니다.
+BLANK_RUN_DATE_ITEM = dict.fromkeys(RUN_DATE_ITEM, "")
+
+RUN_DATE_PAYLOAD = {
+    "strResult": "SUCC",
+    "h_msg_cd": "API.I00000",
+    "h_msg_txt": "Success",
+    "runningCalendar": [RUN_DATE_ITEM, PEAK_RUN_DATE_ITEM, BLANK_RUN_DATE_ITEM],
+}
+
 #: NetFunnel 대기열 게이트에 실려 나가는 헤더. 이 값이 바뀌면 코레일 앞단이 거절합니다.
 #: ``Host`` 는 넣지 않습니다 — 앱도 직접 넣지 않고 클라이언트가 URL 에서 붙입니다.
 #: ``Context_Type`` 의 밑줄과 ``charset=UTF-8`` 은 앱 SDK 의 오타 그대로입니다.

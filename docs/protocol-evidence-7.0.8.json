@@ -777,6 +777,63 @@
         "signed": true,
         "login_required": true,
         "verification": "2026-10-13 실서버에서 두 번 확인 (transfer_reservation_live_validation). pykorail 의 요청 그대로 두 구간이 예약번호 하나로 예약됨(SUCC/IRR000018). 목록 · 상세가 여정 번호를 같은 값으로 실어 구간별 좌석이 맞게 나뉨. 첫 번째 확인에서 기존 cancel() 의 고정값이 거절돼(ERR800052) 고쳤고, 두 번째 확인에서 고친 cancel(first) 로 두 구간이 함께 취소됨. 필드 구성과 순서는 korail-mobile-api 의 7.0.8 실서버 기록(reserve_transfer)과도 같음."
+      },
+      {
+        "resource": "trains.run_dates",
+        "path": "/classes/com.korail.mobile.schedule.runDt",
+        "declaration": "NetworkApi.postRunDate — @FormUrlEncoded @POST, @FieldMap (network/NetworkApi.java:651-653), 반환 RunDateOut",
+        "request_model": "RunDateIn (CommonIn 상속). 노선 · 날짜 인자가 없음.",
+        "response_models": [
+          "RunDateOut",
+          "RunDateOutItem"
+        ],
+        "fields_sent": [
+          "Device",
+          "Version",
+          "AppVersion",
+          "Key",
+          "timeStamp"
+        ],
+        "fields_not_sent": [
+          "Lang",
+          "Sid"
+        ],
+        "values": {
+          "timeStamp": "요청 시각의 epoch 밀리초 13자. 캡처 시각과 161ms 차이 (NetworkRepositoryImpl.java:12306). pykorail 은 time.time_ns() // 1_000_000 으로 만듦.",
+          "Lang": "CommonIn.lang 은 null 이 될 수 있고 한국어 모드 캡처에는 실리지 않음. 외국어 모드에서만 실리는 것으로 보이나 확인하지 못했으므로 pykorail 은 보내지 않음.",
+          "envelope": "strResult=SUCC, h_msg_cd=API.I00000. 요청 Content-Length 89 가 Device · Version · AppVersion · Key · timeStamp 다섯 필드 길이의 합과 맞음."
+        },
+        "response_key": "runningCalendar",
+        "response_item_keys": [
+          "runDt",
+          "dayDvCd",
+          "bizDdStgCd",
+          "hldyDvCd",
+          "saleDdDvCd",
+          "oTrnOpFlg",
+          "vTrnOpFlg",
+          "sTrnOpFlg",
+          "dTrnOpFlg",
+          "aTrnOpFlg",
+          "gTrnOpFlg",
+          "xTrnOpFlg"
+        ],
+        "unknown_meaning": [
+          "dayDvCd",
+          "hldyDvCd",
+          "saleDdDvCd",
+          "oTrnOpFlg",
+          "vTrnOpFlg",
+          "sTrnOpFlg",
+          "dTrnOpFlg",
+          "aTrnOpFlg",
+          "gTrnOpFlg",
+          "xTrnOpFlg"
+        ],
+        "peak_season": "bizDdStgCd == \"5\". RunDateOutItem.isPeakSeason 이 이 값과의 일치로 판정하고, 실서버 조회로도 확인함 (#117). pykorail 은 의미를 확인한 runDt(bizDdStgCd 판정에 쓰임) 외의 필드는 이름을 지어 붙이지 않고 앱 필드명 그대로 둠.",
+        "signed": false,
+        "login_required": false,
+        "verification": "2026-09-23 · 10-03 · 10-16 캡처 셋으로 확인. 10-16 캡처는 로그인하지 않은 상태였고, 헤더에 DynaPath 토큰도 Sid 도 없었음. 응답은 약 두 달치(63일)였고, 항목 값은 전부 문자열이며 플래그는 Y · N 외에 빈 문자열도 옴 (09-23 캡처에 모든 필드가 빈 항목이 하나 있었음)."
       }
     ],
     "form_flattening": "앱은 요청 모델을 폼으로 펼칠 때 값이 빈 문자열인 필드를 싣지 않음 (NetworkService 의 JsonElement → Map 변환: 길이가 0 보다 클 때만 put). 새 엔드포인트는 resources/base.py 의 without_blanks 로 이 규칙을 따름. 기존 엔드포인트의 폼은 바꾸지 않음.",

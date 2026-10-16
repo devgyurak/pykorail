@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -22,6 +23,7 @@ from pykorail.models.passenger import (
     SeniorPassenger,
     ToddlerPassenger,
 )
+from pykorail.models.run_date import RunDate
 from pykorail.models.schedule import Train
 from pykorail.models.transfer import Transfer, TransferStation, parse_transfers
 from pykorail.options import SeatClass, TrainType
@@ -276,6 +278,29 @@ class AsyncTrainResource(AsyncResource):
         if not transfers:
             raise NoResultsError()
         return transfers
+
+    async def run_dates(self) -> list[RunDate]:
+        """운행 달력 — 오늘부터 약 두 달치의 날짜별 운행 정보를 조회합니다. 로그인하지 않아도 됩니다.
+
+        출발일이 성수기인지(:attr:`~pykorail.models.run_date.RunDate.is_peak_season`)에
+        따라 NetFunnel 대기열의 ``aid`` 가 달라집니다 — 어느 값을 쓸지는
+        :func:`~pykorail.models.run_date.netfunnel_action_for` 로 고르세요.
+
+        **캐시하지 않습니다** — 호출마다 요청합니다. 반복해서 쓸 때는 한 번 받아
+        재사용하세요.
+
+        요청 폼은 코레일톡+ 7.0.8 의 ``RunDateIn``(``CommonIn`` 상속)이고, 응답 목록 키는
+        ``runningCalendar`` 입니다. 서명 대상이 아니고 ``Sid`` 도 붙지 않습니다
+        (2026-10-16 캡처).
+        """
+        url = API_ENDPOINTS["run_dates"]
+        headers, _ = self._api.sign(url)
+        form = {**self._api.common_payload(), "timeStamp": str(time.time_ns() // 1_000_000)}
+
+        payload = await self._api.post(url, data=form, headers=headers)
+        self._api.check(payload)
+
+        return [RunDate.from_response(info) for info in records(payload, "runningCalendar")]
 
     async def fares(self, journey: Train | Transfer) -> list[Fare]:
         """예약하기 전에 운임을 조회합니다. 로그인하지 않아도 됩니다.

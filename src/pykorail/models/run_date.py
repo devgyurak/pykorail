@@ -1,0 +1,96 @@
+"""운행 달력(``schedule.runDt``) 응답 모델.
+
+코레일은 오늘부터 약 두 달치의 날짜별 운행 정보를 돌려줍니다. 항목마다 그날이
+성수기인지(``biz_dd_stg_cd``)를 담고 있어, NetFunnel 대기열의 ``aid`` 를 고르는
+근거가 됩니다 — 어느 값을 쓸지는 :func:`netfunnel_action_for` 가 정합니다.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import date, datetime
+from typing import TYPE_CHECKING, Any
+
+from pykorail._shared.clock import to_kst
+from pykorail.models.parsing import text
+from pykorail.options import NetFunnelAction
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from typing import Self
+
+    from pykorail.options import NetFunnelActionCode
+
+#: 성수기를 뜻하는 ``bizDdStgCd``. 코레일+ 7.0.8 의 ``RunDateOutItem.isPeakSeason`` 이
+#: 이 값과의 일치로 판정하고, 실서버 조회로도 확인했습니다 (#117).
+_PEAK_SEASON = "5"
+
+
+@dataclass(frozen=True)
+class RunDate:
+    """운행 달력의 하루.
+
+    ``run_date`` 와 ``is_peak_season`` 만 뜻을 확인했습니다. 나머지 필드는 의미를
+    확인하지 못해 **앱 ``RunDateOutItem`` 의 필드명 그대로** 원문 문자열을 담습니다 —
+    ``day_dv_cd`` · ``hldy_dv_cd`` · ``sale_dd_dv_cd`` 와 ``*TrnOpFlg`` 입니다. 플래그는
+    ``"Y"`` · ``"N"`` 외에 빈 문자열(``""``)도 오므로 불리언으로 바꾸지 않습니다.
+    """
+
+    run_date: str
+    biz_dd_stg_cd: str
+    day_dv_cd: str
+    hldy_dv_cd: str
+    sale_dd_dv_cd: str
+    o_trn_op_flg: str
+    v_trn_op_flg: str
+    s_trn_op_flg: str
+    d_trn_op_flg: str
+    a_trn_op_flg: str
+    g_trn_op_flg: str
+    x_trn_op_flg: str
+
+    @classmethod
+    def from_response(cls, data: dict[str, Any]) -> Self:
+        return cls(
+            run_date=text(data, "runDt"),
+            biz_dd_stg_cd=text(data, "bizDdStgCd"),
+            day_dv_cd=text(data, "dayDvCd"),
+            hldy_dv_cd=text(data, "hldyDvCd"),
+            sale_dd_dv_cd=text(data, "saleDdDvCd"),
+            o_trn_op_flg=text(data, "oTrnOpFlg"),
+            v_trn_op_flg=text(data, "vTrnOpFlg"),
+            s_trn_op_flg=text(data, "sTrnOpFlg"),
+            d_trn_op_flg=text(data, "dTrnOpFlg"),
+            a_trn_op_flg=text(data, "aTrnOpFlg"),
+            g_trn_op_flg=text(data, "gTrnOpFlg"),
+            x_trn_op_flg=text(data, "xTrnOpFlg"),
+        )
+
+    @property
+    def is_peak_season(self) -> bool:
+        """성수기 운행일인지. ``biz_dd_stg_cd`` 가 ``"5"`` 일 때 참입니다 (#117)."""
+        return self.biz_dd_stg_cd == _PEAK_SEASON
+
+
+def netfunnel_action_for(run_dates: Sequence[RunDate], departure: date | datetime) -> NetFunnelActionCode:
+    """출발일의 NetFunnel 대기열 ``aid`` 를 운행 달력에서 고릅니다.
+
+    출발일이 성수기면 ``TRAIN_SEARCH_PEAK``(``act_8_2``), 그 밖이거나 달력에 그날이
+    없으면 ``TRAIN_SEARCH``(``act_8``) 입니다. ``datetime`` 은 KST 로 바꿔 날짜만 보므로
+    tz 가 붙어 있어도 한국 시간 기준 날짜로 판정합니다.
+
+    :meth:`Korail.trains.run_dates` 의 결과를 그대로 넘기세요::
+
+        aid = netfunnel_action_for(korail.trains.run_dates(), departure)
+    """
+    wanted = _kst_date(departure).strftime("%Y%m%d")
+    matched = next((day for day in run_dates if day.run_date == wanted), None)
+    if matched is not None and matched.is_peak_season:
+        return NetFunnelAction.TRAIN_SEARCH_PEAK
+    return NetFunnelAction.TRAIN_SEARCH
+
+
+def _kst_date(departure: date | datetime) -> date:
+    """``datetime`` 은 KST 로 변환한 날짜, ``date`` 는 그대로."""
+    # ``datetime`` 이 ``date`` 의 하위 타입이라 순서를 지켜야 합니다.
+    return to_kst(departure).date() if isinstance(departure, datetime) else departure

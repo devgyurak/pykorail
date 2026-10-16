@@ -68,6 +68,7 @@ from pykorail.models import (
     Passenger,
     RefundFee,
     Reservation,
+    RunDate,
     Schedule,
     Seat,
     SeatAttribute,
@@ -78,6 +79,7 @@ from pykorail.models import (
     Train,
     Transfer,
     TransferStation,
+    netfunnel_action_for,
 )
 from pykorail.options import (
     MileageInquiry,
@@ -159,6 +161,7 @@ __all__ = [
     "Reservation",
     "ReserveOption",
     "ReserveOptionCode",
+    "RunDate",
     "Schedule",
     "Seat",
     "SeatAttribute",
@@ -177,6 +180,7 @@ __all__ = [
     "TransferStation",
     "TransportError",
     "__version__",
+    "netfunnel_action_for",
     "profile_by_id",
     "random_profile",
 ]

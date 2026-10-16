@@ -45,6 +45,8 @@ API_ENDPOINTS: Final[dict[str, str]] = {
     "login": f"{KORAIL_MOBILE}.login.Login",
     "logout": f"{KORAIL_MOBILE}.common.logout",
     "search_schedule": f"{KORAIL_MOBILE}.seatMovie.ScheduleView",
+    # 운행 달력. 노선·날짜 인자 없이 오늘부터 약 두 달치를 돌려줍니다.
+    "run_dates": f"{KORAIL_MOBILE}.schedule.runDt",
     "transfer_stations": f"{KORAIL_MOBILE}.qry.chtnStn.do",
     "fare": f"{KORAIL_MOBILE}.trn.prcFare.do",
     "seat_cars": f"{KORAIL_MOBILE}.research.TrainResearch",

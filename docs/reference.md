@@ -324,6 +324,36 @@ print([seat.label for seat in seats if seat.is_available])
 > 순서를 지키세요 — 호차 목록(`cars`) 다음에 좌석 배치(`seats`)입니다. 앱의 화면 순서가
 > 그렇고, 호차 목록 없이 좌석 배치를 바로 조회하면 서버가 인증 오류를 돌려준 사례가 있습니다.
 
+#### 운행 달력 조회
+
+오늘부터 약 두 달치의 날짜별 운행 정보를 조회합니다. **로그인하지 않아도 됩니다.**
+
+```python
+run_dates() -> list[RunDate]
+
+netfunnel_action_for(run_dates: Sequence[RunDate], departure: date | datetime) -> NetFunnelActionCode
+```
+
+`RunDate` 는 하루입니다. `run_date`(운행일 `YYYYMMDD`)와 성수기 여부
+(`is_peak_season`) 말고는 앱의 필드명을 그대로 둔 값들(`day_dv_cd` · `hldy_dv_cd` ·
+`sale_dd_dv_cd` 와 `o_trn_op_flg` … `x_trn_op_flg`)이라 뜻을 지어 붙이지 않았습니다.
+플래그는 `"Y"` · `"N"` 외에 빈 문자열일 수 있어 불리언이 아닙니다.
+
+NetFunnel 대기열의 `aid` 는 출발일이 성수기인지로 갈립니다([NetFunnel 대기열](#netfunnel-대기열)).
+`netfunnel_action_for()` 가 그 판정을 대신합니다 — 성수기면 `act_8_2`, 그 밖이거나
+달력에 그날이 없으면 `act_8` 입니다. `datetime` 을 넘기면 KST 로 바꿔 날짜만 봅니다.
+
+```python
+from pykorail import netfunnel_action_for
+
+calendar = korail.trains.run_dates()  # 비동기에서는 await korail.trains.run_dates()
+aid = netfunnel_action_for(calendar, departure)
+```
+
+> [!NOTE]
+> 조회 결과를 **캐시하지 않습니다** — 호출마다 요청합니다. 반복해서 쓸 때는 한 번
+> 받아 재사용하세요. `NetFunnelHelper` 는 이 결과로 자동으로 엮이지 않습니다.
+
 ### `korail.reservations`
 
 | 메서드 | 반환 | 설명 |
@@ -1011,8 +1041,9 @@ with NetFunnelHelper() as nf:
 2. 관광열차(`trainGroup.tour`)면 대기열을 거치지 않습니다(빈 `aid`).
 3. 그 밖에는 `schedule.runDt` 응답의 출발일 항목 성수기 플래그가 참이면 `act_8_2`,
    아니면 `act_8` 입니다. 플래그는 `bizDdStgCd == "5"` 이고, 그 밖의 값(`1`–`4`)과
-   조회일 항목이 없을 때는 `act_8` 입니다. 그 엔드포인트는 이 패키지에 없습니다 —
-   그래서 어느 `aid` 를 쓸지는 호출자가 정합니다.
+   조회일 항목이 없을 때는 `act_8` 입니다. 그 판정은
+   [`korail.trains.run_dates()`](#운행-달력-조회) 로 운행 달력을 받아
+   `netfunnel_action_for()` 에 넘기면 됩니다.
 
 비동기 코드에서는 `AsyncNetFunnelHelper` 를 `await` 합니다. 리소스와 달리
 `AsyncKorail` 에 엮여 있지 않은 것은 동기판과 같습니다.
