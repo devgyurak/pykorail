@@ -11,6 +11,8 @@ from typing import Any
 import pytest
 
 from pykorail._sync.netfunnel import NETFUNNEL_URL, NetFunnelHelper
+from pykorail.auth.dynapath import DynaPathMasterEngine
+from pykorail.device import PROFILES_BY_ID, dalvik_user_agent
 from pykorail.exceptions import NetFunnelError
 from tests.payloads import NETFUNNEL_CALLS_GOLDEN, NETFUNNEL_HEADERS_GOLDEN
 
@@ -44,12 +46,12 @@ class FakeSession:
         self.calls: list[dict[str, Any]] = []
         self.closed = False
 
-    def get(self, url: str, **kwargs: Any) -> FakeResponse:
-        self.calls.append({"url": url, **kwargs})
+    def post(self, url: str, **kwargs: Any) -> FakeResponse:
+        self.calls.append({"method": "POST", "url": url, **kwargs})
         return FakeResponse(self.script.pop(0))
 
-    def post(self, url: str, **kwargs: Any) -> FakeResponse:  # pragma: no cover - 미사용
-        raise AssertionError("NetFunnel 은 GET 만 씁니다")
+    def get(self, url: str, **kwargs: Any) -> FakeResponse:  # pragma: no cover - 미사용
+        raise AssertionError("NetFunnel 은 POST 만 씁니다")
 
     def close(self) -> None:
         # 두 번째 close() 에서 실패시켜 이중 close 가드가 실제로 일하는지 드러냅니다.
@@ -135,6 +137,18 @@ class TestRun:
         # then
         assert session.calls[0]["url"] == NETFUNNEL_URL
 
+    def test_poll_interval_follows_the_response_ttl(self, make_helper, monkeypatch) -> None:
+        # given
+        sleeper = Sleeper()
+        monkeypatch.setattr("pykorail._sync.netfunnel.time.sleep", sleeper)
+        helper, _ = make_helper(["201:key=K&nwait=5&ttl=7", PASS, COMPLETE])
+
+        # when
+        helper.run()
+
+        # then
+        assert sleeper.calls == [7], "응답의 ttl 이 폴링 간격이 되어야 합니다"
+
     def test_completion_failure_raises_and_clears(self, make_helper) -> None:
         # given
         helper, _ = make_helper([PASS, "999:key=X"])
@@ -159,7 +173,7 @@ class TestRun:
         class Exploding:
             headers: dict[str, str] = {}
 
-            def get(self, url: str, **kwargs: Any) -> FakeResponse:
+            def post(self, url: str, **kwargs: Any) -> FakeResponse:
                 raise OSError("연결 실패")
 
         monkeypatch.setattr("pykorail._sync.netfunnel.create_session", lambda headers: Exploding())
@@ -279,7 +293,7 @@ class TestParams:
         assert params["sid"] == "service_1"
         assert params["aid"] == "act_8"
 
-    def test_check_carries_the_key(self, make_helper) -> None:
+    def test_check_carries_only_opcode_and_key(self, make_helper) -> None:
         # given
         helper, _ = make_helper([])
 
@@ -287,8 +301,7 @@ class TestParams:
         params = helper._build_params(helper.OP_CODE["chkEnter"], key="K")
 
         # then
-        assert params["key"] == "K"
-        assert params["ttl"] == "1"
+        assert params == {"opcode": "5002", "key": "K"}
 
     def test_complete_carries_the_key(self, make_helper) -> None:
         # given
@@ -311,6 +324,22 @@ class TestParams:
         assert params["key"] == ""
 
 
+class TestWaitSeconds:
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [(None, 1), ("", 1), ("0", 1), ("abc", 1), ("3", 3), ("99", 30)],
+    )
+    def test_clamps_ttl_between_one_and_thirty(self, make_helper, raw: str | None, expected: int) -> None:
+        # given
+        helper, _ = make_helper([])
+
+        # when
+        seconds = helper._wait_seconds(raw)
+
+        # then
+        assert seconds == expected
+
+
 class TestWireGolden:
     """같은 요청을 보내는지 겨루는 기준선 — 구현이 어긋나면 여기서 드러납니다."""
 
@@ -330,6 +359,40 @@ class TestWireGolden:
         # then
         assert captured == NETFUNNEL_HEADERS_GOLDEN
 
+    def test_profile_shapes_the_user_agent(self, monkeypatch) -> None:
+        # given
+        profile = PROFILES_BY_ID["s25ultra-a16"]
+        captured: dict[str, str] = {}
+
+        def fake_create_session(headers: dict[str, str]) -> FakeSession:
+            captured.update(headers)
+            return FakeSession([PASS, COMPLETE])
+
+        monkeypatch.setattr("pykorail._sync.netfunnel.create_session", fake_create_session)
+
+        # when
+        NetFunnelHelper(device_profile=profile).run()
+
+        # then
+        assert captured["User-Agent"] == dalvik_user_agent(profile)
+
+    def test_default_user_agent_matches_dynapath_defaults(self, monkeypatch) -> None:
+        # given
+        captured: dict[str, str] = {}
+
+        def fake_create_session(headers: dict[str, str]) -> FakeSession:
+            captured.update(headers)
+            return FakeSession([PASS, COMPLETE])
+
+        monkeypatch.setattr("pykorail._sync.netfunnel.create_session", fake_create_session)
+
+        # when
+        NetFunnelHelper().run()
+
+        # then
+        assert f"Android {DynaPathMasterEngine.OS_VERSION}" in captured["User-Agent"]
+        assert DynaPathMasterEngine.DEVICE_MODEL in captured["User-Agent"]
+
     def test_requests_match_the_golden(self, make_helper, monkeypatch) -> None:
         # given
         monkeypatch.setattr("pykorail._sync.netfunnel.time.sleep", Sleeper())
@@ -339,5 +402,5 @@ class TestWireGolden:
         helper.run()
 
         # then
-        calls = [{"url": call["url"], "params": call["params"]} for call in session.calls]
+        calls = [{"method": call["method"], "url": call["url"], "params": call["params"]} for call in session.calls]
         assert calls == NETFUNNEL_CALLS_GOLDEN

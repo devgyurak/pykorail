@@ -13,7 +13,7 @@
 
     from pykorail import NetFunnelHelper
 
-    with NetFunnelHelper() as nf:
+    with NetFunnelHelper(device_profile=korail.device_profile) as nf:
         key = nf.run()
 
 :class:`~pykorail.Korail` 에 자동으로 엮지 않은 이유는, 필요 없는 상황에서
@@ -27,6 +27,7 @@ import time
 from typing import TYPE_CHECKING, ClassVar, Final
 
 from pykorail._sync.session import IdempotentSession
+from pykorail.device import PROFILES_BY_ID, dalvik_user_agent
 from pykorail.exceptions import NetFunnelError
 from pykorail.transport import create_session
 
@@ -34,25 +35,36 @@ if TYPE_CHECKING:
     from types import TracebackType
     from typing import Self
 
+    from pykorail.device import DeviceProfileLike
+
 #: 로거 이름은 ``__name__`` 대신 문자열로 고정합니다. ``scripts/unasync.py`` 가 이
 #: 리터럴만 동기 이름으로 바꿔, 예전 ``pykorail.auth.netfunnel`` 핸들러가 두 모듈의
 #: 로그를 함께 받습니다.
 logger = logging.getLogger("pykorail.auth.netfunnel")
 
-NETFUNNEL_URL: Final = "http://nf.letskorail.com/ts.wseq"
+NETFUNNEL_URL: Final = "https://nf.letskorail.com/ts.wseq"
 
+#: ``device_profile`` 을 넘기지 않았을 때 쓸 카탈로그 프로파일. DynaPath 기본
+#: 기기(``SM-S928N`` · Android 14)와 같은 모델 · OS 라, 앱이 쓰는 기본 UA 와 맞습니다.
+DEFAULT_DEVICE_PROFILE_ID: Final = "s24ultra-a14"
+
+#: 고정 헤더. ``Host`` 는 넣지 않습니다 — 앱도 직접 넣지 않고 클라이언트가 URL 에서
+#: 붙입니다. ``Context_Type`` 의 밑줄과 ``charset=UTF-8`` 은 앱 SDK(com.netfunnel.api
+#: 1.7.18)의 오타 그대로입니다. 고치면 서버가 헤더를 못 찾습니다.
 NETFUNNEL_HEADERS: Final[dict[str, str]] = {
-    "Host": "nf.letskorail.com",
+    "Accept-Charset": "UTF-8",
+    "Context_Type": "application/x-www-form-urlencoded;charset=UTF-8",
+    "Content-Type": "application/x-www-form-urlencoded",
     "Connection": "Keep-Alive",
-    "User-Agent": "Apache-HttpClient/UNAVAILABLE (java 1.4)",
+    "Accept-Encoding": "gzip",
 }
 
 
 class NetFunnelHelper:
     """대기열을 통과해 티켓(key)을 얻습니다.
 
-    :meth:`run` 이 유일한 진입점입니다. 대기 줄이 있으면 통과할 때까지 1초 간격으로
-    폴링합니다.
+    :meth:`run` 이 유일한 진입점입니다. 대기 줄이 있으면 통과할 때까지 응답이 준
+    ``ttl``(1–30초, 없거나 잘못되면 1초) 간격으로 폴링합니다.
     """
 
     WAIT_STATUS_PASS: ClassVar[str] = "200"
@@ -65,11 +77,22 @@ class NetFunnelHelper:
         "setComplete": "5004",
     }
 
+    #: 폴링 간격(초)의 하한 · 상한. SDK 의 ``getTTL(max_ttl=30, min=1)`` 과 같습니다.
+    MIN_WAIT_SECONDS: ClassVar[int] = 1
+    MAX_WAIT_SECONDS: ClassVar[int] = 30
+
     #: 티켓 재사용 시간(초). 서버 만료보다 짧게 잡아 아슬아슬한 재사용을 피합니다.
     CACHE_TTL: ClassVar[float] = 50.0
 
-    def __init__(self) -> None:
-        self._session = IdempotentSession(create_session(NETFUNNEL_HEADERS))
+    def __init__(self, device_profile: DeviceProfileLike | None = None) -> None:
+        """``device_profile`` 은 UA 의 모델 · OS · 빌드를 정합니다.
+
+        넘기지 않으면 DynaPath 기본값과 같은 카탈로그 프로파일을 씁니다. :class:`Korail`
+        과 함께 쓸 때는 ``korail.device_profile`` 을 넘겨 같은 가상 기기로 보이게 합니다.
+        """
+        profile = device_profile if device_profile is not None else PROFILES_BY_ID[DEFAULT_DEVICE_PROFILE_ID]
+        headers = {**NETFUNNEL_HEADERS, "User-Agent": dalvik_user_agent(profile)}
+        self._session = IdempotentSession(create_session(headers))
         self._cached_key: str | None = None
         self._last_fetch_time = 0.0
 
@@ -89,14 +112,14 @@ class NetFunnelHelper:
             return self._cached_key
 
         try:
-            status, key, nwait = self._start()
+            status, key, nwait, ttl = self._start()
 
             while status == self.WAIT_STATUS_FAIL:
                 logger.debug("현재 %s명 대기중", nwait)
-                time.sleep(1)
-                status, key, nwait = self._check(key)
+                time.sleep(self._wait_seconds(ttl))
+                status, key, nwait, ttl = self._check(key)
 
-            status, _, _ = self._complete(key)
+            status, _, _, _ = self._complete(key)
             if status in (self.WAIT_STATUS_PASS, self.ALREADY_COMPLETED):
                 self._cached_key = key
                 self._last_fetch_time = now
@@ -135,20 +158,24 @@ class NetFunnelHelper:
         self._session.close()
 
     # ------------------------------------------------------------------- 내부
-    def _start(self) -> tuple[str | None, str | None, str | None]:
+    def _start(self) -> tuple[str | None, str | None, str | None, str | None]:
         return self._make_request("getTidchkEnter")
 
-    def _check(self, key: str | None) -> tuple[str | None, str | None, str | None]:
+    def _check(self, key: str | None) -> tuple[str | None, str | None, str | None, str | None]:
         return self._make_request("chkEnter", key)
 
-    def _complete(self, key: str | None) -> tuple[str | None, str | None, str | None]:
+    def _complete(self, key: str | None) -> tuple[str | None, str | None, str | None, str | None]:
         return self._make_request("setComplete", key)
 
-    def _make_request(self, operation: str, key: str | None = None) -> tuple[str | None, str | None, str | None]:
+    def _make_request(
+        self, operation: str, key: str | None = None
+    ) -> tuple[str | None, str | None, str | None, str | None]:
         params = self._build_params(self.OP_CODE[operation], key)
-        response = self._session.get(NETFUNNEL_URL, params=params)
+        # 앱은 값을 query 에 실어 보내고 본문은 비웁니다. ``post`` 에 ``params`` 를 주면
+        # curl_cffi 가 URL 뒤에 붙이고 ``Content-Length: 0`` 을 씁니다.
+        response = self._session.post(NETFUNNEL_URL, params=params)
         parsed = self._parse(response.text)
-        return parsed.get("status"), parsed.get("key"), parsed.get("nwait")
+        return parsed.get("status"), parsed.get("key"), parsed.get("nwait"), parsed.get("ttl")
 
     def _build_params(self, opcode: str, key: str | None = None) -> dict[str, str]:
         """``key`` 는 호출자가 넘긴 값만 씁니다. 캐시를 되읽으면 다른 실행이 덮어쓴
@@ -156,14 +183,28 @@ class NetFunnelHelper:
         """
         params: dict[str, str] = {"opcode": opcode}
 
-        if opcode in (self.OP_CODE["getTidchkEnter"], self.OP_CODE["chkEnter"]):
+        if opcode == self.OP_CODE["getTidchkEnter"]:
             params.update({"sid": "service_1", "aid": "act_8"})
-            if opcode == self.OP_CODE["chkEnter"]:
-                params.update({"key": key or "", "ttl": "1"})
-        elif opcode == self.OP_CODE["setComplete"]:
+        elif opcode in (self.OP_CODE["chkEnter"], self.OP_CODE["setComplete"]):
+            # 5002 는 앱도 ``opcode`` · ``key`` 만 보냅니다. sid · aid · ttl 을 되붙이면
+            # 대기 상태에서 앱과 다른 모양이 됩니다.
             params["key"] = key or ""
 
         return params
+
+    def _wait_seconds(self, raw: str | None) -> int:
+        """응답의 ``ttl``(초)을 1–30초로 자릅니다. 정수가 아니거나 없으면 1초입니다.
+
+        SDK 의 ``getTTL(max_ttl=30, min=1)`` 과 같은 규칙입니다. 앱은 이 상한을 원격
+        설정에서 불러오지 않으므로 30 이 고정입니다.
+        """
+        if raw is None:
+            return self.MIN_WAIT_SECONDS
+        try:
+            ttl = int(raw)
+        except ValueError:
+            return self.MIN_WAIT_SECONDS
+        return min(self.MAX_WAIT_SECONDS, max(self.MIN_WAIT_SECONDS, ttl))
 
     @staticmethod
     def _parse(response: str) -> dict[str, str]:

@@ -706,24 +706,42 @@ TRANSFER_FARE_PAYLOAD = {
 }
 
 #: NetFunnel 대기열 게이트에 실려 나가는 헤더. 이 값이 바뀌면 코레일 앞단이 거절합니다.
+#: ``Host`` 는 넣지 않습니다 — 앱도 직접 넣지 않고 클라이언트가 URL 에서 붙입니다.
+#: ``Context_Type`` 의 밑줄과 ``charset=UTF-8`` 은 앱 SDK 의 오타 그대로입니다.
+#: ``User-Agent`` 는 프로파일별 Dalvik 문자열이라 여기엔 기본 프로파일 값만 둡니다 —
+#: ``device_profile`` 을 넘긴 경우는 테스트가 따로 확인합니다.
 NETFUNNEL_HEADERS_GOLDEN = {
-    "Host": "nf.letskorail.com",
+    "Accept-Charset": "UTF-8",
+    "Context_Type": "application/x-www-form-urlencoded;charset=UTF-8",
+    "Content-Type": "application/x-www-form-urlencoded",
     "Connection": "Keep-Alive",
-    "User-Agent": "Apache-HttpClient/UNAVAILABLE (java 1.4)",
+    "Accept-Encoding": "gzip",
+    "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 14; SM-S928N Build/UP1A.231005.007)",
 }
 
-#: 대기 → 대기 → 통과 → 완료 흐름에서 나가야 하는 요청 순서(url + params).
-#: opcode 순서(5101 → 5002 → 5004)와 sid·aid·key·ttl 이 하나라도 달라지면 대기열을
-#: 통과하지 못합니다. 동기판과 비동기판이 **같은** 이 값을 만족해야 합니다.
+#: 대기 → 대기 → 통과 → 완료 흐름에서 나가야 하는 요청 순서(method + url + params).
+#: opcode 순서(5101 → 5002 → 5004)와 5101 의 sid · aid, 5002/5004 의 key 가 하나라도
+#: 달라지면 대기열을 통과하지 못합니다. 5002 에 sid · aid · ttl 을 되붙이지 마세요 —
+#: 앱은 그 셋을 보내지 않습니다. 동기판과 비동기판이 **같은** 이 값을 만족해야 합니다.
 NETFUNNEL_CALLS_GOLDEN = [
-    {"url": "http://nf.letskorail.com/ts.wseq", "params": {"opcode": "5101", "sid": "service_1", "aid": "act_8"}},
     {
-        "url": "http://nf.letskorail.com/ts.wseq",
-        "params": {"opcode": "5002", "sid": "service_1", "aid": "act_8", "key": "TICKET-1", "ttl": "1"},
+        "method": "POST",
+        "url": "https://nf.letskorail.com/ts.wseq",
+        "params": {"opcode": "5101", "sid": "service_1", "aid": "act_8"},
     },
     {
-        "url": "http://nf.letskorail.com/ts.wseq",
-        "params": {"opcode": "5002", "sid": "service_1", "aid": "act_8", "key": "TICKET-1", "ttl": "1"},
+        "method": "POST",
+        "url": "https://nf.letskorail.com/ts.wseq",
+        "params": {"opcode": "5002", "key": "TICKET-1"},
     },
-    {"url": "http://nf.letskorail.com/ts.wseq", "params": {"opcode": "5004", "key": "TICKET-1"}},
+    {
+        "method": "POST",
+        "url": "https://nf.letskorail.com/ts.wseq",
+        "params": {"opcode": "5002", "key": "TICKET-1"},
+    },
+    {
+        "method": "POST",
+        "url": "https://nf.letskorail.com/ts.wseq",
+        "params": {"opcode": "5004", "key": "TICKET-1"},
+    },
 ]

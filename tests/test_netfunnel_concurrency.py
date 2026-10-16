@@ -40,8 +40,8 @@ class FakeSession:
         self.script = list(script)
         self.calls: list[dict[str, Any]] = []
 
-    async def get(self, url: str, **kwargs: Any) -> FakeResponse:
-        self.calls.append({"url": url, **kwargs})
+    async def post(self, url: str, **kwargs: Any) -> FakeResponse:
+        self.calls.append({"method": "POST", "url": url, **kwargs})
         return FakeResponse(self.script.pop(0))
 
     def opcodes(self) -> list[str]:

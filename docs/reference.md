@@ -998,6 +998,16 @@ async with AsyncNetFunnelHelper() as nf:
     key = await nf.run()
 ```
 
+두 헬퍼 모두 선택적 `device_profile` 을 받습니다. 넘기면 User-Agent 의 모델 · OS ·
+빌드가 그 프로파일을 따르고, 생략하면 DynaPath 기본값과 같은 카탈로그 프로파일
+(`s24ultra-a14`)을 씁니다. 코레일 클라이언트와 같은 가상 기기로 보이게 하려면
+`korail.device_profile` 을 넘기세요.
+
+```python
+async with AsyncNetFunnelHelper(device_profile=korail.device_profile) as nf:
+    key = await nf.run()
+```
+
 컨텍스트 매니저로 나가면 `close()` 가 연 HTTP 세션을 정리합니다. 이중 `close()` 는
 조용히 넘어갑니다.
 

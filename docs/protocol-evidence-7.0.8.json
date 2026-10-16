@@ -1330,6 +1330,60 @@
       }
     }
   },
+  "netfunnel": {
+    "observed_at_kst": "2026-10-03 / 2026-09-23",
+    "source": "korail-analysis 의 mitm 캡처 두 개와 NetFunnel SDK 디컴파일 (com.netfunnel.api 1.7.18). 키 값은 저장소에 넣지 않고 길이만 봄.",
+    "captures": [
+      {
+        "file": "capture/korail-20261003-090701.mitm",
+        "summary": "평시. 5101 → 200 → 5004 → ScheduleView."
+      },
+      {
+        "file": "capture/korail-20260923-122021.mitm",
+        "summary": "2026-09-23 추석 직전. 5101 이 201 nwait=534. 5002 를 약 1초 간격으로 네 번 보내 nwait 이 534 → 371 → 203 → 39 → 0 으로 줄었고, 200 뒤에 5004. 실제로 대기열을 통과한 유일한 기록."
+      }
+    ],
+    "sdk": {
+      "package": "com.netfunnel.api 1.7.18",
+      "locations": [
+        "jadx/sources/com/netfunnel/api/CommandClient.java:57-66 — 5101: opcode · sid · aid · 선택적 user_data",
+        "jadx/sources/com/netfunnel/api/CommandClient.java:122-124 — 5002: opcode · key 만"
+      ]
+    },
+    "wire": {
+      "url": "https://nf.letskorail.com/ts.wseq (HTTP/1.1, 443)",
+      "method": "POST, 값은 query, 본문 비움(Content-Length: 0)",
+      "fixed_headers": {
+        "Accept-Charset": "UTF-8",
+        "Context_Type": "application/x-www-form-urlencoded;charset=UTF-8 — SDK 의 밑줄과 charset 을 포함한 오타 그대로",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Connection": "Keep-Alive",
+        "Accept-Encoding": "gzip"
+      },
+      "host": "명시하지 않음 — 앱도 넣지 않고 클라이언트가 URL 에서 붙임",
+      "user_agent": "인스턴스마다 device.profile.dalvik_user_agent(profile) 로 만듦. 기본은 카탈로그 s24ultra-a14 로, DynaPath 기본값(SM-S928N · Android 14)과 같은 모델 · OS.",
+      "params": {
+        "5101": "opcode · sid=service_1 · aid=act_8",
+        "5002": "opcode · key",
+        "5004": "opcode · key"
+      },
+      "wait_seconds": "응답 ttl 을 1–30초로 자름. 정수가 아니거나 없으면 1초. SDK 의 getTTL(max_ttl=30, min=1) 과 같고, 앱이 상한을 원격 설정에서 불러오지 않으므로 30 은 고정. 관측된 요청 간격도 약 1초였음."
+    },
+    "local_check": {
+      "what": "코레일 서버 없이 로컬 수신기로 본문 없는 POST 를 보내 확인함.",
+      "observed": "params 는 query(?opcode=5101)로, 본문은 비고 Content-Length: 0, Content-Type 은 한 번만 나감. Host 는 클라이언트가 URL 에서 붙임."
+    },
+    "unverified": [
+      "서버가 기존 GET/http 요청을 거부하는지, 아니면 받아주는지. 평시에는 둘 다 200 일 가능성이 높으나 대기 상태에서의 수용 여부는 알 수 없음.",
+      "5002 에 남는 필드(sid · aid · ttl)를 서버가 무시하는지 — 앱은 보내지 않음.",
+      "NetFunnel SDK 의 HttpURLConnection 과 이 패키지의 curl_cffi 임퍼소네이션 사이의 TLS · ALPN 지문 차이를 서버가 교차 검증하는지. 이 이슈에서는 바꾸지 않음.",
+      "2026-09-23 캡처에서 대기열 통과 직후 ScheduleView 가 403 이었던 이유."
+    ],
+    "deferred": {
+      "#104": "5101 이 대기열 대상 동작을 정하는 방식과 동작별 aid 값.",
+      "#113": "응답이 지시하는 ip · port 로 재접속하지 않는다는 근거와 회귀 방지."
+    }
+  },
   "login_password_change_gate": {
     "observed_at_kst": "2026-10-13",
     "scope": "계정 소유자가 승인한 본인 계정의 읽기 전용 확인 중에 드러남 (로그인 3회, 예약 목록 5회, 열차 조회 1회 외). 계정 · 개인정보 · 쿠키 값은 기록하지 않음.",
