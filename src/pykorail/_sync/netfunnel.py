@@ -13,8 +13,11 @@
 
     from pykorail import NetFunnelHelper
 
-    with NetFunnelHelper(device_profile=korail.device_profile) as nf:
+    with NetFunnelHelper() as nf:
         key = nf.run()
+
+``Korail`` 과 함께 쓸 때는 ``korail.device_profile`` 을 넘겨 같은 가상 기기로 보이게
+합니다.
 
 :class:`~pykorail.Korail` 에 자동으로 엮지 않은 이유는, 필요 없는 상황에서
 매 요청마다 외부 게이트를 때리는 비용과 실패 지점이 생기기 때문입니다.
@@ -50,7 +53,7 @@ DEFAULT_DEVICE_PROFILE_ID: Final = "s24ultra-a14"
 
 #: 고정 헤더. ``Host`` 는 넣지 않습니다 — 앱도 직접 넣지 않고 클라이언트가 URL 에서
 #: 붙입니다. ``Context_Type`` 의 밑줄과 ``charset=UTF-8`` 은 앱 SDK(com.netfunnel.api
-#: 1.7.18)의 오타 그대로입니다. 고치면 서버가 헤더를 못 찾습니다.
+#: 1.7.18)의 오타 그대로입니다. 서버가 이 헤더를 보는지는 확인하지 않았습니다.
 NETFUNNEL_HEADERS: Final[dict[str, str]] = {
     "Accept-Charset": "UTF-8",
     "Context_Type": "application/x-www-form-urlencoded;charset=UTF-8",

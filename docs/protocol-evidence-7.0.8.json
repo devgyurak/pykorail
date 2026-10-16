@@ -1336,11 +1336,11 @@
     "captures": [
       {
         "file": "capture/korail-20261003-090701.mitm",
-        "summary": "평시. 5101 → 200 → 5004 → ScheduleView."
+        "summary": "평시. 5101(sid=service_1 · aid=act_8) → 200 → 5004 → ScheduleView."
       },
       {
         "file": "capture/korail-20260923-122021.mitm",
-        "summary": "2026-09-23 추석 직전. 5101 이 201 nwait=534. 5002 를 약 1초 간격으로 네 번 보내 nwait 이 534 → 371 → 203 → 39 → 0 으로 줄었고, 200 뒤에 5004. 실제로 대기열을 통과한 유일한 기록."
+        "summary": "2026-09-23 추석 직전. 5101(sid=service_1 · aid=act_8_2) 이 201 nwait=534. 5002 를 약 1초 간격으로 네 번 보내 nwait 이 534 → 371 → 203 → 39 → 0 으로 줄었고, 200 뒤에 5004. 실제로 대기열을 통과한 유일한 기록. 두 캡처의 aid 가 act_8 · act_8_2 로 다름 — 동작별 aid 는 #104."
       }
     ],
     "sdk": {
@@ -1363,7 +1363,7 @@
       "host": "명시하지 않음 — 앱도 넣지 않고 클라이언트가 URL 에서 붙임",
       "user_agent": "인스턴스마다 device.profile.dalvik_user_agent(profile) 로 만듦. 기본은 카탈로그 s24ultra-a14 로, DynaPath 기본값(SM-S928N · Android 14)과 같은 모델 · OS.",
       "params": {
-        "5101": "opcode · sid=service_1 · aid=act_8",
+        "5101": "opcode · sid=service_1 · aid (10/03 캡처 act_8 · 09/23 캡처 act_8_2)",
         "5002": "opcode · key",
         "5004": "opcode · key"
       },
@@ -1386,7 +1386,7 @@
       "2026-09-23 캡처에서 대기열 통과 직후 ScheduleView 가 403 이었던 이유."
     ],
     "deferred": {
-      "#104": "5101 이 대기열 대상 동작을 정하는 방식과 동작별 aid 값.",
+      "#104": "5101 이 대기열 대상 동작을 정하는 방식과 동작별 aid 값 — 10/03 캡처는 act_8, 09/23 캡처는 act_8_2.",
       "#113": "응답이 지시하는 ip · port 로 재접속하지 않는다는 근거와 회귀 방지."
     }
   },
