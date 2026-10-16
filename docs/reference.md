@@ -792,6 +792,12 @@ repr(card)  # Card(number='****5678', installment=0, is_corporate=False)
 | `Disability4To6Passenger` | `1` | `112` | 경증 장애인 (4~6급) |
 | `GuideDogPassenger` | `1` | `173` (미확인) | 안내견 동반 승객 (시각장애인) |
 
+> [!WARNING]
+> **자격이 필요한 할인은 계정에 자격이 없으면 서버가 거절하지 않고 어른 운임(할인
+> 없음)으로 예약합니다.** 2026-10-16 중증 장애인(`111`)에서 확인했고, 다른 할인 코드와
+> 자격이 있는 계정은 확인하지 않았습니다. 예약 뒤에는 `reservation.seats` 의
+> `passenger_type` 이 기대한 유형인지 확인하세요.
+
 ```python
 Passenger(count=1, discount_type=None, card="", card_no="", card_pw="")
 ```
@@ -813,11 +819,11 @@ Passenger.reduce([AdultPassenger(1), ChildPassenger(1), AdultPassenger(2)])
 > 보호(AppSuit/AlienGuard) 문자열이라 값이 읽히지 않아, 외부 비공식 클라이언트의
 > 기록을 그대로 옮겼습니다. 2026-10-16 실서버에서 중증 1 + 안내견 1 조합의
 > **예약은 서버가 `ERR299943`("예약할인이 지원되지 않습니다")로 거절했습니다.** 다만
-> 같은 열차에서 보낸 중증 1명 단독 예약도 응답에서 할인이 적용되지 않았으므로
-> (적용 코드 `000`, 승객 유형명 "어른"), **이 거절이 `173` 때문인지 이 계정에 복지
-> 자격이 없어서인지 가리지 못했습니다.** 그래서 **지금 `GuideDogPassenger` 로 예매하면
-> 실패할 수 있습니다.** 근거와 한계는 `docs/protocol-evidence-7.0.8.json` 의
-> `guide_dog_passenger` · `live_validation` 과 #60.
+> 이 계정의 중증 단독 예약도 위 경고대로 어른 운임으로 강등됐으므로, **이 거절이
+> `173` 때문인지 이 계정에 자격이 없어서인지 가리지 못했습니다.** 그래서 **지금
+> `GuideDogPassenger` 로 예매하면 실패할 수 있습니다.** 근거와 한계는
+> `docs/protocol-evidence-7.0.8.json` 의 `guide_dog_passenger` · `live_validation`
+> 과 #60.
 
 안내견은 유형 코드가 어른과 같은 `1` 이지만 **어른의 하위 클래스가 아닙니다.**
 예매 폼에서는 할인 코드가 달라 별도 블록으로 나가야 하고, 열차 조회 폼에서는
