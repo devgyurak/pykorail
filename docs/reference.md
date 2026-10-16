@@ -975,27 +975,52 @@ ID 형식이 잘못되면 `ValueError`를 발생시킵니다. 후자는 프로�
 ## NetFunnel 대기열
 
 `NetFunnelHelper` 는 클라이언트에 자동으로 엮여 있지 **않습니다 — 의도된 것입니다.**
-대기열은 코레일 웹 프런트가 통과하는 관문이고, 이 패키지가 쓰는 스마트 앱
-엔드포인트(`smart.letskorail.com`)는 그 뒤에 있지 않습니다. 필요 없는 상황에서 매
-요청마다 외부 게이트를 때리면 비용과 실패 지점만 늘어납니다.
+코레일톡+ 앱은 열차 조회 · 예약 · 내 예약 조회 · 결제 전에 대기열을 통과하지만,
+지금까지 본 캡처에서 통과 키가 스마트 요청(`smart.letskorail.com`)에 실린 적은
+없습니다 — 서버가 통과 여부를 검사한다는 근거가 없어, 필요 없는 상황에서 매 요청마다
+외부 게이트를 때리면 비용과 실패 지점만 늘어납니다.
 
-명절 예매처럼 앱 경로에도 대기열이 붙는 상황을 만나면 직접 꺼내 쓰세요.
+명절 예매처럼 대기열이 실제로 붙는 상황을 만나면 직접 꺼내 쓰세요. `run()` 은 동작
+(`aid`)을 받고, 기본값은 열차 조회(`act_8`)입니다.
 
 ```python
-from pykorail import NetFunnelHelper
+from pykorail import NetFunnelHelper, NetFunnelAction
 
 with NetFunnelHelper() as nf:
-    key = nf.run()  # 통과할 때까지 블로킹
+    key = nf.run()  # 열차 조회 대기열, 통과할 때까지 블로킹
+    pay_key = nf.run(NetFunnelAction.PAY)  # 결제는 다른 대기열이라 따로 통과
 ```
+
+동작과 `aid` 는 다음과 같습니다. 값은 코레일톡+ 7.0.8 의 `NetworkConstants$Netfunnel`
+상수를 AlienGuard 복호 결과로 옮긴 것입니다(암호문·호출 지점 근거는
+`docs/protocol-evidence-7.0.8.json` 의 `netfunnel.actions`).
+
+| 동작 | 상수 | `aid` |
+|---|---|---|
+| 열차 조회 (평시) | `NetFunnelAction.TRAIN_SEARCH` | `act_8` |
+| 열차 조회 (성수기) | `NetFunnelAction.TRAIN_SEARCH_PEAK` | `act_8_2` |
+| 열차 조회 (할인상품) | `NetFunnelAction.TRAIN_SEARCH_SPECIAL_OFFER` | `act_6` |
+| 예약 | `NetFunnelAction.RESERVE` | `act_14` |
+| 결제 | `NetFunnelAction.PAY` | `act_18` |
+| 내 예약 조회 | `NetFunnelAction.RESERVATION_VIEW` | `act_21` |
+
+열차 조회에서 세 값 중 무엇을 쓸지는 앱(`TrainScheduleViewModel.netFunnelTrainSchedule`)
+에 따르면 다음 규칙으로 정해집니다.
+
+1. 할인상품(`SpecialOffer`)을 골랐고 그것이 `ACCOMPANY_4` 가 아니면 `act_6`.
+2. 관광열차(`trainGroup.tour`)면 대기열을 거치지 않습니다(빈 `aid`).
+3. 그 밖에는 조회일 항목의 성수기 플래그가 참이면 `act_8_2`, 아니면 `act_8`.
+   플래그는 `schedule.runDt` 응답의 `bizDdStgCd` 에서 오는데, 그 엔드포인트는 이
+   패키지에 없습니다 — 그래서 어느 `aid` 를 쓸지는 호출자가 정합니다.
 
 비동기 코드에서는 `AsyncNetFunnelHelper` 를 `await` 합니다. 리소스와 달리
 `AsyncKorail` 에 엮여 있지 않은 것은 동기판과 같습니다.
 
 ```python
-from pykorail import AsyncNetFunnelHelper
+from pykorail import AsyncNetFunnelHelper, NetFunnelAction
 
 async with AsyncNetFunnelHelper() as nf:
-    key = await nf.run()
+    key = await nf.run(NetFunnelAction.TRAIN_SEARCH_PEAK)
 ```
 
 두 헬퍼 모두 선택적 `device_profile` 을 받습니다. 넘기면 User-Agent 의 모델 · OS ·
@@ -1015,6 +1040,11 @@ async with AsyncNetFunnelHelper(device_profile=korail.device_profile) as nf:
 
 - `AsyncNetFunnelHelper` 는 asyncio 전용이고 `curl_cffi` 가 필요합니다 — 동기판에는
   requests 폴백이 있지만 비동기판에는 없습니다.
+- 캐시는 동작(`aid`)별로 나뉩니다. `act_8` 로 받은 티켓을 결제(`act_18`)에 재사용하지
+  않습니다. `clear()` 는 전부, `clear(aid)` 는 그 칸만 비우고, 한 동작이 실패하면
+  실패한 칸만 비웁니다 — 결제 대기열 실패가 조회 티켓을 날리지 않습니다.
+- `aid` 는 `NetFunnelActionCode`(`Literal`)로 정적으로만 검사합니다. 잘못된 문자열을
+  넘겨도 런타임에는 막지 않습니다.
 - 한 인스턴스를 여러 코루틴이 동시에 쓰면 `run()` 이 각자 게이트를 통과합니다. 캐시는
   **통과를 마친** 티켓만 공유하므로, 대기 중에 끼어든 호출이 미완성 티켓을 빌려 오는
   일은 없습니다. 대신 그만큼 대기열을 여러 번 때립니다.

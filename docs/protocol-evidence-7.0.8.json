@@ -1402,9 +1402,49 @@
       "링커 바깥의 런타임 경로(리플렉션, 다른 난독화 링커)에서 host_notmodify 를 바꾸는지 — 정적으로 찾은 범위에서는 없음.",
       "서버가 실제로 다른 ip 를 내려 주는 상황이 있는지 — 두 캡처에서는 늘 nf.letskorail.com:443 이었음."
     ],
-    "deferred": {
-      "#104": "5101 이 대기열 대상 동작을 정하는 방식과 동작별 aid 값 — 10/03 캡처는 act_8, 09/23 캡처는 act_8_2."
-    }
+    "actions": {
+      "source": "com.korail.talk.common.NetworkConstants$Netfunnel (jadx). SERVICE_ID · PROTOCOL · HOST 를 포함한 값이 모두 AlienGuard 문자열 암호화를 거친다.",
+      "algorithm": "4바이트 반복 XOR. 각 문자열의 암호문 앞 4바이트를 알려진 평문 접두와 XOR 하면 4바이트 키가 나오고, 그것을 반복해 XOR 하면 나머지가 풀린다. 키는 상수마다 다르다(난독화 호출마다 인자가 다름).",
+      "known_plaintexts": [
+        {"constant": "PROTOCOL", "plaintext": "https", "ciphertext": [25, 93, 221, 66, 2]},
+        {"constant": "HOST", "plaintext": "nf.letskorail.com", "ciphertext": [80, 95, 104, 20, 91, 77, 53, 19, 81, 75, 39, 17, 82, 23, 37, 23, 83]},
+        {"constant": "SERVICE_ID", "plaintext": "service_1", "ciphertext": [134, 215, 54, 144, 156, 209, 33, 185, 196]},
+        {"constant": "ACTION_ID", "plaintext": "act_8", "ciphertext": [21, 27, 25, 17, 76]},
+        {"constant": "ACTION_PEAK_SEASON_ID", "plaintext": "act_8_2", "ciphertext": [15, 222, 146, 216, 86, 226, 212]}
+      ],
+      "constants": [
+        {"apk": "ACTION_ID", "aid": "act_8", "pykorail": "NetFunnelAction.TRAIN_SEARCH", "ciphertext": [21, 27, 25, 17, 76]},
+        {"apk": "ACTION_PEAK_SEASON_ID", "aid": "act_8_2", "pykorail": "NetFunnelAction.TRAIN_SEARCH_PEAK", "ciphertext": [15, 222, 146, 216, 86, 226, 212]},
+        {"apk": "ACTION_PRODUCT_ID", "aid": "act_6", "pykorail": "NetFunnelAction.TRAIN_SEARCH_SPECIAL_OFFER", "ciphertext": [192, 232, 43, 183, 151]},
+        {"apk": "ACTION_RESERVE_ID", "aid": "act_14", "pykorail": "NetFunnelAction.RESERVE", "ciphertext": [250, 38, 116, 137, 170, 113]},
+        {"apk": "ACTION_PAY_ID", "aid": "act_18", "pykorail": "NetFunnelAction.PAY", "ciphertext": [200, 189, 176, 219, 152, 230]},
+        {"apk": "ACTION_RESERVATION_TICKET_ID", "aid": "act_21", "pykorail": "NetFunnelAction.RESERVATION_VIEW", "ciphertext": [129, 87, 39, 70, 210, 5]}
+      ],
+      "unused": "ACTION_TEST_ID 는 act_4 로 풀리지만 어떤 화면 호출 지점에서도 쓰이지 않아 상수로 옮기지 않았다.",
+      "call_sites": {
+        "reserve": "TrainScheduleViewModel:5145,5246 · TrainSeatMapViewModel:2700,2792 · ReservationWaitViewModel:575 · HomeViewModel:6240",
+        "pay": "PayViewModel:6479 · FPayViewModel:802",
+        "reservation_view": "MyReservationViewModel:2482",
+        "train_search": "TrainScheduleViewModel.netFunnelTrainSchedule (5386 근처)"
+      },
+      "selection_rule": {
+        "train_search": [
+          "할인상품(SpecialOffer)을 골랐고 그것이 ACCOMPANY_4 가 아니면 ACTION_PRODUCT_ID(act_6).",
+          "관광열차(trainGroup.tour)면 aid 가 빈 문자열이고 대기열을 거치지 않는다.",
+          "그 밖에는 schedule.runDt 응답의 출발일 항목(RunDateOutItem)을 찾아 isPeakSeason() 이 참이면 ACTION_PEAK_SEASON_ID(act_8_2), 아니면 ACTION_ID(act_8)."
+        ],
+        "peak_flag": "RunDateOutItem.isPeakSeason() 은 bizDdStgCd 를 한 글자 상수와 비교한다. 그 상수는 한 바이트라 XOR 로 확정하지 못했다. 캡처로 확인: 2026-09-23(추석 직전) 캡처의 출발일 bizDdStgCd=5 일 때 5101 이 act_8_2, 2026-10-03 캡처의 출발일 bizDdStgCd=4 일 때 act_8.",
+        "source": "TrainScheduleViewModel.netFunnelTrainSchedule, RunDateOutItem.isPeakSeason"
+      },
+      "guard": "tests/test_netfunnel_actions.py 가 이 암호문을 act_ 접두로 풀어 NetFunnelAction 상수와 대조한다.",
+      "unverified": [
+        "isPeakSeason() 의 비교가 등호라는 것은 추정이다 — 다른 비교일 근거는 없다.",
+        "bizDdStgCd 5 외의 값(1·2·3)이 출발일인 날의 실제 aid 는 캡처가 없어 확인하지 못했다. 1–3 은 성수기가 아닌 날에 나왔지만 그 날짜로 조회한 캡처는 없다.",
+        "날짜 정보가 없거나 조회일에 해당하는 RunDateOutItem 이 없을 때 앱이 어느 aid 를 고르는지는 난독화된 술어 때문에 확정하지 못했다.",
+        "2026-09-23 캡처에서 대기열 통과 직후 ScheduleView 가 403 이었던 이유."
+      ]
+    },
+    "deferred": {}
   },
   "login_password_change_gate": {
     "observed_at_kst": "2026-10-13",

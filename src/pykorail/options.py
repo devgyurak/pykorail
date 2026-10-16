@@ -27,6 +27,9 @@ MileageTypeCode = Literal["1", "2"]
 #: 유효한 마일리지 내역 구분 코드.
 MileageInquiryCode = Literal["0", "1", "2"]
 
+#: 유효한 NetFunnel 대기열 동작 코드(``aid``). :class:`NetFunnelAction` 의 상수들이 이 집합을 이룹니다.
+NetFunnelActionCode = Literal["act_8", "act_8_2", "act_6", "act_14", "act_18", "act_21"]
+
 
 class TrainType:
     """``selGoTrain``/``txtTrnGpCd`` 열차 종별 코드.
@@ -81,3 +84,32 @@ class MileageInquiry:
     ALL: Final = "0"
     SAVE: Final = "1"
     USE: Final = "2"
+
+
+class NetFunnelAction:
+    """NetFunnel ``5101`` 요청의 ``aid`` — 대기열을 통과할 대상 동작.
+
+    코레일톡+ 7.0.8 의 ``NetworkConstants$Netfunnel`` 상수를 AlienGuard 복호 결과로
+    옮긴 값입니다(암호문·근거는 ``docs/protocol-evidence-7.0.8.json`` 의
+    ``netfunnel.actions``). ``aid`` 가 다르면 같은 대기열이 아니므로 통과 티켓을
+    섞어 쓸 수 없습니다.
+
+    열차 조회는 조건에 따라 ``TRAIN_SEARCH`` · ``TRAIN_SEARCH_PEAK`` ·
+    ``TRAIN_SEARCH_SPECIAL_OFFER`` 중 하나를 고릅니다. 어느 것을 쓸지는
+    ``schedule.runDt`` 응답(이 패키지에는 없는 엔드포인트)의 성수기 플래그에
+    달려 있어 호출자가 정합니다.
+    """
+
+    #: 열차 조회 (평시). 앱 ``TrainScheduleViewModel.netFunnelTrainSchedule``.
+    TRAIN_SEARCH: Final = "act_8"
+    #: 열차 조회 (성수기). 출발일의 ``bizDdStgCd`` 가 성수기일 때 씁니다.
+    TRAIN_SEARCH_PEAK: Final = "act_8_2"
+    #: 열차 조회 (할인상품). 앱에서 ``ACCOMPANY_4`` 가 아닌 할인상품을 골랐을 때.
+    TRAIN_SEARCH_SPECIAL_OFFER: Final = "act_6"
+    #: 예약. ``TrainScheduleViewModel`` · ``TrainSeatMapViewModel`` ·
+    #: ``ReservationWaitViewModel`` · ``HomeViewModel``.
+    RESERVE: Final = "act_14"
+    #: 결제. ``PayViewModel`` · ``FPayViewModel``.
+    PAY: Final = "act_18"
+    #: 내 예약 조회. ``MyReservationViewModel``.
+    RESERVATION_VIEW: Final = "act_21"

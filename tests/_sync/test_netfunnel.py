@@ -14,6 +14,7 @@ from pykorail._sync.netfunnel import NETFUNNEL_URL, NetFunnelHelper
 from pykorail.auth.dynapath import DynaPathMasterEngine
 from pykorail.device import PROFILES_BY_ID, dalvik_user_agent
 from pykorail.exceptions import NetFunnelError
+from pykorail.options import NetFunnelAction
 from tests.payloads import NETFUNNEL_CALLS_GOLDEN, NETFUNNEL_HEADERS_GOLDEN
 
 PASS = "200:key=TICKET-1&nwait=0"
@@ -137,6 +138,16 @@ class TestRun:
         # then
         assert session.calls[0]["url"] == NETFUNNEL_URL
 
+    def test_run_carries_the_action_in_the_enter_request(self, make_helper) -> None:
+        # given
+        helper, session = make_helper([PASS, COMPLETE])
+
+        # when
+        helper.run(NetFunnelAction.PAY)
+
+        # then
+        assert session.calls[0]["params"]["aid"] == NetFunnelAction.PAY
+
     def test_ignores_host_redirect_in_responses(self, make_helper, monkeypatch) -> None:
         # given
         monkeypatch.setattr("pykorail._sync.netfunnel.time.sleep", Sleeper())
@@ -170,7 +181,7 @@ class TestRun:
             helper.run()
 
         # then
-        assert helper._cached_key is None
+        assert helper._cache == {}
 
     def test_unparseable_response_raises(self, make_helper) -> None:
         # given
@@ -226,10 +237,64 @@ class TestCache:
         helper.run()
 
         # when
-        helper._last_fetch_time -= helper.CACHE_TTL + 1
+        key, fetched = helper._cache[NetFunnelAction.TRAIN_SEARCH]
+        helper._cache[NetFunnelAction.TRAIN_SEARCH] = (key, fetched - helper.CACHE_TTL - 1)
         helper.run()
 
         # then
+        assert len(session.calls) == 4
+
+    def test_different_actions_do_not_share_the_cache(self, make_helper) -> None:
+        # given
+        helper, session = make_helper([PASS, COMPLETE, PASS, COMPLETE])
+        helper.run(NetFunnelAction.TRAIN_SEARCH)
+
+        # when
+        helper.run(NetFunnelAction.PAY)
+
+        # then
+        assert len(session.calls) == 4, "aid 가 다르면 같은 티켓을 재사용하면 안 됩니다"
+
+    def test_clear_one_action_keeps_the_others(self, make_helper) -> None:
+        # given
+        helper, session = make_helper([PASS, COMPLETE, PASS, COMPLETE, PASS, COMPLETE])
+        helper.run(NetFunnelAction.TRAIN_SEARCH)
+        helper.run(NetFunnelAction.PAY)
+
+        # when
+        helper.clear(NetFunnelAction.PAY)
+        helper.run(NetFunnelAction.TRAIN_SEARCH)
+        helper.run(NetFunnelAction.PAY)
+
+        # then
+        assert len(session.calls) == 6, "조회 티켓은 남고 결제만 다시 통과해야 합니다"
+
+    def test_clear_all_actions_empties_every_slot(self, make_helper) -> None:
+        # given
+        helper, session = make_helper([PASS, COMPLETE, PASS, COMPLETE, PASS, COMPLETE, PASS, COMPLETE])
+        helper.run(NetFunnelAction.TRAIN_SEARCH)
+        helper.run(NetFunnelAction.PAY)
+
+        # when
+        helper.clear()
+        helper.run(NetFunnelAction.TRAIN_SEARCH)
+        helper.run(NetFunnelAction.PAY)
+
+        # then
+        assert len(session.calls) == 8
+
+    def test_failure_clears_only_the_failing_action(self, make_helper) -> None:
+        # given
+        helper, session = make_helper([PASS, COMPLETE, PASS, "999:key=X"])
+        helper.run(NetFunnelAction.TRAIN_SEARCH)
+
+        # when
+        with pytest.raises(NetFunnelError, match="complete"):
+            helper.run(NetFunnelAction.PAY)
+
+        # then
+        assert NetFunnelAction.PAY not in helper._cache
+        assert helper._cache[NetFunnelAction.TRAIN_SEARCH][0] == "TICKET-1"
         assert len(session.calls) == 4
 
 
@@ -303,7 +368,29 @@ class TestParams:
 
         # then
         assert params["sid"] == "service_1"
-        assert params["aid"] == "act_8"
+        assert params["aid"] == NetFunnelAction.TRAIN_SEARCH, "aid 를 생략하면 열차 조회가 기본입니다"
+
+    @pytest.mark.parametrize(
+        "aid",
+        [
+            NetFunnelAction.TRAIN_SEARCH,
+            NetFunnelAction.TRAIN_SEARCH_PEAK,
+            NetFunnelAction.TRAIN_SEARCH_SPECIAL_OFFER,
+            NetFunnelAction.RESERVE,
+            NetFunnelAction.PAY,
+            NetFunnelAction.RESERVATION_VIEW,
+        ],
+    )
+    def test_enter_carries_the_requested_action(self, make_helper, aid: str) -> None:
+        # given
+        helper, _ = make_helper([])
+
+        # when
+        params = helper._build_params(helper.OP_CODE["getTidchkEnter"], aid=aid)
+
+        # then
+        assert params["sid"] == "service_1"
+        assert params["aid"] == aid
 
     def test_check_carries_only_opcode_and_key(self, make_helper) -> None:
         # given

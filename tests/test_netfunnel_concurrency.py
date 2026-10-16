@@ -6,7 +6,7 @@
 (``scripts/unasync.py`` 의 ``\\basyncio\\b``)에 걸립니다.
 
 동기판에는 이 위험이 없습니다(실행이 한 줄기라 대기 중에 다른 호출이 끼어들지
-않습니다). 회귀는 ``run()`` 이 통과를 확인하기 전에 공유 캐시 ``self._cached_key`` 를
+않습니다). 회귀는 ``run()`` 이 통과를 확인하기 전에 공유 캐시 ``self._cache`` 를
 채우면서 생깁니다 — 대기 중에 들어온 호출이 아직 게이트를 통과하지 않은 키를 받거나,
 취소된 실행이 그 키를 캐시에 남깁니다.
 """
@@ -103,6 +103,5 @@ class TestCancellation:
             await asyncio.wait_for(helper.run(), timeout=0.05)
 
         # then
-        assert helper._cached_key is None, "통과하지 못한 키를 캐시에 남기면 안 됩니다"
-        assert helper._last_fetch_time == 0.0
+        assert helper._cache == {}, "통과하지 못한 키를 캐시에 남기면 안 됩니다"
         assert session.opcodes() == ["5101"], "대기 중에 끊겼으니 완료(5004)는 나가지 않습니다"
