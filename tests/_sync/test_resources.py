@@ -1243,7 +1243,7 @@ class TestSeatCars:
         data = session.kwargs_for("seat_cars")["data"]
         sent = {key: data[key] for key in ("AppVersion", "txtMenuId", "txtTrnNo", "txtPsrmClCd", "txtSeatAttCd")}
         assert sent == {
-            "AppVersion": "7.0.8",
+            "AppVersion": "7.0.10",
             "txtMenuId": "11",
             "txtTrnNo": "00101",
             "txtPsrmClCd": "1",

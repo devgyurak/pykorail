@@ -74,7 +74,7 @@ API_ENDPOINTS: Final[dict[str, str]] = {
 DEVICE: Final = "AD"
 APP_VERSION: Final = "250722001"
 #: API의 Version과 별개인 공식 앱 표시 버전입니다.
-APP_DISPLAY_VERSION: Final = "7.0.8"
+APP_DISPLAY_VERSION: Final = "7.0.10"
 API_KEY: Final = "korail1234567890"
 SID_KEY: Final = b"2485dd54d9deaa36"
 

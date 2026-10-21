@@ -172,7 +172,7 @@ TICKET_SEAT_PAYLOAD = {
 LOGIN_FORM_GOLDEN = {
     "Device": "AD",
     "Version": "250722001",
-    "AppVersion": "7.0.8",
+    "AppVersion": "7.0.10",
     "Key": "korail1234567890",
     "txtInputFlg": "4",
     "txtMemberNo": "01012345678",

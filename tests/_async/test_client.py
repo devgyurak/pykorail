@@ -164,7 +164,7 @@ class TestLogin:
         await client.login("me@example.com", "pw")
 
         # then
-        assert session.kwargs_for("login")["data"]["AppVersion"] == "7.0.8"
+        assert session.kwargs_for("login")["data"]["AppVersion"] == "7.0.10"
 
     async def test_successful_login_populates_account(self, make_korail) -> None:
         # given
