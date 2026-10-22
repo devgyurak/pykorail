@@ -1,0 +1,57 @@
+name: DynaPath 드리프트 검사
+
+# 웹 DynaPath(_qdb)의 보호 자산이 배포마다 회전(JScrambler 재난독화)하는지 봅니다.
+# 순수 Python 재현(엔진)과는 무관한 **정적 감지** 잡입니다. 매주 한 번, 그리고
+# 필요할 때 수동으로 돌립니다. 네트워크가 필요하므로 PR 필수 체크(ci-ok)에는
+# 넣지 않습니다 — 상대 CDN 이 흔들리면 무관한 PR 이 빨개집니다.
+on:
+  schedule:
+    # 매주 월요일 03:00 UTC.
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: 웹 DynaPath 스펙 드리프트
+    runs-on: ubuntu-latest
+    env:
+      # 고정 URL 이 확인된 부트스트랩. 저장소 변수로 바꿀 수 있습니다.
+      HELPER_URL: ${{ vars.DYNAPATH_HELPER_URL || 'https://cdn.korail.com/dyna/dp.helper.js' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: uv 설치
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: 의존성 설치
+        run: uv sync --all-extras --frozen
+
+      - name: 부트스트랩 자산 내려받기
+        # 실패해도 다음 단계가 명확한 이유를 남기도록 -f 로 상태 코드를 확인합니다.
+        run: curl -fsS --max-time 60 "$HELPER_URL" -o helper.js
+
+      - name: 드리프트 검사
+        # baseline 과 다르면 종료 코드 1 로 잡을 실패시킵니다.
+        run: |
+          uv run python -m scripts.dynapath_web \
+            --asset helper=helper.js \
+            --only helper \
+            --baseline scripts/dynapath_web/baseline.json \
+            --out artifacts \
+            --fail-on-drift
+
+      - name: 산출물 업로드
+        # 드리프트로 실패해도 스펙·리포트를 남겨 Actions 탭에서 내려받을 수 있게 합니다.
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dynapath-drift
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 30

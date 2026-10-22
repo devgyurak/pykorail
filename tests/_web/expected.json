@@ -1,0 +1,4 @@
+{
+  "vm_json": "{\"bytecode\":{\"__vmb__\":0},\"constants\":[\"alpha\",\"beta\"],\"functions\":[{\"name\":\"_vftestfn\",\"function\":{\"params\":[]}}]}",
+  "loader_value_hex": "f38e32744c1ee0d60ffe1462"
+}
