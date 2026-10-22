@@ -2,7 +2,7 @@
   "scope": "www.korail.com 웹 DynaPath(_qdb 지문) + 티케팅 플로우 정적·동적 분석 (2026-10-22)",
   "method": "CDP 네트워크 캡처(수동 브라우저 조작) + 세션별 보호 스크립트의 정적 디코딩(문자열 테이블 RC4 → 블롭 XOR → 바이트코드) + 런타임 블록 추출 주입",
   "conclusion": "웹은 모바일 API(/classes/com.korail.mobile.*)를 그대로 쓰되 인증만 JS DynaPath 로 대체한다. 하드웨어 attestation 없음. 인증은 폼 데이터와 _qdb 지문을 /dynaPath · /web_s · /web_r 토큰 엔드포인트로 제출하는 래퍼 구조다.",
-  "status": "부분 — 보호 구조·난독화 해제는 완료. 결정적 (입력 → _qdb) 오라클 시도는 실패(_qdb 비결정적)했고 _qdb 조립 알고리즘도 미확보",
+  "status": "부분 — 해시 코어(지문 → cyper)는 파이썬으로 재현·바이트일치 확인. _qdb 문자열 인코딩과 씨앗 규칙은 미확정",
   "flow": [
     {
       "step": "로그인",
@@ -141,6 +141,26 @@
     "needed_for_a_real_oracle": [
       "VM 이 실제로 소비하는 모든 엔트로피 소스를 밝히고, 각각을 결정적으로 고정하되 흐름을 깨지 않게 분리해야 한다(예: performance.now 의 흐름용 사용과 데이터용 사용을 나눔).",
       "또는 지문 수집 함수가 만든 원시 입력(문자열/버퍼)을 브라우저에서 덤프해, 그 값을 입력으로 순수 Python 조립을 검증한다."
+    ]
+  },
+  "hash_core_reconstruction": {
+    "method": "실행 수렴 지점 aW['_executeVMFunc'] 후킹으로 원시 지문 입력(plain)·key·rot 과 cyper 출력을 덤프",
+    "verified": "cyper 200B 가 순수 파이썬 재현과 정확히 일치",
+    "rules": [
+      "rot[i] = (key >> 4i) & 15  — key 의 4비트 니블 8개 (오라클 rot [8,14,6,12,15,3,12,13] 재현)",
+      "cyper[j] = ROTR(word(plain, (j-1)*4) XOR ~key, rot[j % 8])  (j = 1..49)",
+      "ROTRT(a,b) = (a >>> b) | (a << (32 - b))"
+    ],
+    "open": [
+      "cyper[0] 씨앗: 바깥 함수 num2hhss 의 바이트코드 미확보. 오라클 관측값 3*len(plain)+2 = 602 이 규칙인지 우연인지 미확정",
+      "cyper -> _qdb(1470자, a~l 12진) 문자열 인코딩 구간 미확보"
+    ],
+    "artifacts": [
+      "raw_input_oracle.json",
+      "scope_dump2.json",
+      "vm_calls6.json",
+      "harness/dump_scope.js",
+      "harness/dump_vmcalls.js"
     ]
   }
 }
