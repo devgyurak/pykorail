@@ -15,7 +15,7 @@ from scripts.dynapath_web.codec import base64_decode, rc4, unescape_js_string, x
 from scripts.dynapath_web.disasm import disassemble, opcode_name
 from scripts.dynapath_web.drift import compare, report_markdown
 from scripts.dynapath_web.loader import decode_loader_strings, extract_string_array
-from scripts.dynapath_web.pepperpowder import hash_cyper, rot_schedule, rotate_right, seed_value
+from scripts.dynapath_web.pepperpowder import hash_cyper, rot_schedule, rotate_right
 from scripts.dynapath_web.spec import build_spec, filter_spec
 from scripts.dynapath_web.vm import decode_blocks, extract_decode_params, extract_literal_blobs
 
@@ -289,33 +289,31 @@ class TestCli:
         assert code == 0
 
 
-def _pepperpowder_oracle() -> dict:
-    return json.loads((FIXTURES / "pepperpowder_oracle.json").read_text(encoding="utf-8"))
+def _pepperpowder_vectors() -> list[dict]:
+    return json.loads((FIXTURES / "pepperpowder_oracle.json").read_text(encoding="utf-8"))["vectors"]
 
 
 class TestPepperPowder:
-    """런타임 후킹 오라클(raw plain · key · rot)로 해시 코어의 바이트일치를 확인합니다."""
+    """런타임 후킹 오라클(raw plain · key · rot · seed)로 해시 코어 바이트일치를 확인합니다."""
 
-    def test_rot_schedule_comes_from_key_nibbles(self) -> None:
-        # given
-        oracle = _pepperpowder_oracle()
-
+    @pytest.mark.parametrize("vector", _pepperpowder_vectors(), ids=lambda v: v["label"])
+    def test_rot_schedule_comes_from_key_nibbles(self, vector: dict) -> None:
         # when
-        schedule = rot_schedule(oracle["key_int32"])
+        schedule = rot_schedule(vector["key_int32"])
 
         # then
-        assert schedule == oracle["rot"]
+        assert schedule == vector["rot"]
 
-    def test_cyper_matches_the_oracle(self) -> None:
+    @pytest.mark.parametrize("vector", _pepperpowder_vectors(), ids=lambda v: v["label"])
+    def test_cyper_matches_the_oracle(self, vector: dict) -> None:
         # given
-        oracle = _pepperpowder_oracle()
-        plain = bytes.fromhex(oracle["plain_hex"])
+        plain = bytes.fromhex(vector["plain_hex"])
 
         # when
-        cyper = hash_cyper(plain, oracle["key_int32"], seed_value(plain))
+        cyper = hash_cyper(plain, vector["key_int32"], vector["seed"])
 
         # then
-        assert cyper.hex() == oracle["cyper_hex"]
+        assert cyper.hex() == vector["cyper_hex"]
 
     def test_rotate_right_is_a_32bit_rotation(self) -> None:
         # when
