@@ -2,7 +2,7 @@
   "scope": "www.korail.com 웹 DynaPath(_qdb 지문) + 티케팅 플로우 정적·동적 분석 (2026-10-22)",
   "method": "CDP 네트워크 캡처(수동 브라우저 조작) + 세션별 보호 스크립트의 정적 디코딩(문자열 테이블 RC4 → 블롭 XOR → 바이트코드) + 런타임 블록 추출 주입",
   "conclusion": "웹은 모바일 API(/classes/com.korail.mobile.*)를 그대로 쓰되 인증만 JS DynaPath 로 대체한다. 하드웨어 attestation 없음. 인증은 폼 데이터와 _qdb 지문을 /dynaPath · /web_s · /web_r 토큰 엔드포인트로 제출하는 래퍼 구조다.",
-  "status": "부분 — 해시 코어(plain → cyper)는 전체 워드 바이트일치 확인. pp_bin → _qdb 인코딩만 미확정",
+  "status": "부분 — 해시 파이프라인(plain + key + pp -> pp_bin -> qdb)은 전 구간 파이썬 바이트일치. 키 변환(_vfegvbw84)과 지문 수집은 미확정",
   "flow": [
     {
       "step": "로그인",
@@ -165,5 +165,19 @@
       "harness/dump_lens.js",
       "harness/dump_fullhex.js"
     ]
-  }
+  },
+  "qdb_encoding": {
+    "verified": "pp_bin -> qdb 전 구간 바이트일치(표본 pp_bin 608B -> qdb 1460자)",
+    "stages": [
+      "ww: 바이트열을 base-102 로. 5바이트 빅엔디언 누적(Ny=Ny*256+b) -> 6자리(Ny%102, Ny//102). 마지막 자투리는 그 바이트 수를 담는 최소 자리수",
+      "자리값(0~101) -> 문자코드 25+자리값 (오라클 역산으로 확정: 값 범위 25~126)",
+      "lb: 각 값을 base-12 두 자리로 low(v%12)->a~l, high(v//12)->a~i 로 이어 붙임 -> 문자셋 a~l"
+    ],
+    "note": "인코딩은 VM 밖(정규 JS)에서 이뤄진다 — VM 트레이스에 벌크 인코딩이 안 잡히는 이유와 일치"
+  },
+  "pipeline": "fingerprint JSON -> PepperPowder(plain,key -> cyper) -> pp_bin(pp||cyper) -> ww(base-102) -> lb(base-12) -> _qdb",
+  "open_engine": [
+    "키 변환 _vfegvbw84(타임스탬프 -> int32) 미확정: key 는 plain+cyper 에서 역산해 검증했을 뿐",
+    "지문 수집(canvas/WebGL/audio/navigator/타이밍 -> plain)은 브라우저 의존이라 순수 Python 범위 밖"
+  ]
 }
