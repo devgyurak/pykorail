@@ -2,7 +2,7 @@
   "scope": "www.korail.com 웹 DynaPath(_qdb 지문) + 티케팅 플로우 정적·동적 분석 (2026-10-22)",
   "method": "CDP 네트워크 캡처(수동 브라우저 조작) + 세션별 보호 스크립트의 정적 디코딩(문자열 테이블 RC4 → 블롭 XOR → 바이트코드) + 런타임 블록 추출 주입",
   "conclusion": "웹은 모바일 API(/classes/com.korail.mobile.*)를 그대로 쓰되 인증만 JS DynaPath 로 대체한다. 하드웨어 attestation 없음. 인증은 폼 데이터와 _qdb 지문을 /dynaPath · /web_s · /web_r 토큰 엔드포인트로 제출하는 래퍼 구조다.",
-  "status": "부분 — 해시 코어(plain → cyper)는 두 표본에서 파이썬 재현·바이트일치 확인. 씨앗 출처와 _qdb 문자열 인코딩은 미확정",
+  "status": "부분 — 해시 코어(plain → cyper)는 전체 워드 바이트일치 확인. pp_bin → _qdb 인코딩만 미확정",
   "flow": [
     {
       "step": "로그인",
@@ -144,24 +144,26 @@
     ]
   },
   "hash_core_reconstruction": {
-    "method": "executor aV 의 return 을 후킹해 외부 호출까지 캡처(내부+외부), 인터프리터 switch(N) 에서 255개 opcode 전체 디스패치를 뽑아 _vfegvbw85(390B)·<anonymous>(117B)=num2hhss 를 디컴파일",
-    "verified": "plain → cyper 구간이 순수 파이썬 재현과 정확히 일치 — 200B 표본(씨앗 602)과 400B 표본(씨앗 569) 두 독립 오라클에서 확인",
+    "method": "executor aV 의 return 후킹 + 인터프리터 switch(N) 255개 opcode 전체 디스패치로 _vfegvbw85(390B)·<anonymous>(117B)=num2hhss 디컴파일, 런타임 오라클로 실측",
+    "verified": "plain → cyper 가 순수 파이썬 재현과 정확히 일치(표본: plain 599B, cyper 604B, 151/151 워드). key 는 plain+cyper 에서 역산해 검증",
     "rules": [
-      "rot[i] = (key >> 4i) & 15  — key 의 4비트 니블 8개",
-      "cyper[j] = ROTR(word(plain, (j-1)*4) XOR ~key, rot[j % 8])  (4바이트 big-endian 워드)",
-      "ROTRT(a,b) = (a >>> b) | (a << (32 - b))",
-      "워드 수 = len(plain) / 4 (200→50, 400→100)"
+      "block_len = (len(plain) + 3) >> 2",
+      "rot[i] = (key >> 4i) & 15",
+      "cyper[0] = ROTR(~(len(plain) XOR key), rot[0])",
+      "cyper[j] = ROTR(word(plain,(j-1)*4) XOR ~key, rot[j % 8])  (j=1..block_len)",
+      "마지막 워드가 4바이트보다 짧으면 남은 바이트를 (4-tail) 값으로 채움",
+      "cyper = (block_len + 1) 워드 = (block_len+1)*4 B",
+      "pp_bin = pp(4B) || cyper"
     ],
     "open": [
-      "cyper[0] 씨앗: _vfegvbw85 는 첫 num2hhss 호출의 5번째 인자로 plain.length 를 넘기는데 그 값이 바이트 길이가 아니다(200B→602, 400B→569). 또 원본 block_len = plain.length>>2(150·142)가 관측 워드 수(50·100)와 어긋난다",
-      "cyper -> _qdb(1470자, a~l 12진) 문자열 인코딩 구간(pack / num2ascii / _CharCode2Base61Value / _JSON48Value2CharCode) 미확보"
+      "pp_bin -> _qdb: qdb 는 a~l 12진 1460자인데, pp_bin 608B 를 어떤 base-N 으로 풀어도 일치하지 않는다(1460자는 약 654B 를 함의). AES-CBC(IV=0)+base12 가설은 패딩을 넣어도 1393자에 그쳐 1460자를 설명하지 못한다. 인코딩이 VM 밖(정규 JS·WebCrypto)에서 이뤄지므로 그쪽 후킹이 필요하다"
     ],
     "artifacts": [
-      "raw_input_oracle.json",
-      "dump_full.json",
-      "funcdef_dump.json",
-      "oracle-full-bytecode.md",
-      "harness/dump_full.js"
+      "fullhex_dump.json",
+      "lens_dump.json",
+      "oracle-seed-cyper.md",
+      "harness/dump_lens.js",
+      "harness/dump_fullhex.js"
     ]
   }
 }
