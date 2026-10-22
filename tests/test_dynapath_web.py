@@ -16,6 +16,7 @@ from scripts.dynapath_web.disasm import disassemble, opcode_name
 from scripts.dynapath_web.drift import compare, report_markdown
 from scripts.dynapath_web.loader import decode_loader_strings, extract_string_array
 from scripts.dynapath_web.pepperpowder import hash_cyper, rot_schedule, rotate_right
+from scripts.dynapath_web.qdb import encode_qdb, lb, ww
 from scripts.dynapath_web.spec import build_spec, filter_spec
 from scripts.dynapath_web.vm import decode_blocks, extract_decode_params, extract_literal_blobs
 
@@ -327,3 +328,36 @@ class TestPepperPowder:
 
         # then
         assert rotated == 0xDEADBEEF
+
+
+def _qdb_oracle() -> dict:
+    return json.loads((FIXTURES / "qdb_oracle.json").read_text(encoding="utf-8"))
+
+
+class TestQdbEncoding:
+    """pp_bin → _qdb 인코딩(ww base-102 + lb base-12)을 오라클로 확인합니다."""
+
+    def test_encode_qdb_matches_the_oracle(self) -> None:
+        # given
+        oracle = _qdb_oracle()
+        pp_bin = bytes.fromhex(oracle["pp_bin_hex"])
+
+        # when
+        qdb = encode_qdb(pp_bin)
+
+        # then
+        assert qdb == oracle["qdb"]
+
+    def test_ww_uses_102_char_codes(self) -> None:
+        # when
+        codes = ww(bytes(5))
+
+        # then
+        assert codes == [25] * 6
+
+    def test_lb_emits_low_then_high_base12_digits(self) -> None:
+        # when
+        encoded = lb([0, 1, 12, 101])
+
+        # then
+        assert encoded == "aabaabfi"
