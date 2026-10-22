@@ -1,0 +1,82 @@
+{
+  "scope": "www.korail.com 웹 DynaPath(_qdb 지문) + 티케팅 플로우 정적·동적 분석 (2026-10-22)",
+  "method": "CDP 네트워크 캡처(수동 브라우저 조작) + 세션별 보호 스크립트의 정적 디코딩(문자열 테이블 RC4 → 블롭 XOR → 바이트코드) + 런타임 블록 추출 주입",
+  "conclusion": "웹은 모바일 API(/classes/com.korail.mobile.*)를 그대로 쓰되 인증만 JS DynaPath 로 대체한다. 하드웨어 attestation 없음. 인증은 폼 데이터와 _qdb 지문을 /dynaPath · /web_s · /web_r 토큰 엔드포인트로 제출하는 래퍼 구조다.",
+  "status": "부분 — 보호 구조·난독화 해제는 완료했으나 _qdb 조립 알고리즘과 검증용 오라클은 미확보",
+  "flow": [
+    {"step": "로그인", "request": "POST /dynaPath/{session}/{action}?_qdb={fp}", "note": "로그인 폼(encUserId/encUserPwd 등)을 DynaPath 엔드포인트로 제출. 응답 strResult=SUCC"},
+    {"step": "열차조회", "request": "POST /web_s/{session}/{action}?_qdb={fp} + POST /classes/com.korail.mobile.research.TrainResearch", "note": "web_s 에 검색 폼(txtGoStart/txtGoEnd/txtGoAbrdDt/txtGoHour 등)을 제출한 뒤 모바일 API 호출"},
+    {"step": "좌석", "request": "POST /classes/com.korail.mobile.research.TResidualSeatsResearch.do", "note": "모바일 API (이 클라이언트와 동일)"},
+    {"step": "예약", "request": "POST /web_r/{session}/{action}?_qdb={fp}", "note": "예약 폼(txtJobId/txtSeatAttCd1/txtPsgTpCd1/txtRunDt1/txtTrnNo1/txtSeatNo1 등) 제출"},
+    {"step": "예약취소", "request": "GET /classes/com.korail.mobile.reservationCancel.ReservationCancelChk?txtPnrNo=...", "note": "모바일 API"},
+    {"step": "로그아웃", "request": "POST /classes/com.korail.mobile.login.Logout (Device=BH, Version=999999999)", "note": "모바일 API"},
+    {"step": "대기열", "request": "GET nf.letskorail.com/ts.wseq?opcode=5002|5004&key=...", "note": "NetFunnel (모바일과 동일)"}
+  ],
+  "dynapath_web_token_structure": {
+    "url_pattern": "/{endpoint}/{session_token}/{action_token}?_qdb={fingerprint}",
+    "endpoints": {"dynaPath": "로그인", "web_s": "검색(send)", "web_r": "예약(receive)"},
+    "session_token": "세션 내 고정 (영숫자 수십 자)",
+    "action_token": "액션마다 변경 (영숫자 15자 내외)",
+    "qdb": "수백~수천 자 지문 문자열. 소문자 a~l 12진 인코딩. 세션별 340KB VM이 계산",
+    "note": "요청별 헤더가 아니라 '폼 데이터 + 지문'을 토큰 엔드포인트로 제출하는 래퍼. 지문은 URL 쿼리 또는 본문 _qdb= 로 실린다."
+  },
+  "dynapath_assets": {
+    "dp.helper.js": "정적 부트스트랩(수십 KB)",
+    "dynaPath.do": "동적 로더(수 KB). RC4+커스텀 base64 문자열 테이블과 체크섬 회전 루프를 포함",
+    "dyna/<token>.js": "세션별 보호 토큰 생성기(약 340KB). JScrambler 바이트코드 인터프리터",
+    "note": "dp.helper.js → dynaPath.do(로더) → dyna/<token>.js(VM) → _qdb 지문 → POST dynaPath/web_s/web_r"
+  },
+  "login_form_fields": ["UserId", "selInputFlg", "hidMemberFlg", "txtDv", "encUserId", "keyname", "useKeySec", "encUserPwd", "deviceId", "Device", "Version"],
+  "login_note": "encUserId/encUserPwd 는 암호화된 ID·비밀번호다. 평문 모바일 로그인(txtMemberNo/txtPwd)과 형식이 다르다.",
+  "web_device": {"Device": "BH", "Version": "999999999", "User-Agent": "브라우저 UA"},
+  "protection": {
+    "kind": "JScrambler 바이트코드 인터프리터 + RC4/base64 난독화 문자열 테이블",
+    "vm_load": "new Function 으로 동적 로드. 블록 배열은 문자열 테이블 항목에서 런타임에 조립",
+    "fingerprint_sources": [
+      "canvas(fillRect/fillStyle/font/textBaseline)",
+      "webgl(getParameter/getExtension/WEBGL_debug_renderer_info/SHADING_LANGUAGE_VERSION)",
+      "audio(createDynamicsCompressor/getChannelData/setValueAtTime)",
+      "navigator(screen/platform/languages/vendor/userAgentData/brands/bitness/architecture/maxTouchPoints/hardwareConcurrency/matchMedia/timeZone)",
+      "포인터·타이밍(상수에 getTimeBucket/getPointerDwell/getPointerTP/emitBurst 등 문자열 존재)",
+      "환경(webdriver/buildID/cdc_)"
+    ],
+    "crypto_observed": {
+      "AES": "crypto.subtle.generateKey({name:\"AES-CBC\",length:256}, extractable:false) 로 만든 세션 키, IV 는 16바이트 0. 평문 예시는 base64(\"{host}https:\") 형태였다.",
+      "random": "crypto.getRandomValues(16) 반복 — 세션 키·난수 재료",
+      "note": "세션 키는 extractable=false 라 정적으로 꺼낼 수 없다(관측한 암호문 32B 는 무작위 키에 종속)."
+    }
+  },
+  "re_status": {
+    "decoded": [
+      "dynaPath.do.js 문자열 테이블: 문자열 테이블 배열 + RC4 + 커스텀 base64(소문자 우선 알파벳) 디코딩 재현",
+      "VM 리터럴 블롭 6개 추출, 그중 5개 XOR 해제 성공 → {bytecode:{__vmb__}, constants, functions} 구조 확인",
+      "XOR 공식: bytecode[i] = blob[i] ^ (imul((i+1) XOR t, v) & 0xff)",
+      "opcode→인터프리터 핸들러 매핑(opmap) 추출 — 산술/메모리/제어 opcode 군 확인",
+      "런타임 블록 27개(함수 72개) 추출. pack·num2ascii·PepperPowder·ROTRT·_CharCode2Base61Value·_JSON48Value2CharCode·num2hhss 등 명명 함수 확인"
+    ],
+    "not_decoded": [
+      "_qdb 조립 알고리즘 전체(지문 수집 → PepperPowder → AES-CBC → base12 → _qdb)의 완전한 재현",
+      "encUserId/encUserPwd 암호화 방식",
+      "지문과 세션토큰·폼데이터의 결합 방식(어떤 입력이 qdb 에 들어가는지)",
+      "검증용 오라클: 하나의 (지문 입력 → _qdb 출력) 쌍을 확보하지 못했다"
+    ],
+    "decompile_note": "정적 블롭만으로는 암호 함수의 완전한 의사코드를 얻지 못한다. crypto 계열 함수의 바이트코드는 런타임 주입으로만 확보했고, opcode 피연산자 폭이 확정되지 않아 디컴파일 결과 일부는 미검증이다."
+  },
+  "remaining_unknowns": [
+    "_qdb 지문 알고리즘 전체(340KB VM 출력 규명)와 그 입력 범위",
+    "encUserId/encUserPwd 암호화 방식",
+    "web_s/web_r 제출과 모바일 API 호출의 선후관계·쿠키/세션 흐름",
+    "지문과 세션토큰·폼데이터의 결합 방식"
+  ],
+  "limits": [
+    "원본 캡처·계정·세션 토큰은 저장소에 포함하지 않는다(예시값은 형식 설명용 자리표시자).",
+    "세션별 dyna/<token>.js 는 서버가 세션마다 새로 내려주므로, 정적으로 확보한 블롭은 그 세션 표본이다 — 배포마다 JScrambler 난독화가 회전하면 달라진다.",
+    "AES 세션 키가 extractable=false 라 오프라인 재현·검증의 기준 벡터를 만들 수 없다.",
+    "지문 입력 → _qdb 출력 쌍이 없어 순수 Python 재현의 바이트 일치 검증이 불가능하다."
+  ],
+  "actionable": [
+    "오프라인 드리프트 검사(정적 디코딩 + 시그니처 + baseline)는 브라우저 없이 CI 에서 돌릴 수 있다 — VM 회전을 조기에 감지한다.",
+    "순수 Python 엔진(Option A)은 (지문 입력 → _qdb 출력) 오라클이 확보되기 전에는 검증할 수 없으므로 보류한다. 오라클은 결정적 지문·난수(RNG·clock 고정)로 VM 을 오프라인 실행해 얻는 것이 우선이다.",
+    "브라우저 브리지(Option B)는 A 의 실패가 증명된 뒤에만 옵션 extra 로 추가한다."
+  ]
+}
