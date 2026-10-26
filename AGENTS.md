@@ -327,12 +327,14 @@ def test_individual_by_default(self) -> None:
 - **문서 사이트** (`.github/workflows/site.yml`) — `site/` 나 그 원본 문서(`README.md` ·
   `docs/reference.md` · `CONTRIBUTING.md`)를 건드린 PR 에서 사이트를 빌드하고 내부 링크를
   검사합니다. 경로 필터가 있어 **필수 체크가 아닙니다.** 배포는 워크플로가 아니라
-  Cloudflare Workers Builds 가 main 에서 직접 합니다 (`docs/site.md`). 사이트의 문서
-  페이지는 빌드 때 원본에서 복사되니 **`site/` 가 아니라 원본을 고치세요** — 손으로 쓰는
-  것은 랜딩(`site/src/content/docs/index.mdx`)뿐입니다.
+  Cloudflare Workers Builds 가 main 에서 직접 합니다 (`docs/site.md`). 릴리스 뒤에는
+  `release.yml` 의 `site` 잡이 배포 훅(시크릿 `CLOUDFLARE_DEPLOY_HOOK`)으로 main 을
+  다시 빌드시킵니다. 사이트의 문서 페이지는 빌드 때 원본에서 복사되니 **`site/` 가 아니라
+  원본을 고치세요** — 손으로 쓰는 것은 랜딩(`site/src/content/docs/index.mdx`)뿐입니다.
 - **Release** (`.github/workflows/release.yml`) — `v*` 태그에서 동작. 태그와 패키지
   버전을 대조하고, 전 버전 게이트를 다시 돌린 뒤 PyPI(Trusted Publishing)에 올리고
-  릴리스 노트를 자동 생성합니다.
+  릴리스 노트를 자동 생성합니다. 정식 릴리스는 이어서 `site` 잡으로 문서 사이트를 다시
+  빌드시키고, 페이지에 새 버전이 나타나는지 확인합니다.
 
 에이전트가 알아야 할 것:
 

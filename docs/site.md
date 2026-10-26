@@ -64,9 +64,10 @@ npm run dev        # http://localhost:4321/
 옵니다. 버전을 어디에도 적지 않는다는 저장소 규약 그대로이고, 페이지를 여는 사람의 브라우저는
 두 곳에 요청하지 않습니다.
 
-- 숫자는 **마지막 빌드 때의 값**입니다. 릴리스 태그는 사이트 빌드를 일으키지 않으므로, 새
-  버전은 다음 `main` 푸시 때 반영됩니다. 릴리스 직후 바로 맞추려면 Cloudflare 대시보드에서
-  최신 배포를 다시 실행하세요.
+- 숫자는 **마지막 빌드 때의 값**입니다. 릴리스 태그는 사이트 빌드를 일으키지 않으므로,
+  `release.yml` 의 `site` 잡이 PyPI 업로드 뒤 배포 훅(아래 5번)으로 `main` 을 다시 빌드시킵니다.
+  `site` 잡은 훅을 부른 뒤 실제 페이지에 새 버전이 보일 때까지 확인합니다(최대 15분). 보이지 않으면
+  잡이 빨갛게 실패하므로, 그때는 대시보드에서 최신 빌드를 다시 실행하면 됩니다.
 - 누적 다운로드는 pepy.tech 의 `total_downloads` 입니다 (pepy 배지와 같은 숫자). PyPI 는
   설치가 아니라 다운로드를 세므로 "설치 수" 라고 부르지 않습니다.
 - **pepy.tech API 는 키가 필요합니다** (`PEPY_API_KEY`). <https://pepy.tech> 에 로그인해
@@ -82,8 +83,9 @@ npm run dev        # http://localhost:4321/
 ## Cloudflare Workers 에 배포하기
 
 사이트는 정적이라 Worker 스크립트 없이 Workers 정적 자산(`site/wrangler.jsonc`)으로
-서빙합니다. Cloudflare 가 이 저장소에서 직접 빌드하므로(Workers Builds) GitHub 에 Cloudflare
-자격증명을 두지 않고, `main` 이 아닌 브랜치마다 미리보기 URL 이 생깁니다.
+서빙합니다. Cloudflare 가 이 저장소에서 직접 빌드하므로(Workers Builds) GitHub 에는 Cloudflare
+API 토큰을 두지 않고, 빌드 트리거 URL 하나(`CLOUDFLARE_DEPLOY_HOOK`)만 둡니다. 그 URL 은 `main`
+빌드 하나를 일으킬 뿐 배포 내용을 바꿀 수 없습니다. `main` 이 아닌 브랜치마다 미리보기 URL 이 생깁니다.
 
 1. Cloudflare 대시보드 → **Workers & Pages → Create application → Import a repository** →
    `devgyurak/pykorail` 선택.
@@ -110,6 +112,19 @@ npm run dev        # http://localhost:4321/
 4. 첫 배포 뒤: Worker → **Settings → Domains & Routes → Add → Custom domain** →
    `pykorail.devgyurak.com`. `devgyurak.com` 존이 Cloudflare 에 있으므로 DNS 레코드와
    인증서가 자동으로 만들어집니다. 레코드를 먼저 손으로 추가하지 마세요.
+
+5. 배포 훅 (릴리스 뒤 재빌드): Worker → **Settings → Builds → Deploy hooks → Add** 에서 이름을 정하고
+   branch 를 `main` 으로 고른 뒤 URL 을 복사합니다. 훅을 만든 뒤 `curl -X POST '<URL>'` 한 번으로
+   `main` 빌드가 생기는지 확인하고, URL 을 GitHub 저장소의 Actions 시크릿 `CLOUDFLARE_DEPLOY_HOOK`
+   에 넣습니다. URL 이 새면 훅을 지우고 다시 만드세요 — 지우면 이전 URL 은 무효가 됩니다.
+   시크릿이 없으면 `release.yml` 의 `site` 잡이 실패합니다.
+
+6. Build watch paths: **Settings → Builds → Build watch paths** 의 includes 에 `site/*`, `README.md`,
+   `docs/reference.md`, `CONTRIBUTING.md` 를 넣습니다. Cloudflare 문서는 `*` 를 "0개 이상의 문자"로
+   정의하고 예시로 `docs/*` 를 듭니다. 다만 `site/*` 가 `site/src/…` 같은 중첩 경로까지 걸리는지는
+   문서에 명시되어 있지 않습니다. 켠 뒤 `site/src/` 아래만 바꾼 PR 을 올려 빌드가 생기는지
+   확인하세요. 그 밖의 변경(라이브러리 코드 등)으로는 빌드가 생기지 않을 것으로 봅니다. **배포 훅이 실제 릴리스에서 사이트를 다시 빌드하는 것을 확인한 뒤에** 켜세요.
+   훅보다 먼저 켜면 문서를 바꾸지 않은 릴리스에서는 빌드가 전혀 생기지 않습니다.
 
 `wrangler` 는 버전을 고정한 dev 의존성이라 `npx wrangler` 가 잠긴 버전을 씁니다. 배포하지
 않고 번들만 확인하려면 `npm run build && npx wrangler deploy --dry-run`.

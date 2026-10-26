@@ -278,3 +278,72 @@ jobs:
           fi
 
           gh release create "${GITHUB_REF_NAME}" "${flags[@]}" dist/*
+
+  site:
+    name: 문서 사이트 재빌드
+    runs-on: ubuntu-latest
+    # 사이트의 버전 표시는 빌드 때 PyPI 에서 읽습니다 (site/src/lib/stats.ts). 태그는 Cloudflare
+    # 빌드를 일으키지 않으므로, 업로드가 끝난 뒤 배포 훅으로 main 을 다시 빌드시킵니다 (docs/site.md).
+    # 사전 릴리스는 PyPI 의 대표 버전이 되지 않으니 반영할 값이 없어 건너뜁니다.
+    needs: [verify, publish]
+    if: needs.verify.outputs.prerelease == 'false'
+    timeout-minutes: 40
+    # 체크아웃도 토큰도 필요 없습니다. 이 잡은 훅 URL 을 부르고 페이지에 버전이 보이는지 확인합니다.
+    permissions: {}
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
+      HOOK: ${{ secrets.CLOUDFLARE_DEPLOY_HOOK }}
+    steps:
+      - name: 배포 훅 시크릿 확인
+        run: |
+          # 비어 있을 때 조용히 건너뛰면 사이트가 아무도 모르게 옛 버전으로 남습니다.
+          if [ -z "$HOOK" ]; then
+            echo "::error::CLOUDFLARE_DEPLOY_HOOK 시크릿이 없습니다. docs/site.md 의 배포 훅 절차를 따르세요."
+            exit 1
+          fi
+
+      - name: PyPI 에 새 버전이 보일 때까지 대기
+        run: |
+          set -euo pipefail
+          # 대표 엔드포인트(/pypi/pykorail/json) 대신 버전별 엔드포인트를 봅니다. 업로드가 끝나면
+          # 이 엔드포인트가 200 을 줍니다. 아직 없는 동안의 404 는 로그에 남기지 않습니다.
+          for _ in $(seq 1 40); do
+            if curl -fs --max-time 10 -o /dev/null "https://pypi.org/pypi/pykorail/${VERSION}/json"; then
+              echo "PyPI 에서 ${VERSION} 을 확인했습니다."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::10분이 지나도 PyPI 에 ${VERSION} 이 보이지 않습니다."
+          exit 1
+
+      - name: 옛 캐시가 비워질 때까지 대기
+        run: |
+          # PyPI 는 업로드가 끝나면 Fastly 캐시를 soft purge 합니다. 옛 대표 응답은 대개 몇 분 안에
+          # 사라집니다. 남는 경우는 아래 사이트 확인 단계가 잡습니다. 이 대기는 빌드가 옛 값을 읽을
+          # 가능성을 줄이려는 여유입니다.
+          sleep 360
+
+      - name: Cloudflare 에 main 재빌드 요청
+        run: |
+          set -euo pipefail
+          # 훅 URL 은 로그에 찍지 않습니다. 훅은 main 빌드 하나만 일으키고 배포 내용은 바꾸지 못합니다.
+          curl -fsS -X POST -o /dev/null "$HOOK"
+          echo "v${VERSION} 사이트 재빌드를 요청했습니다."
+
+      - name: 사이트에 새 버전이 나타날 때까지 확인
+        run: |
+          set -euo pipefail
+          # 훅 응답이 2xx 라도 빌드가 옛 값을 읽었거나 캐시 비우기가 실패할 수 있습니다. 그래서
+          # 실제 페이지에 버전이 보이는지 봅니다. 페이지의 VERSION 은 `>0.5.1</a>` 로 나옵니다.
+          # grep -q 를 파이프로 쓰면 pipefail 아래에서 curl 의 SIGPIPE 가 실패로 잡히므로 변수에 받습니다.
+          for _ in $(seq 1 30); do
+            page="$(curl -fs --max-time 20 https://pykorail.devgyurak.com/ || true)"
+            if [[ "$page" == *">${VERSION}</a>"* ]]; then
+              echo "사이트에 ${VERSION} 이 나타났습니다."
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::error::15분이 지나도 사이트에 ${VERSION} 이 보이지 않습니다. Cloudflare 빌드 로그와 PyPI 캐시를 확인하세요."
+          exit 1
