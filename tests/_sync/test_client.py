@@ -121,7 +121,7 @@ class TestConstruction:
         client, _ = make_korail({})
 
         # then
-        assert not client.logined
+        assert not client.is_logged_in
         assert client.membership_number is None
 
 
@@ -173,11 +173,19 @@ class TestLogin:
         client.login("me@example.com", "pw")
 
         # then
-        assert client.logined
+        assert client.is_logged_in
         assert client.membership_number == "1234567890"
         assert client.name == "홍길동"
         assert client.email == "me@example.com"
         assert client.phone_number == "010-1234-5678"
+
+    def test_old_logined_name_is_gone(self, make_korail) -> None:
+        """0.6.0 에서 폐기 예고한 ``logined`` 는 0.7.0 에서 지웠습니다."""
+        # given
+        client, _ = make_korail({"code": CIPHER_PAYLOAD, "login": LOGIN_OK})
+
+        # when & then
+        assert not hasattr(client, "logined")
 
     def test_rejected_credentials_raise(self, make_korail) -> None:
         """반환값으로 알려 주면 확인하지 않은 호출자가 로그인 없이 진행합니다."""
@@ -197,7 +205,7 @@ class TestLogin:
             client.login("me@example.com", "pw")
 
         # then
-        assert not client.logined
+        assert not client.is_logged_in
         assert client.membership_number is None
 
     def test_server_reason_is_carried(self, make_korail) -> None:
@@ -235,7 +243,7 @@ class TestLogin:
             client.login("me@example.com", "pw")
 
         # then
-        assert (client.logined, client.membership_number) == (False, None)
+        assert (client.is_logged_in, client.membership_number) == (False, None)
 
     def test_password_change_notice_carries_what_the_server_said(self, make_korail) -> None:
         """안내문이 있어야 사용자가 비밀번호가 틀린 것이 아님을 압니다."""
@@ -271,7 +279,7 @@ class TestLogin:
             client.login("me@example.com", "pw")
 
         # then
-        assert (client.logined, client.membership_number, client.name) == (False, None, None)
+        assert (client.is_logged_in, client.membership_number, client.name) == (False, None, None)
 
     def test_notice_code_wins_even_when_the_profile_is_present(self, make_korail) -> None:
         """판정 기준은 코드입니다. 프로필이 함께 와도 세션이 인증됐다는 근거는 아닙니다."""
@@ -284,7 +292,7 @@ class TestLogin:
             client.login("me@example.com", "pw")
 
         # then
-        assert not client.logined
+        assert not client.is_logged_in
 
     def test_other_notices_on_a_successful_login_still_log_in(self, make_korail) -> None:
         """성공 응답에 실린 다른 코드까지 실패로 뒤집지 않습니다 — 본 적 있는 것은 이 코드 하나입니다."""
@@ -296,7 +304,7 @@ class TestLogin:
         client.login("me@example.com", "pw")
 
         # then
-        assert client.logined
+        assert client.is_logged_in
 
     def test_falls_back_when_the_server_gives_no_reason(self, make_korail) -> None:
         # given
@@ -439,7 +447,7 @@ class TestLogin:
         client.login("me@example.com", "pw")
 
         # then
-        assert (client.logined, client.membership_number) == (True, "1234567890")
+        assert (client.is_logged_in, client.membership_number) == (True, "1234567890")
         assert (client.name, client.email, client.phone_number) == (None, None, None)
 
     def test_login_returns_nothing(self, make_korail) -> None:
@@ -516,7 +524,7 @@ class TestPhoneNormalization:
         client.login(korail_id, "pw")
 
         # then
-        assert client.logined
+        assert client.is_logged_in
 
 
 class TestLoggedInFactory:
@@ -540,7 +548,7 @@ class TestLoggedInFactory:
         client = Korail.logged_in("me@example.com", "pw")
 
         # then
-        assert client.logined
+        assert client.is_logged_in
 
     def test_bad_credentials_raise_and_close(self, monkeypatch, make_korail) -> None:
         # given
@@ -565,7 +573,7 @@ class TestLifecycle:
         client.logout()
 
         # then
-        assert not client.logined
+        assert not client.is_logged_in
         assert client.membership_number is None
         assert not session.closed, "로그아웃은 연결을 끊지 않습니다"
 
@@ -579,7 +587,7 @@ class TestLifecycle:
         client.login("me@example.com", "pw")
 
         # then
-        assert client.logined
+        assert client.is_logged_in
 
     def test_context_manager_closes_session(self, make_korail) -> None:
         # given

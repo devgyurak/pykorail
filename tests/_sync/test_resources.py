@@ -36,10 +36,12 @@ from tests.payloads import (
     NEARBY_SEARCH_PAYLOAD,
     NO_RESULTS,
     REFUND_FEE_PAYLOAD,
+    RESERVATION_LIST_PAYLOAD,
     RESERVE_OK,
     SEARCH_PAYLOAD,
     SEAT_CARS_PAYLOAD,
     SEAT_DETAIL_PAYLOAD,
+    SEAT_INFO,
     SEAT_MAP_PAYLOAD,
     SEATABLE_SEARCH_PAYLOAD,
     SECOND_LEG_INFO,
@@ -267,7 +269,7 @@ class TestStations:
         stations = client.stations.all()
 
         # then
-        assert not client.logined
+        assert not client.is_logged_in
         assert stations
 
 
@@ -1613,9 +1615,9 @@ class TestReservations:
 
         # then
         assert len(reservations) == 1
-        assert reservations[0].rsv_id == "1234567890"
+        assert reservations[0].pnr_no == "1234567890"
         assert reservations[0].wct_no == "0143"
-        assert [s.seat for s in reservations[0].seats] == ["5A"]
+        assert [s.seat_no for s in reservations[0].seats] == ["5A"]
 
     def test_reservation_is_complete_at_construction(self, korail) -> None:
         """좌석이 나중에 주입되지 않고 생성 시점에 이미 채워져 있어야 합니다."""
@@ -1699,7 +1701,7 @@ class TestReservations:
         reservation = client.reservations.create(train)
 
         # then
-        assert reservation.rsv_id == "1234567890"
+        assert reservation.pnr_no == "1234567890"
         assert session.urls().count(API_ENDPOINTS["myreservationlist"]) == 1
         assert session.kwargs_for("myreservationlist")["params"]["hidPnrNo"] == "1234567890"
         assert len(session.calls) == 5, "역 마스터 · 조회 · 예매 · 예약목록 · 좌석 각 1회"
@@ -1713,7 +1715,7 @@ class TestReservations:
         reservations = client.reservations.all()
 
         # then
-        assert [r.rsv_id for r in reservations] == list(MANY_RESERVATION_IDS)
+        assert [r.pnr_no for r in reservations] == list(MANY_RESERVATION_IDS)
         assert [kw["params"]["hidPnrNo"] for kw in session.all_kwargs_for("myreservationlist")] == list(
             MANY_RESERVATION_IDS
         ), "횟수만 세면 같은 예약을 네 번 조회해도 통과합니다"
@@ -1738,7 +1740,7 @@ class TestReservations:
         reservation = client.reservations.create(train)
 
         # then
-        assert reservation.rsv_id == "1234567890"
+        assert reservation.pnr_no == "1234567890"
 
     def test_create_sends_passenger_blocks(self, korail) -> None:
         # given
@@ -2189,3 +2191,22 @@ class TestListsThatCameBackAsNull:
 
         # then
         assert [t.seat_no for t in tickets] == ["5A"], "상세를 못 받으면 목록 응답 값으로 되돌아갑니다"
+
+
+class TestReservationDays:
+    def test_list_takes_the_departure_and_arrival_dates_from_the_journey(self, make_korail) -> None:
+        """목록은 운행일만 주므로, 여정 상세가 준 출발·도착 날짜를 예약에 씁니다."""
+        # given
+        journey = {"h_dpt_dt": "20260401", "h_arv_dt": "20260402", "seat_infos": {"seat_info": [SEAT_INFO]}}
+        client, _ = make_korail(
+            {
+                "myreservationview": RESERVATION_LIST_PAYLOAD,
+                "myreservationlist": {"strResult": "SUCC", "jrny_infos": {"jrny_info": [journey]}},
+            }
+        )
+
+        # when
+        reservations = client.reservations.all()
+
+        # then
+        assert (reservations[0].train.dep_date, reservations[0].train.arr_date) == ("20260401", "20260402")

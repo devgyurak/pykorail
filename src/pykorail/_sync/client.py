@@ -153,7 +153,7 @@ class Korail:
         self._api.verbose = value
 
     @property
-    def logined(self) -> bool:
+    def is_logged_in(self) -> bool:
         return self._api.account.logined
 
     @property

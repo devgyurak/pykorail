@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from pykorail.models.parsing import amount, hhmm, integer, mmdd, text
+from pykorail.models.parsing import amount, hhmm, integer, kst_datetime, mmdd, text
 
 if TYPE_CHECKING:
     from typing import Self
@@ -94,6 +95,16 @@ class AirportBus:
             remaining_seats=integer(data, "gnrmRestSeatNum"),
             price=amount(data, "rcvdPrc"),
         )
+
+    @property
+    def departure(self) -> datetime | None:
+        """출발 일시(KST). 날짜나 시각이 없거나 형식이 틀리면 ``None``."""
+        return kst_datetime(self.dep_date, self.dep_time)
+
+    @property
+    def arrival(self) -> datetime | None:
+        """도착 일시(KST). 날짜나 시각이 없거나 형식이 틀리면 ``None``."""
+        return kst_datetime(self.arr_date, self.arr_time)
 
     def has_seat(self) -> bool:
         return self.remaining_seats > 0

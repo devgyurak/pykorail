@@ -6,12 +6,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
-from pykorail.constants import KST_OFFSET_HOURS
-
-#: 코레일 서버가 시각을 주고받는 기준 시간대. 실행 머신의 로컬 타임존과 무관합니다.
-KST = timezone(timedelta(hours=KST_OFFSET_HOURS))
+from pykorail.constants import KST
 
 
 def to_kst(moment: datetime | None) -> datetime:

@@ -1637,5 +1637,21 @@
       "앱이 이 응답을 h_msg_cd 로 가리는지 다른 필드로 가리는지는 읽지 못함 (상수가 보호됨).",
       "같은 계정의 하루 전(2026-10-12) 로그인은 평소대로 성공했음 — 안내가 걸리는 정확한 조건은 서버 쪽 사정이라 알 수 없음."
     ]
-  }
+  },
+    "reservation_journey_dates": {
+      "basis": [
+        "APK 디컴파일(jadx/sources, AndroidManifest versionName 7.0.8). ReservationViewOutTrainInfo(myreservationview 의 train_info)에는 hRunDt 와 시각만 있고 출발·도착 날짜 필드가 없습니다.",
+        "여정 상세 ReservationOutJrnyInfo(pykorail 의 myreservationlist, 앱의 postReservationList → certification.ReservationList)에는 hDptDt · hArvDt 가 있습니다.",
+        "직렬화 이름은 ReservationOutJrnyInfo 의 @SerialName(\"h_dpt_dt\") · @SerialName(\"h_arv_dt\") 로 직접 확인했습니다.",
+        "앱의 결제 완료 화면(PayCompleteViewModel)은 도착 날짜가 비어 있고 출발 시각이 도착 시각보다 늦으면 도착을 다음 날로 봅니다. 이 PR 의 폴백과 같은 규칙입니다.",
+        "앱의 내 예약 화면(MyReservationViewModel)은 여정 번호(h_jrny_sqno)로 여정을 고른 뒤 그 여정의 출발 날짜(h_dpt_dt)를 읽습니다. 환승 두 구간이 각자 날짜를 갖는다는 근거입니다."
+      ],
+      "capture": "로컬 캡처(korail-20260923·20261003·20261016·20261021 등)에는 예약 목록·상세 호출이 없었습니다. 확인한 것은 승차권 목록의 같은 모양뿐입니다.",
+      "live_validation": "실서버 확인 없음. 위 값은 APK 모델과 승차권 캡처에 근거한 것이고, 예약 응답의 날짜가 실제로 채워져 오는지는 확인하지 못했습니다.",
+      "implementation": "Reservation.from_response 는 여정 상세가 준 날짜를 쓰고, 없으면 운행일을 출발일로 두며 도착 시각이 출발보다 이르면 다음 날을 도착일로 봅니다. 여정은 여정 번호(h_jrny_sqno)로 맞춥니다.",
+      "limits": [
+        "환승 예약 두 구간의 날짜가 실서버에서 각각 채워지는지는 확인하지 못했습니다. 여정 번호가 맞지 않으면 날짜를 쓰지 않고 운행일로 둡니다.",
+        "날짜가 비어 오면 운행일 기준 추정으로 돌아갑니다 — 자정을 넘기는 구간은 그 추정에 기댑니다."
+      ]
+    }
 }

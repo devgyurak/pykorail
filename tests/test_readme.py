@@ -120,8 +120,11 @@ class TestModelFields:
         [
             (Card, ["number", "password", "verify_number", "expire", "installment", "is_corporate"]),
             (Station, ["code", "name", "latitude", "longitude", "group", "major"]),
-            (Seat, ["car", "seat", "seat_type", "passenger_type", "price", "original_price", "discount"]),
-            (Reservation, ["train", "rsv_id", "price", "seat_no_count", "seats", "wct_no"]),
+            (
+                Seat,
+                ["car_no", "seat_no", "seat_class_name", "passenger_type_name", "price", "original_price", "discount"],
+            ),
+            (Reservation, ["train", "pnr_no", "price", "seat_count", "seats", "wct_no"]),
             (Ticket, ["train", "seat_no", "car_no", "price", "pnr_no"]),
             (
                 Train,

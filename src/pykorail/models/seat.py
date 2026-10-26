@@ -18,10 +18,10 @@ class Seat:
     좌석번호가 비어 있으면 실좌석이 아니라 예약대기 자리입니다.
     """
 
-    car: str
-    seat: str
-    seat_type: str
-    passenger_type: str
+    car_no: str
+    seat_no: str
+    seat_class_name: str
+    passenger_type_name: str
     price: int
     original_price: int
     discount: int
@@ -29,10 +29,10 @@ class Seat:
     @classmethod
     def from_response(cls, data: dict[str, Any]) -> Self:
         return cls(
-            car=text(data, "h_srcar_no"),
-            seat=text(data, "h_seat_no"),
-            seat_type=text(data, "h_psrm_cl_nm"),
-            passenger_type=text(data, "h_psg_tp_dv_nm"),
+            car_no=text(data, "h_srcar_no"),
+            seat_no=text(data, "h_seat_no"),
+            seat_class_name=text(data, "h_psrm_cl_nm"),
+            passenger_type_name=text(data, "h_psg_tp_dv_nm"),
             price=integer(data, "h_rcvd_amt"),
             original_price=integer(data, "h_seat_prc"),
             discount=integer(data, "h_dcnt_amt"),
@@ -40,10 +40,10 @@ class Seat:
 
     @property
     def is_waiting(self) -> bool:
-        return self.seat == ""
+        return self.seat_no == ""
 
     def __repr__(self) -> str:
         price = f"[{self.price}원({self.discount}원 할인)]"
         if self.is_waiting:
-            return f"예약대기 ({self.seat_type}) {self.passenger_type}{price}"
-        return f"{self.car}호차 {self.seat} ({self.seat_type}) {self.passenger_type} {price}"
+            return f"예약대기 ({self.seat_class_name}) {self.passenger_type_name}{price}"
+        return f"{self.car_no}호차 {self.seat_no} ({self.seat_class_name}) {self.passenger_type_name} {price}"

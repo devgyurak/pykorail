@@ -54,9 +54,9 @@ class TestImmutability:
         ("model", "field"),
         [
             (Train.from_response(TRAIN_INFO), "train_no"),
-            (Seat.from_response(SEAT_INFO), "seat"),
+            (Seat.from_response(SEAT_INFO), "seat_no"),
             (Ticket.from_response(TICKET_RAW), "seat_no"),
-            (Reservation.from_response(RESERVATION_INFO), "rsv_id"),
+            (Reservation.from_response(RESERVATION_INFO), "pnr_no"),
             (RunDate.from_response(RUN_DATE_ITEM), "run_date"),
             (Transfer.from_response([FIRST_LEG_INFO, SECOND_LEG_INFO]), "legs"),
         ],
@@ -244,9 +244,9 @@ class TestReservation:
         rsv = Reservation.from_response(RESERVATION_INFO)
 
         # then
-        assert rsv.rsv_id == "1234567890"
+        assert rsv.pnr_no == "1234567890"
         assert rsv.price == 119600
-        assert rsv.seat_no_count == 2
+        assert rsv.seat_count == 2
         assert not rsv.is_waiting
 
     def test_composes_a_train_rather_than_inheriting(self) -> None:
@@ -320,7 +320,7 @@ class TestTicket:
         assert ticket is not None
         assert ticket.seat_no == "5A"
         assert ticket.price == 119600
-        assert ticket.seat_no_count == 2
+        assert ticket.seat_count == 2
 
     @pytest.mark.parametrize(
         ("entry", "reason"),

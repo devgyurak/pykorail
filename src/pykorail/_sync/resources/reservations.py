@@ -15,7 +15,7 @@ from pykorail.models.car import CarSeat
 from pykorail.models.card import Card
 from pykorail.models.parsing import records, text
 from pykorail.models.passenger import AdultPassenger, Passenger
-from pykorail.models.reservation import Reservation
+from pykorail.models.reservation import Reservation, SeatDetail
 from pykorail.models.seat import Seat
 from pykorail.models.transfer import Transfer
 from pykorail.options import ReserveOption, SeatClass
@@ -111,6 +111,7 @@ class ReservationResource(Resource):
             entry,
             seats=self._seats_of(journeys, entry),
             wct_no=wct_no,
+            **self._dates_of(journeys, entry),
             **self._cancel_key(entry, entries),
         )
 
@@ -137,18 +138,20 @@ class ReservationResource(Resource):
             "rsv_chg_no": text(first, "h_rsv_chg_no") or "000",
         }
 
-    def seats(self, rsv_id: str | None = None) -> tuple[list[Seat], str | None]:
+    def seats(self, rsv_id: str | None = None) -> SeatDetail:
         """예약의 좌석 상세와 발매창구 번호(``wct_no``).
 
-        조회 결과가 없으면 ``([], None)`` 을 돌려줍니다 — 호출부가 항상 튜플로
-        풀 수 있어야 하므로 실패해도 모양을 유지합니다. 환승 예약처럼 여정이 여럿이면
+        조회 결과가 없으면 빈 좌석 목록과 ``None`` 을 담은 :class:`~pykorail.models.reservation.SeatDetail`
+        을 돌려줍니다 — 호출부가 항상 풀 수 있는 모양을 유지합니다. 환승 예약처럼 여정이 여럿이면
         **첫 여정의 좌석**입니다 — 구간별 좌석은 :meth:`all` 이 돌려주는 예약에 있습니다.
         """
         journeys, wct_no = self._journeys(rsv_id)
         if not journeys:
-            return [], wct_no
+            return SeatDetail([], wct_no)
 
-        return [Seat.from_response(seat) for seat in records(journeys[0], "seat_infos", "seat_info")], wct_no
+        return SeatDetail(
+            [Seat.from_response(seat) for seat in records(journeys[0], "seat_infos", "seat_info")], wct_no
+        )
 
     def _journeys(self, rsv_id: str | None) -> tuple[list[dict[str, Any]], str | None]:
         """예약 상세의 여정들과 발매창구 번호. 결과가 없으면 ``([], None)``."""
@@ -165,18 +168,20 @@ class ReservationResource(Resource):
 
     @staticmethod
     def _seats_of(journeys: list[dict[str, Any]], entry: dict[str, Any]) -> tuple[Seat, ...]:
-        """예약 항목 하나에 해당하는 여정의 좌석.
-
-        환승 예약은 예약번호 하나에 여정이 둘이고, 목록의 항목과 상세의 여정이 같은
-        여정 번호(``h_jrny_sqno``)를 가집니다. 번호가 없거나 맞는 여정이 없으면 첫 여정을
-        씁니다 — 여정이 하나뿐인 보통 예약은 늘 그쪽입니다.
-        """
-        sequence = text(entry, "h_jrny_sqno")
-        matched = next((j for j in journeys if sequence and text(j, "h_jrny_sqno") == sequence), None)
-        journey = matched if matched is not None else next(iter(journeys), None)
+        """예약 항목 하나에 해당하는 여정의 좌석 (여정은 :func:`_journey_for` 가 고릅니다)."""
+        journey = _journey_for(journeys, entry)
         if journey is None:
             return ()
         return tuple(Seat.from_response(seat) for seat in records(journey, "seat_infos", "seat_info"))
+
+    @staticmethod
+    def _dates_of(journeys: list[dict[str, Any]], entry: dict[str, Any]) -> dict[str, str | None]:
+        """예약 항목 하나의 여정이 준 출발·도착 날짜. 없으면 ``None`` — 모델이 운행일로 채웁니다.
+
+        목록 응답에는 날짜가 운행일 하나뿐이라, 구간마다 실제 날짜를 아는 곳은 여정 상세입니다.
+        """
+        journey = _dated_journey(journeys, entry) or {}
+        return {"dep_date": text(journey, "h_dpt_dt") or None, "arr_date": text(journey, "h_arv_dt") or None}
 
     def create(
         self,
@@ -347,7 +352,7 @@ class ReservationResource(Resource):
             seat_class: 두 구간에 함께 적용할 객실. 기본은 일반실.
 
         Returns:
-            타는 순서대로 **구간마다 하나씩**, 예약 둘. 둘은 예약번호(``rsv_id``)가 같고,
+            타는 순서대로 **구간마다 하나씩**, 예약 둘. 둘은 예약번호(``pnr_no``)가 같고,
             각자 그 구간의 열차와 좌석을 가집니다. :meth:`cancel` 에는 둘 중 어느 것을
             넘겨도 **예약 전체**가 취소됩니다. ``price`` 는 구간의 금액이 아니라 예약
             전체의 금액이라 둘을 더하면 안 됩니다.
@@ -418,6 +423,7 @@ class ReservationResource(Resource):
                 entry,
                 seats=self._seats_of(journeys, entry),
                 wct_no=wct_no,
+                **self._dates_of(journeys, entry),
                 **self._cancel_key(entry, entries),
             )
             for entry in sorted(entries, key=lambda entry: text(entry, "h_jrny_sqno"))
@@ -538,7 +544,7 @@ class ReservationResource(Resource):
             API_ENDPOINTS["pay"],
             data={
                 **self._api.base_payload(),
-                "hidPnrNo": reservation.rsv_id,
+                "hidPnrNo": reservation.pnr_no,
                 "hidWctNo": reservation.wct_no,
                 "hidTmpJobSqno1": "000000",
                 "hidTmpJobSqno2": "000000",
@@ -575,10 +581,36 @@ class ReservationResource(Resource):
             API_ENDPOINTS["cancel"],
             data={
                 **self._api.base_payload(),
-                "txtPnrNo": reservation.rsv_id,
+                "txtPnrNo": reservation.pnr_no,
                 "txtJrnySqno": reservation.journey_no,
                 "txtJrnyCnt": reservation.journey_cnt,
                 "hidRsvChgNo": reservation.rsv_chg_no,
             },
         )
         self._api.check(payload)
+
+
+def _matched_journey(journeys: list[dict[str, Any]], entry: dict[str, Any]) -> dict[str, Any] | None:
+    """예약 항목과 같은 여정 번호(``h_jrny_sqno``)를 가진 여정. 없으면 ``None``.
+
+    환승 예약은 예약번호 하나에 여정이 둘이고, 목록의 항목과 상세의 여정이 같은 여정 번호를 가집니다.
+    """
+    sequence = text(entry, "h_jrny_sqno")
+    return next((j for j in journeys if sequence and text(j, "h_jrny_sqno") == sequence), None)
+
+
+def _dated_journey(journeys: list[dict[str, Any]], entry: dict[str, Any]) -> dict[str, Any] | None:
+    """날짜를 읽을 여정. 번호가 맞는 여정이 우선이고, 번호가 없는 보통 예약은 여정이 하나면 그 여정입니다.
+
+    그 밖에는 ``None`` 입니다 — 첫 구간의 여정으로 대신하면 둘째 구간이 첫 구간의 날짜를 빌려 씁니다.
+    """
+    matched = _matched_journey(journeys, entry)
+    if matched is None and not text(entry, "h_jrny_sqno") and len(journeys) == 1:
+        return journeys[0]
+    return matched
+
+
+def _journey_for(journeys: list[dict[str, Any]], entry: dict[str, Any]) -> dict[str, Any] | None:
+    """좌석을 읽을 여정. 맞는 여정이 없으면 첫 여정을 씁니다 — 여정이 하나뿐인 보통 예약은 늘 그쪽입니다."""
+    matched = _matched_journey(journeys, entry)
+    return matched if matched is not None else next(iter(journeys), None)

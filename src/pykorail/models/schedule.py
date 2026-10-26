@@ -8,9 +8,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from pykorail.models.parsing import hhmm, integer, mmdd, text
+from pykorail.models.parsing import hhmm, integer, kst_datetime, mmdd, text
 
 if TYPE_CHECKING:
     from typing import Self
@@ -93,12 +94,37 @@ class Schedule:
         return cls(**cls._fields_from(data))
 
     @property
+    def departure(self) -> datetime | None:
+        """출발 일시(KST). 날짜나 시각이 없거나 형식이 틀리면 ``None``."""
+        return kst_datetime(self.dep_date, self.dep_time)
+
+    @property
+    def arrival(self) -> datetime | None:
+        """도착 일시(KST). 날짜나 시각이 없거나 형식이 틀리면 ``None``."""
+        return kst_datetime(self.arr_date, self.arr_time)
+
+    @property
     def duration_minutes(self) -> int | None:
-        """출발~도착 소요 시간(분). 자정을 넘기면 하루를 더해 보정합니다."""
-        departure, arrival = _minutes(self.dep_time), _minutes(self.arr_time)
-        if departure is None or arrival is None:
+        """출발~도착 소요 시간(분).
+
+        날짜가 있으면 일시끼리 뺍니다 — 이틀에 걸친 운행도 맞게 잽니다. 도착 일시가 출발보다
+        이르면(도착 날짜가 출발과 같게 온 예약처럼) 하루를 더해 자정 넘김으로 봅니다.
+        날짜가 없으면 시각만으로 잽니다.
+        """
+        departure, arrival = self.departure, self.arrival
+        if departure is not None and arrival is not None:
+            # 시각 칸은 분까지만 의미가 있어 초는 버립니다. 초가 어긋나면 59분처럼 한 분 적게 나옵니다.
+            elapsed = arrival.replace(second=0) - departure.replace(second=0)
+            if elapsed < timedelta(0):
+                elapsed += timedelta(days=1)
+            if elapsed >= timedelta(0):
+                return int(elapsed.total_seconds() // 60)
+            # 날짜가 서로 어긋나 하루를 더해도 음수면 날짜를 버리고 시각만으로 잽니다.
+
+        start, end = _minutes(self.dep_time), _minutes(self.arr_time)
+        if start is None or end is None:
             return None
-        elapsed = arrival - departure
+        elapsed = end - start
         return elapsed + 24 * 60 if elapsed < 0 else elapsed
 
     @property
