@@ -39,6 +39,7 @@ from tests.payloads import (
     SEARCH_PAYLOAD,
     SEAT_CARS_PAYLOAD,
     SEAT_DETAIL_PAYLOAD,
+    SEAT_INFO,
     SEAT_MAP_PAYLOAD,
     SEATABLE_SEARCH_PAYLOAD,
     SECOND_LEG_INFO,
@@ -2217,3 +2218,22 @@ class TestListsThatCameBackAsNull:
 
         # then
         assert [t.seat_no for t in tickets] == ["5A"], "상세를 못 받으면 목록 응답 값으로 되돌아갑니다"
+
+
+class TestReservationDays:
+    async def test_list_takes_the_departure_and_arrival_dates_from_the_journey(self, make_korail) -> None:
+        """목록은 운행일만 주므로, 여정 상세가 준 출발·도착 날짜를 예약에 씁니다."""
+        # given
+        journey = {"h_dpt_dt": "20260401", "h_arv_dt": "20260402", "seat_infos": {"seat_info": [SEAT_INFO]}}
+        client, _ = make_korail(
+            {
+                "myreservationview": RESERVATION_LIST_PAYLOAD,
+                "myreservationlist": {"strResult": "SUCC", "jrny_infos": {"jrny_info": [journey]}},
+            }
+        )
+
+        # when
+        reservations = await client.reservations.all()
+
+        # then
+        assert (reservations[0].train.dep_date, reservations[0].train.arr_date) == ("20260401", "20260402")

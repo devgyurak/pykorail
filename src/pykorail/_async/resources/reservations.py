@@ -108,6 +108,7 @@ class AsyncReservationResource(AsyncResource):
             entry,
             seats=self._seats_of(journeys, entry),
             wct_no=wct_no,
+            **self._dates_of(journeys, entry),
             **self._cancel_key(entry, entries),
         )
 
@@ -162,18 +163,20 @@ class AsyncReservationResource(AsyncResource):
 
     @staticmethod
     def _seats_of(journeys: list[dict[str, Any]], entry: dict[str, Any]) -> tuple[Seat, ...]:
-        """예약 항목 하나에 해당하는 여정의 좌석.
-
-        환승 예약은 예약번호 하나에 여정이 둘이고, 목록의 항목과 상세의 여정이 같은
-        여정 번호(``h_jrny_sqno``)를 가집니다. 번호가 없거나 맞는 여정이 없으면 첫 여정을
-        씁니다 — 여정이 하나뿐인 보통 예약은 늘 그쪽입니다.
-        """
-        sequence = text(entry, "h_jrny_sqno")
-        matched = next((j for j in journeys if sequence and text(j, "h_jrny_sqno") == sequence), None)
-        journey = matched if matched is not None else next(iter(journeys), None)
+        """예약 항목 하나에 해당하는 여정의 좌석 (여정은 :func:`_journey_for` 가 고릅니다)."""
+        journey = _journey_for(journeys, entry)
         if journey is None:
             return ()
         return tuple(Seat.from_response(seat) for seat in records(journey, "seat_infos", "seat_info"))
+
+    @staticmethod
+    def _dates_of(journeys: list[dict[str, Any]], entry: dict[str, Any]) -> dict[str, str | None]:
+        """예약 항목 하나의 여정이 준 출발·도착 날짜. 없으면 ``None`` — 모델이 운행일로 채웁니다.
+
+        목록 응답에는 날짜가 운행일 하나뿐이라, 구간마다 실제 날짜를 아는 곳은 여정 상세입니다.
+        """
+        journey = _journey_for(journeys, entry) or {}
+        return {"dep_date": text(journey, "h_dpt_dt") or None, "arr_date": text(journey, "h_arv_dt") or None}
 
     async def create(
         self,
@@ -415,6 +418,7 @@ class AsyncReservationResource(AsyncResource):
                 entry,
                 seats=self._seats_of(journeys, entry),
                 wct_no=wct_no,
+                **self._dates_of(journeys, entry),
                 **self._cancel_key(entry, entries),
             )
             for entry in sorted(entries, key=lambda entry: text(entry, "h_jrny_sqno"))
@@ -583,3 +587,15 @@ class AsyncReservationResource(AsyncResource):
             },
         )
         self._api.check(payload)
+
+
+def _journey_for(journeys: list[dict[str, Any]], entry: dict[str, Any]) -> dict[str, Any] | None:
+    """예약 항목에 해당하는 여정. 없으면 ``None``.
+
+    환승 예약은 예약번호 하나에 여정이 둘이고, 목록의 항목과 상세의 여정이 같은 여정 번호
+    (``h_jrny_sqno``)를 가집니다. 번호가 없거나 맞는 여정이 없으면 첫 여정을 씁니다 — 여정이
+    하나뿐인 보통 예약은 늘 그쪽입니다.
+    """
+    sequence = text(entry, "h_jrny_sqno")
+    matched = next((j for j in journeys if sequence and text(j, "h_jrny_sqno") == sequence), None)
+    return matched if matched is not None else next(iter(journeys), None)

@@ -606,9 +606,10 @@ print([seat.seat_no for seat in seats if seat.is_available])
 | `is_waiting` | `bool` (속성) | 예약대기 여부 |
 | `buy_limit` | `datetime \| None` (속성) | 구입기한 일시(KST). 예약대기면 `None` |
 
-> **`train` 의 날짜 한계.** 예약 응답은 운행일 하나만 줘서 `train.dep_date` 와 `train.arr_date` 가 둘 다
-> 운행일로 채워집니다. 그래서 자정을 넘기는 예약은 `train.arrival` 의 날짜가 출발 날짜와 같게 나오고,
-> `duration_minutes` 만 하루를 더해 맞춥니다. 도착 날짜는 예약 응답에서 확인하지 못했습니다.
+> **`train` 의 날짜.** 예약 목록은 운행일 하나만 줍니다. 여정 상세가 출발·도착 날짜를 주면 그 값을 쓰고,
+> 주지 않으면 운행일을 출발일로 두고 도착 시각이 출발보다 이르면 다음 날을 도착일로 봅니다. 상세 응답의
+> 날짜 필드는 APK 모델에서 확인했고, 실서버 응답에 채워져 오는지는 확인하지 못했습니다
+> (`docs/protocol-evidence-7.0.8.json`의 `reservation_journey_dates`).
 
 ### `Ticket`
 
