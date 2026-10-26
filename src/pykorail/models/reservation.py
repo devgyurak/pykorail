@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from pykorail.models.parsing import hhmm, integer, text
+from pykorail.models.parsing import hhmm, integer, kst_datetime, text
 from pykorail.models.schedule import Train
 
 if TYPE_CHECKING:
@@ -90,6 +91,13 @@ class Reservation:
     def is_waiting(self) -> bool:
         """실좌석이 아니라 예약대기입니다 — 구입기한이 채워지지 않습니다."""
         return self.buy_limit_date == _WAITING_BUY_LIMIT_DATE or self.buy_limit_time == _WAITING_BUY_LIMIT_TIME
+
+    @property
+    def buy_limit(self) -> datetime | None:
+        """구입기한 일시(KST). 예약대기면 기한이 없으므로 ``None``."""
+        if self.is_waiting:
+            return None
+        return kst_datetime(self.buy_limit_date, self.buy_limit_time)
 
     def __repr__(self) -> str:
         repr_str = f"{self.train!r}, {self.price}원({self.seat_no_count}석)"

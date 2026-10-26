@@ -6,7 +6,10 @@
 
 from __future__ import annotations
 
+from datetime import date, datetime
 from typing import Any
+
+from pykorail._shared.clock import KST
 
 
 def text(data: dict[str, Any], key: str, default: str = "") -> str:
@@ -81,6 +84,43 @@ def _to_int(value: Any, default: int) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def kst_date(value: str) -> date | None:
+    """``YYYYMMDD`` 를 날짜로. 길이가 다르거나 없는 날짜(``20261340``)면 ``None``.
+
+    자릿수가 모자란 값을 ``strptime`` 에 맡기면 ``2026110`` 같은 것도 말없이 읽힙니다.
+    그래서 길이와 숫자 여부를 먼저 봅니다.
+    """
+    if len(value) != 8 or not value.isdigit():
+        return None
+    try:
+        return date(int(value[:4]), int(value[4:6]), int(value[6:8]))
+    except ValueError:
+        return None
+
+
+def kst_datetime(day: str, clock: str) -> datetime | None:
+    """``YYYYMMDD`` 와 ``HHMMSS`` 를 KST 일시로. 둘 중 하나라도 틀리면 ``None``.
+
+    날짜만 있고 시각이 빈 응답(예약대기 등)을 ``00:00`` 으로 꾸미지 않으려고 시각도 같은
+    기준으로 막습니다.
+    """
+    moment = kst_date(day)
+    if moment is None or len(clock) != 6 or not clock.isdigit():
+        return None
+    try:
+        return datetime(
+            moment.year,
+            moment.month,
+            moment.day,
+            int(clock[:2]),
+            int(clock[2:4]),
+            int(clock[4:6]),
+            tzinfo=KST,
+        )
+    except ValueError:
+        return None
 
 
 def hhmm(value: str) -> str:

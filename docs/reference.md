@@ -336,7 +336,7 @@ run_dates() -> list[RunDate]
 netfunnel_action_for(run_dates: Sequence[RunDate], departure: date | datetime) -> NetFunnelActionCode
 ```
 
-`RunDate` 는 하루입니다. `run_date`(운행일 `YYYYMMDD`)와 성수기 여부
+`RunDate` 는 하루입니다. `run_date`(운행일 `YYYYMMDD`)와 `day`(그 날짜), 성수기 여부
 (`is_peak_season`) 말고는 앱의 원문 필드명을 snake_case 로 옮긴 값들(`day_dv_cd` ·
 `hldy_dv_cd` · `sale_dd_dv_cd` 와 `o_trn_op_flg` … `x_trn_op_flg`)이라 뜻을 지어 붙이지
 않았습니다. 플래그는 `"Y"` · `"N"` 외에 빈 문자열일 수 있어 불리언이 아닙니다.
@@ -587,7 +587,8 @@ print([seat.seat_no for seat in seats if seat.is_available])
 | `has_seat()` | `bool` | 특실 또는 일반실 좌석 있음 |
 | `has_special_seat()` · `has_general_seat()` | `bool` | 각각 |
 | `has_waiting_list()` | `bool` | 예약대기 가능 |
-| `duration_minutes` | `int \| None` | 소요 시간(분). 자정을 넘기면 보정됩니다. |
+| `departure` · `arrival` | `datetime \| None` | 출발 · 도착 일시(KST). 날짜나 시각이 비었거나 형식이 틀리면 `None` |
+| `duration_minutes` | `int \| None` | 소요 시간(분). 날짜가 있으면 일시끼리 빼므로 이틀에 걸친 운행도 맞습니다. 날짜가 없으면 시각만으로 잽니다. |
 | `duration_text` | `str \| None` | 사람이 읽는 소요 시간 (`"3시간 30분"`). 1시간 미만이면 `"45분"`. |
 | `summary()` | `str` | 좌석 정보를 뺀 한 줄 요약 |
 
@@ -603,6 +604,11 @@ print([seat.seat_no for seat in seats if seat.is_available])
 | `wct_no` | `str \| None` | 발매창구 번호 — 결제에 필요 |
 | `buy_limit_date` · `buy_limit_time` | `str` | 구입기한 |
 | `is_waiting` | `bool` (속성) | 예약대기 여부 |
+| `buy_limit` | `datetime \| None` (속성) | 구입기한 일시(KST). 예약대기면 `None` |
+
+> **`train` 의 날짜 한계.** 예약 응답은 운행일 하나만 줘서 `train.dep_date` 와 `train.arr_date` 가 둘 다
+> 운행일로 채워집니다. 그래서 자정을 넘기는 예약은 `train.arrival` 의 날짜가 출발 날짜와 같게 나오고,
+> `duration_minutes` 만 하루를 더해 맞춥니다. 도착 날짜는 예약 응답에서 확인하지 못했습니다.
 
 ### `Ticket`
 
@@ -612,6 +618,7 @@ print([seat.seat_no for seat in seats if seat.is_available])
 | `seat_no` · `car_no` | `str` | 좌석 · 호차 |
 | `price` | `int` | 결제 금액 |
 | `pnr_no` | `str` | 예약번호 |
+| `sold_on` | `date \| None` (속성) | 발매일. `sale_date` 를 날짜로 바꾼 값 |
 | `sale_info1`–`sale_info4` | `str` | 환불에 필요한 원권 식별자 |
 | `ticket_no` | `str` (속성) | 위 4개를 하이픈으로 이은 승차권 번호 |
 
@@ -698,6 +705,7 @@ print([seat.seat_no for seat in seats if seat.is_available])
 | `price` | `int` | 운임(원). 어른 한 명 기준입니다 |
 | `group` · `bus_type` | `str` | 운행 그룹 코드 · 종별 코드 (`"980"` / `"98"`) |
 | `dep_run_order` · `arr_run_order` | `str` | 정류장의 운행 순서. 좌석 조회가 구간을 이 값으로 가리킵니다 |
+| `departure` · `arrival` | `datetime \| None` (속성) | 출발 · 도착 일시(KST). 날짜나 시각이 비었거나 형식이 틀리면 `None` |
 | `has_seat()` | `bool` (메서드) | 남은 좌석이 있는지 |
 
 ### `BusStop`
@@ -730,6 +738,7 @@ print([seat.seat_no for seat in seats if seat.is_available])
 | `movement` | `str` | 적립인지 사용인지 (`"적립"` · `"사용"`) |
 | `detail` | `str` | 서버가 붙인 설명 (`"마일리지 적립 (열차이용)"` · `"코레일"`) |
 | `amount` | `int` | 증감. 적립은 양수, 사용은 음수 |
+| `day` | `date \| None` (속성) | `date` 를 날짜로 바꾼 값 |
 
 ### `Coupon`
 
@@ -742,6 +751,7 @@ print([seat.seat_no for seat in seats if seat.is_available])
 | `description` | `str` | 덧붙는 설명 |
 | `tag` | `str` | 앱이 꼬리표로 보여 주는 짧은 구분 |
 | `valid_from` · `valid_until` | `str` | 쓸 수 있는 기간 `YYYYMMDD`. **승차일** 기준입니다 |
+| `starts_on` · `ends_on` | `date \| None` (속성) | 위 기간을 날짜로 바꾼 값 |
 | `guide` | `str` | 이용 안내 |
 
 쿠폰번호는 번호만 알면 다른 계정에 등록할 수 있는 값이라 `repr` 은 뒤 4자리만

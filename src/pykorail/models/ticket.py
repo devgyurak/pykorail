@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from typing import TYPE_CHECKING, Any
 
-from pykorail.models.parsing import integer, optional_text, text
+from pykorail.models.parsing import integer, kst_date, optional_text, text
 from pykorail.models.schedule import Train
 
 if TYPE_CHECKING:
@@ -97,6 +98,11 @@ class Ticket:
         """
         raw = train_info_of(entry)
         return None if raw is None else cls.from_response(raw, seat_no=seat_no)
+
+    @property
+    def sold_on(self) -> date | None:
+        """발매일. 날짜가 없거나 형식이 틀리면 ``None``."""
+        return kst_date(self.sale_date)
 
     @property
     def ticket_no(self) -> str:
