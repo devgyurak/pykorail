@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import ast
 from datetime import date, datetime
+from pathlib import Path
 
 import pytest
 
-from pykorail._shared.clock import KST
-from pykorail.models import AirportBus, Coupon, MileageEntry, Reservation, RunDate, Ticket, Train
+from pykorail.constants import KST
+from pykorail.models import AirportBus, Coupon, MileageEntry, Reservation, RunDate, Ticket, Train, parsing
 from pykorail.models.parsing import kst_date, kst_datetime
 from tests.payloads import (
     BUS_INFO,
@@ -59,6 +61,19 @@ class TestParsing:
         assert parsed == expected
 
 
+class TestImportBoundary:
+    def test_parsing_does_not_import_shared(self) -> None:
+        """``_shared`` 를 import 하면 ``response`` 를 거쳐 ``parsing`` 으로 돌아와 순환이 생깁니다."""
+        # given
+        tree = ast.parse(Path(parsing.__file__).read_text(encoding="utf-8"))
+
+        # when
+        modules = [node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)]
+
+        # then
+        assert [m for m in modules if m.startswith("pykorail._shared")] == []
+
+
 class TestSchedule:
     def test_departure_and_arrival_are_kst_datetimes(self) -> None:
         # given
@@ -107,6 +122,23 @@ class TestSchedule:
 
         # when & then
         assert (train.arrival, train.duration_minutes) == (None, 210)
+
+    def test_seconds_do_not_shift_the_duration(self) -> None:
+        # given
+        train = Train.from_response({**TRAIN_INFO, "h_dpt_tm": "090059", "h_arv_tm": "100000"})
+
+        # when & then
+        assert train.duration_minutes == 60
+
+    def test_inconsistent_dates_fall_back_to_the_clock(self) -> None:
+        """날짜가 서로 어긋나 하루를 더해도 음수면 시각만으로 잽니다 — 음수 소요 시간은 내지 않습니다."""
+        # given
+        train = Train.from_response(
+            {**TRAIN_INFO, "h_dpt_dt": "20260402", "h_dpt_tm": "090000", "h_arv_dt": "20260320", "h_arv_tm": "100000"}
+        )
+
+        # when & then
+        assert train.duration_minutes == 60
 
     def test_truncated_departure_clock_has_no_departure(self) -> None:
         # given

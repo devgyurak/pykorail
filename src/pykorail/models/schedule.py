@@ -113,10 +113,13 @@ class Schedule:
         """
         departure, arrival = self.departure, self.arrival
         if departure is not None and arrival is not None:
-            elapsed = arrival - departure
+            # 시각 칸은 분까지만 의미가 있어 초는 버립니다. 초가 어긋나면 59분처럼 한 분 적게 나옵니다.
+            elapsed = arrival.replace(second=0) - departure.replace(second=0)
             if elapsed < timedelta(0):
                 elapsed += timedelta(days=1)
-            return int(elapsed.total_seconds() // 60)
+            if elapsed >= timedelta(0):
+                return int(elapsed.total_seconds() // 60)
+            # 날짜가 서로 어긋나 하루를 더해도 음수면 날짜를 버리고 시각만으로 잽니다.
 
         start, end = _minutes(self.dep_time), _minutes(self.arr_time)
         if start is None or end is None:

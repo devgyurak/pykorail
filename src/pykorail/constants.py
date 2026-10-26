@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import re
+from datetime import timedelta, timezone
 from typing import Final
 
 EMAIL_REGEX: Final = re.compile(r"[^@]+@[^@]+\.[^@]+")
@@ -91,3 +92,6 @@ IMPERSONATE: Final = "chrome131_android"
 
 #: 한국 표준시(UTC+9). 코레일 API 의 모든 날짜·시각은 KST 기준입니다.
 KST_OFFSET_HOURS: Final = 9
+#: 코레일 서버가 시각을 주고받는 기준 시간대. 실행 머신의 로컬 타임존과 무관합니다.
+#: 모델 파싱(``models.parsing``)이 ``_shared`` 를 거치지 않도록 여기에 둡니다 — 순환 import 방지.
+KST = timezone(timedelta(hours=KST_OFFSET_HOURS))
