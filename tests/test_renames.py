@@ -70,8 +70,8 @@ class TestSeatDetail:
 class TestMajorRank:
     @pytest.mark.parametrize(
         ("major", "expected"),
-        [("28", 28), ("", None), ("x", None)],
-        ids=["ranked", "not-major", "not-a-number"],
+        [("28", 28), ("", None), ("x", None), ("²", None)],
+        ids=["ranked", "not-major", "not-a-number", "superscript"],
     )
     def test_reads_the_major_rank_as_an_int(self, major: str, expected: int | None) -> None:
         # given

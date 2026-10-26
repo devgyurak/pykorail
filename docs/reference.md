@@ -609,6 +609,15 @@ print([seat.seat_no for seat in seats if seat.is_available])
 > 날짜 필드는 APK 모델에서 확인했고, 실서버 응답에 채워져 오는지는 확인하지 못했습니다
 > (`docs/protocol-evidence-7.0.8.json`의 `reservation_journey_dates`).
 
+### `SeatDetail`
+
+`korail.reservations.seats()` 가 돌려주는 이름 있는 튜플입니다. 풀어 쓰는 기존 코드(`seats, wct_no = …`)는 그대로 동작합니다.
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `seats` | `list[Seat]` | 첫 여정의 좌석. 조회 결과가 없으면 빈 목록 |
+| `wct_no` | `str \| None` | 발매창구 번호. 결제에 필요합니다 |
+
 ### `Ticket`
 
 | 필드 | 타입 | 설명 |
@@ -936,7 +945,7 @@ korail.trains.search("서울", "부산", passengers=[GuideDogPassenger(1)])
 | `Ticket.sale_info1`–`sale_info4` | `original_wct_no` · `original_refund_sale_date` · `original_sale_seq_no` · `original_refund_pwd` |
 | `Korail.logined` (`AsyncKorail` 도 같음) | `is_logged_in` |
 
-생성자를 키워드로 직접 부르던 코드(`Reservation(rsv_id=...)` 등)는 깨집니다. `from_response` 로
+생성자를 키워드로 직접 부르던 코드(`Reservation(rsv_id=...)` 등)는 깨집니다. `dataclasses.replace(r, rsv_id=...)` 도 경고 없이 `TypeError` 가 납니다. `from_response` 로
 만든 객체와 조회 결과는 그대로입니다.
 
 ## 예외
