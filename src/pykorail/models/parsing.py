@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from pykorail._shared.clock import KST
+from pykorail.constants import KST
 
 
 def text(data: dict[str, Any], key: str, default: str = "") -> str:
