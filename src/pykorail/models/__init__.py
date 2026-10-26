@@ -29,7 +29,7 @@ from pykorail.models.passenger import (
     ToddlerPassenger,
 )
 from pykorail.models.refund import RefundFee
-from pykorail.models.reservation import Reservation
+from pykorail.models.reservation import Reservation, SeatDetail
 from pykorail.models.run_date import RunDate, netfunnel_action_for
 from pykorail.models.schedule import Schedule, Train
 from pykorail.models.seat import Seat
@@ -59,6 +59,7 @@ __all__ = [
     "Schedule",
     "Seat",
     "SeatAttribute",
+    "SeatDetail",
     "SeniorPassenger",
     "Station",
     "Ticket",

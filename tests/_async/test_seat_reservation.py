@@ -90,7 +90,7 @@ class TestCreateWithSeats:
         reservation = await client.reservations.create_with_seats(train, seats[:1])
 
         # then
-        assert reservation.rsv_id == "1234567890"
+        assert reservation.pnr_no == "1234567890"
 
     async def test_returned_reservation_carries_its_seats(self, chosen) -> None:
         """예매 뒤 예약을 다시 조회해 좌석 상세까지 채워 돌려줍니다."""
@@ -223,7 +223,7 @@ class TestCreateWithSeats:
 
         # then
         data = session.kwargs_for("reserve")["data"]
-        assert (reservation.rsv_id, data["txtSrcarCnt"], data["txtSeatNo1"]) == ("1234567890", "1", "57")
+        assert (reservation.pnr_no, data["txtSrcarCnt"], data["txtSeatNo1"]) == ("1234567890", "1", "57")
 
     async def test_seat_count_is_seats_not_cars(self, chosen) -> None:
         """``txtSrcarCnt`` 는 이름과 달리 호차 수가 아닙니다. 다른 호차의 좌석을 섞어도 좌석 수입니다."""
