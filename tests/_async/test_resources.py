@@ -267,7 +267,7 @@ class TestStations:
         stations = await client.stations.all()
 
         # then
-        assert not client.logined
+        assert not client.is_logged_in
         assert stations
 
 
@@ -1619,9 +1619,9 @@ class TestReservations:
 
         # then
         assert len(reservations) == 1
-        assert reservations[0].rsv_id == "1234567890"
+        assert reservations[0].pnr_no == "1234567890"
         assert reservations[0].wct_no == "0143"
-        assert [s.seat for s in reservations[0].seats] == ["5A"]
+        assert [s.seat_no for s in reservations[0].seats] == ["5A"]
 
     async def test_reservation_is_complete_at_construction(self, korail) -> None:
         """좌석이 나중에 주입되지 않고 생성 시점에 이미 채워져 있어야 합니다."""
@@ -1705,7 +1705,7 @@ class TestReservations:
         reservation = await client.reservations.create(train)
 
         # then
-        assert reservation.rsv_id == "1234567890"
+        assert reservation.pnr_no == "1234567890"
         assert session.urls().count(API_ENDPOINTS["myreservationlist"]) == 1
         assert session.kwargs_for("myreservationlist")["params"]["hidPnrNo"] == "1234567890"
         assert len(session.calls) == 5, "역 마스터 · 조회 · 예매 · 예약목록 · 좌석 각 1회"
@@ -1719,7 +1719,7 @@ class TestReservations:
         reservations = await client.reservations.all()
 
         # then
-        assert [r.rsv_id for r in reservations] == list(MANY_RESERVATION_IDS)
+        assert [r.pnr_no for r in reservations] == list(MANY_RESERVATION_IDS)
         assert [kw["params"]["hidPnrNo"] for kw in session.all_kwargs_for("myreservationlist")] == list(
             MANY_RESERVATION_IDS
         ), "횟수만 세면 같은 예약을 네 번 조회해도 통과합니다"
@@ -1744,7 +1744,7 @@ class TestReservations:
         reservation = await client.reservations.create(train)
 
         # then
-        assert reservation.rsv_id == "1234567890"
+        assert reservation.pnr_no == "1234567890"
 
     async def test_create_sends_passenger_blocks(self, korail) -> None:
         # given

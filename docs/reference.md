@@ -37,7 +37,7 @@ Korail(
 | `login(korail_id, korail_pw)` | `None` | 실패는 전부 `LoginFailedError`. 성공 여부를 반환하지 않습니다. 비밀번호 변경 안내에 걸린 계정은 그 하위 타입 [`PasswordChangeRequiredError`](#예외). |
 | `logout()` | `None` | **서버 세션만** 끊습니다. HTTP 연결은 살아 있어 재로그인할 수 있습니다. |
 | `close()` | `None` | HTTP 연결 정리. `with` 문이 자동 호출합니다. |
-| `logined` | `bool` | 로그인 상태. |
+| `is_logged_in` | `bool` | 로그인 상태. (옛 이름 `logined` 는 0.7.0 에서 지웁니다) |
 | `membership_number` · `name` · `email` · `phone_number` | `str \| None` | 로그인 후 채워집니다. |
 
 `korail_id` 는 형태로 자동 판별합니다 — 이메일 · 휴대폰(`010-1234-5678`) · 회원번호.
@@ -367,7 +367,7 @@ aid = netfunnel_action_for(calendar, departure)
 | `create(train, passengers=None, option=GENERAL_FIRST)` | `Reservation` | 예매. 좌석이 없고 예약대기가 열려 있으면 대기를 겁니다. |
 | `create_with_seats(train, seats, passengers=None)` | `Reservation` | **고른 좌석으로** 예매. 아래 참고. |
 | `create_transfer(transfer, passengers=None, *, seat_class=GENERAL)` | `tuple[Reservation, Reservation]` | **환승 여정의 두 구간을 한 번에** 예매. 아래 참고. |
-| `seats(rsv_id)` | `tuple[list[Seat], str \| None]` | 좌석 상세와 발매창구 번호. 환승 예약이면 첫 구간의 좌석입니다. |
+| `seats(rsv_id)` | `SeatDetail` | 좌석 상세와 발매창구 번호(`seats`·`wct_no` 이름의 튜플). 환승 예약이면 첫 구간의 좌석입니다. |
 | `pay(reservation, card)` | `None` | 카드 결제. |
 | `cancel(reservation)` | `None` | 예약 취소. 예약번호 단위라, 환승 예약은 어느 구간을 넘겨도 두 구간이 함께 취소됩니다. |
 
@@ -418,7 +418,7 @@ reservation = korail.reservations.create_with_seats(train, picked, [AdultPasseng
 transfer = korail.trains.search_transfers("강릉", "목포")[0]
 first, second = korail.reservations.create_transfer(transfer)
 
-print(first.rsv_id == second.rsv_id)  # True — 예약번호는 하나입니다
+print(first.pnr_no == second.pnr_no)  # True — 예약번호는 하나입니다
 print(first.train.arr_name, first.seats, second.seats)
 ```
 
@@ -597,9 +597,9 @@ print([seat.seat_no for seat in seats if seat.is_available])
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
 | `train` | `Train` | **참조** — `reservation.train.dep_name` |
-| `rsv_id` | `str` | 예약번호 (PNR) |
+| `pnr_no` | `str` | 예약번호 (PNR) |
 | `price` | `int` | 결제 예정 금액 |
-| `seat_no_count` | `int` | 좌석 수 |
+| `seat_count` | `int` | 좌석 수 |
 | `seats` | `tuple[Seat, ...]` | 배정 좌석 |
 | `wct_no` | `str \| None` | 발매창구 번호 — 결제에 필요 |
 | `buy_limit_date` · `buy_limit_time` | `str` | 구입기한 |
@@ -620,16 +620,16 @@ print([seat.seat_no for seat in seats if seat.is_available])
 | `price` | `int` | 결제 금액 |
 | `pnr_no` | `str` | 예약번호 |
 | `sold_on` | `date \| None` (속성) | 발매일. `sale_date` 를 날짜로 바꾼 값 |
-| `sale_info1`–`sale_info4` | `str` | 환불에 필요한 원권 식별자 |
+| `original_wct_no` · `original_refund_sale_date` · `original_sale_seq_no` · `original_refund_pwd` | `str` | 환불에 필요한 원권 식별자 4종 (앱의 `hOrgtkWctNo` · `hOrgtkRetSaleDt` · `hOrgtkSaleSqno` · `hOrgtkRetPwd`) |
 | `ticket_no` | `str` (속성) | 위 4개를 하이픈으로 이은 승차권 번호 |
 
 ### `Seat`
 
 | 필드 | 설명 |
 | --- | --- |
-| `car` · `seat` | 호차 · 좌석번호 |
-| `seat_type` | 일반실 / 특실 |
-| `passenger_type` | 어른 / 어린이 … |
+| `car_no` · `seat_no` | 호차 · 좌석번호 |
+| `seat_class_name` | 일반실 / 특실 |
+| `passenger_type_name` | 어른 / 어린이 … |
 | `price` · `original_price` · `discount` | 결제액 · 정가 · 할인액 |
 | `is_waiting` (속성) | 좌석번호가 비어 있으면 예약대기 자리 |
 
@@ -766,7 +766,7 @@ print([seat.seat_no for seat in seats if seat.is_available])
 | `code` · `name` | 역 코드 (`"0020"`) · 이름 (`"부산"`) |
 | `latitude` · `longitude` | 좌표 (`float \| None`) |
 | `group` | 노선 그룹 코드 — 같은 값이면 같은 노선군 |
-| `major` · `is_major` (속성) | 주요역 노출 순번 · 주요역 여부 |
+| `major` · `is_major` · `major_rank` (속성) | 주요역 노출 순번 · 주요역 여부 · 순번을 정수로 (`int \| None`) |
 | `popup_type` · `popup_message` | 역 선택 시 안내 (`"0"` = 안내 없음) |
 
 ### `Card`
@@ -809,7 +809,7 @@ repr(card)  # Card(number='****5678', installment=0, is_corporate=False)
 > **자격이 필요한 할인은 계정에 자격이 없으면 서버가 거절하지 않고 어른 운임(할인
 > 없음)으로 예약합니다.** 2026-10-16 중증 장애인(`111`)에서 확인했고, 다른 할인 코드와
 > 자격이 있는 계정은 확인하지 않았습니다. 예약 뒤에는 `reservation.seats` 의
-> `passenger_type` 이 기대한 유형인지 확인하세요.
+> `passenger_type_name` 이 기대한 유형인지 확인하세요.
 
 ```python
 Passenger(count=1, discount_type=None, card="", card_no="", card_pw="")
@@ -923,6 +923,23 @@ korail.trains.search("서울", "부산", passengers=[GuideDogPassenger(1)])
 | `ALL` (기본) | `0` | 전체 |
 | `SAVE` | `1` | 적립 |
 | `USE` | `2` | 사용 |
+
+
+## 이름 변경 (0.6.0)
+
+옛 이름은 0.6.0 에서도 같은 값을 돌려줍니다. 읽으면 `DeprecationWarning` 이 나가고, 0.7.0 에서 지웁니다.
+
+| 옛 이름 | 새 이름 |
+| --- | --- |
+| `Reservation.rsv_id` | `pnr_no` |
+| `Reservation.seat_no_count` · `Ticket.seat_no_count` | `seat_count` |
+| `Seat.car` · `Seat.seat` | `car_no` · `seat_no` |
+| `Seat.seat_type` · `Seat.passenger_type` | `seat_class_name` · `passenger_type_name` |
+| `Ticket.sale_info1`–`sale_info4` | `original_wct_no` · `original_refund_sale_date` · `original_sale_seq_no` · `original_refund_pwd` |
+| `Korail.logined` (`AsyncKorail` 도 같음) | `is_logged_in` |
+
+생성자를 키워드로 직접 부르던 코드(`Reservation(rsv_id=...)` 등)는 깨집니다. `from_response` 로
+만든 객체와 조회 결과는 그대로입니다.
 
 ## 예외
 

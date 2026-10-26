@@ -105,7 +105,7 @@ class TestCreateTransfer:
         reservations = client.reservations.create_transfer(transfer)
 
         # then
-        assert [(r.rsv_id, r.train.train_no, r.train.dep_name, r.train.arr_name) for r in reservations] == [
+        assert [(r.pnr_no, r.train.train_no, r.train.dep_name, r.train.arr_name) for r in reservations] == [
             ("1234567890", "101", "서울", "대전"),
             ("1234567890", "1201", "대전", "부산"),
         ]
@@ -531,7 +531,7 @@ class TestSeatsFollowTheirJourney:
         reservations = client.reservations.all()
 
         # then
-        assert [[seat.seat for seat in r.seats] for r in reservations] == [["5A"], ["41"]]
+        assert [[seat.seat_no for seat in r.seats] for r in reservations] == [["5A"], ["41"]]
 
     def test_ordinary_reservation_still_gets_the_only_journey(self, make_korail) -> None:
         """여정 번호가 없는 보통 예약은 지금처럼 첫 여정의 좌석을 받습니다."""
@@ -559,7 +559,7 @@ class TestSeatsFollowTheirJourney:
         reservations = client.reservations.all()
 
         # then
-        assert [[seat.seat for seat in r.seats] for r in reservations] == [["5A"], ["5A"]]
+        assert [[seat.seat_no for seat in r.seats] for r in reservations] == [["5A"], ["5A"]]
 
     def test_car_number_given_as_a_number_is_read(self, make_korail) -> None:
         """실서버는 호차 번호를 숫자로 주기도 합니다."""
@@ -570,7 +570,7 @@ class TestSeatsFollowTheirJourney:
         second = (client.reservations.all())[1]
 
         # then
-        assert [(seat.car, seat.seat) for seat in second.seats] == [("2", "41")]
+        assert [(seat.car_no, seat.seat_no) for seat in second.seats] == [("2", "41")]
 
     def test_public_seats_still_returns_the_first_journey(self, make_korail) -> None:
         # given
@@ -580,4 +580,4 @@ class TestSeatsFollowTheirJourney:
         seats, wct_no = client.reservations.seats("1234567890")
 
         # then
-        assert ([seat.seat for seat in seats], wct_no) == (["5A"], "0143")
+        assert ([seat.seat_no for seat in seats], wct_no) == (["5A"], "0143")

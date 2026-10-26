@@ -157,7 +157,7 @@ for transfer in transfers:
 
 first, second = korail.reservations.create_transfer(transfers[0])
 
-print(first.rsv_id == second.rsv_id)  # True — 예약번호는 하나입니다
+print(first.pnr_no == second.pnr_no)  # True — 예약번호는 하나입니다
 ```
 
 구간을 따로 `create()` 하면 첫 구간만 잡히고 둘째가 매진될 수 있습니다. 이쪽은 한 구간이라도

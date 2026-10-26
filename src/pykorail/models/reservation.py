@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
+from pykorail._shared.deprecation import renamed
 from pykorail.models.parsing import hhmm, integer, kst_date, kst_datetime, text
 from pykorail.models.schedule import Train
 
@@ -29,6 +30,16 @@ _SINGLE_JOURNEY_CHG_NO = "00000"
 _ANY_DAY = "20000101"
 
 
+class SeatDetail(NamedTuple):
+    """예약의 좌석 상세 — 좌석 목록과 발매창구 번호.
+
+    튜플이라 ``seats, wct_no = korail.reservations.seats(...)`` 처럼 풀어 써도 됩니다.
+    """
+
+    seats: list[Seat]
+    wct_no: str | None
+
+
 @dataclass(frozen=True)
 class Reservation:
     """아직 결제하지 않은 예약. 구입기한을 넘기면 자동 취소됩니다.
@@ -43,8 +54,8 @@ class Reservation:
     """
 
     train: Train
-    rsv_id: str
-    seat_no_count: int
+    pnr_no: str
+    seat_count: int
     buy_limit_date: str
     buy_limit_time: str
     price: int
@@ -60,6 +71,10 @@ class Reservation:
     seats: tuple[Seat, ...] = ()
     #: 발매창구 번호. 좌석 상세 조회에서 함께 옵니다.
     wct_no: str | None = None
+
+    # 옛 이름(0.6.0 까지). 0.7.0 에서 지웁니다.
+    rsv_id = renamed("rsv_id", "pnr_no")
+    seat_no_count = renamed("seat_no_count", "seat_count")
 
     @classmethod
     def from_response(
@@ -84,8 +99,8 @@ class Reservation:
 
         return cls(
             train=train,
-            rsv_id=text(data, "h_pnr_no"),
-            seat_no_count=integer(data, "h_tot_seat_cnt"),
+            pnr_no=text(data, "h_pnr_no"),
+            seat_count=integer(data, "h_tot_seat_cnt"),
             buy_limit_date=text(data, "h_ntisu_lmt_dt"),
             buy_limit_time=text(data, "h_ntisu_lmt_tm"),
             price=integer(data, "h_rsv_amt"),
@@ -109,7 +124,7 @@ class Reservation:
         return kst_datetime(self.buy_limit_date, self.buy_limit_time)
 
     def __repr__(self) -> str:
-        repr_str = f"{self.train!r}, {self.price}원({self.seat_no_count}석)"
+        repr_str = f"{self.train!r}, {self.price}원({self.seat_count}석)"
         if self.is_waiting:
             return f"{repr_str}, 예약대기"
 

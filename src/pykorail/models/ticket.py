@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import TYPE_CHECKING, Any
 
+from pykorail._shared.deprecation import renamed
 from pykorail.models.parsing import integer, kst_date, optional_text, text
 from pykorail.models.schedule import Train
 
@@ -50,18 +51,26 @@ class Ticket:
     train: Train
     seat_no: str
     seat_no_end: str | None
-    seat_no_count: int
+    seat_count: int
     car_no: str
     buyer_name: str
     sale_date: str
     pnr_no: str
     price: int
 
-    # 환불 요청에 그대로 되돌려 줘야 하는 원권(原券) 식별자 4종.
-    sale_info1: str
-    sale_info2: str
-    sale_info3: str
-    sale_info4: str
+    # 환불 요청에 그대로 되돌려 줘야 하는 원권(原券) 식별자 4종. 이름은 앱의 원권 필드
+    # (``hOrgtkWctNo`` · ``hOrgtkRetSaleDt`` · ``hOrgtkSaleSqno`` · ``hOrgtkRetPwd``)에서 가져왔습니다.
+    original_wct_no: str
+    original_refund_sale_date: str
+    original_sale_seq_no: str
+    original_refund_pwd: str
+
+    # 옛 이름(0.6.0 까지). 0.7.0 에서 지웁니다.
+    seat_no_count = renamed("seat_no_count", "seat_count")
+    sale_info1 = renamed("sale_info1", "original_wct_no")
+    sale_info2 = renamed("sale_info2", "original_refund_sale_date")
+    sale_info3 = renamed("sale_info3", "original_sale_seq_no")
+    sale_info4 = renamed("sale_info4", "original_refund_pwd")
 
     @classmethod
     def from_response(cls, data: dict[str, Any], *, seat_no: str | None = None) -> Self:
@@ -77,16 +86,16 @@ class Ticket:
             train=Train.from_response(data),
             seat_no=resolved_seat,
             seat_no_end=optional_text(data, "h_seat_no_end") if seat_no is None else None,
-            seat_no_count=integer(data, "h_seat_cnt"),
+            seat_count=integer(data, "h_seat_cnt"),
             car_no=text(data, "h_srcar_no"),
             buyer_name=text(data, "h_buy_ps_nm"),
             sale_date=text(data, "h_orgtk_sale_dt"),
             pnr_no=text(data, "h_pnr_no"),
             price=integer(data, "h_rcvd_amt"),
-            sale_info1=text(data, "h_orgtk_wct_no"),
-            sale_info2=text(data, "h_orgtk_ret_sale_dt"),
-            sale_info3=text(data, "h_orgtk_sale_sqno"),
-            sale_info4=text(data, "h_orgtk_ret_pwd"),
+            original_wct_no=text(data, "h_orgtk_wct_no"),
+            original_refund_sale_date=text(data, "h_orgtk_ret_sale_dt"),
+            original_sale_seq_no=text(data, "h_orgtk_sale_sqno"),
+            original_refund_pwd=text(data, "h_orgtk_ret_pwd"),
         )
 
     @classmethod
@@ -107,12 +116,12 @@ class Ticket:
     @property
     def ticket_no(self) -> str:
         """원권 식별자 4종을 하이픈으로 이은 승차권 번호."""
-        return "-".join((self.sale_info1, self.sale_info2, self.sale_info3, self.sale_info4))
+        return "-".join(
+            (self.original_wct_no, self.original_refund_sale_date, self.original_sale_seq_no, self.original_refund_pwd)
+        )
 
     def __repr__(self) -> str:
         seats = (
-            self.seat_no
-            if self.seat_no_count == 1 or self.seat_no_end is None
-            else f"{self.seat_no}~{self.seat_no_end}"
+            self.seat_no if self.seat_count == 1 or self.seat_no_end is None else f"{self.seat_no}~{self.seat_no_end}"
         )
         return f"{self.train.summary()} => {self.car_no}호 {seats}, {self.price}원"

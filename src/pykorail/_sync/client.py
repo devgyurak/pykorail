@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pykorail._shared.deprecation import renamed
 from pykorail._sync.api import ApiClient
 from pykorail._sync.resources import (
     AirportBusResource,
@@ -161,8 +162,10 @@ class Korail:
         self._api.verbose = value
 
     @property
-    def logined(self) -> bool:
+    def is_logged_in(self) -> bool:
         return self._api.account.logined
+
+    logined = renamed("logined", "is_logged_in")
 
     @property
     def membership_number(self) -> str | None:

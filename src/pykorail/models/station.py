@@ -75,6 +75,11 @@ class Station:
         """주요역(앱 상단에 먼저 노출되는 역)인지."""
         return bool(self.major)
 
+    @property
+    def major_rank(self) -> int | None:
+        """주요역 정렬 순번을 정수로. 주요역이 아니면 ``None``."""
+        return int(self.major) if self.major.isdigit() else None
+
     def __repr__(self) -> str:
         return f"{self.name}({self.code})"
 

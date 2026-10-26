@@ -17,6 +17,7 @@ from pykorail._async.resources import (
     AsyncTicketResource,
     AsyncTrainResource,
 )
+from pykorail._shared.deprecation import renamed
 from pykorail.auth.signer import RequestSigner
 from pykorail.constants import (
     API_ENDPOINTS,
@@ -158,8 +159,10 @@ class AsyncKorail:
         self._api.verbose = value
 
     @property
-    def logined(self) -> bool:
+    def is_logged_in(self) -> bool:
         return self._api.account.logined
+
+    logined = renamed("logined", "is_logged_in")
 
     @property
     def membership_number(self) -> str | None:
