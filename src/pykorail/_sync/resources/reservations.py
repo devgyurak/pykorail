@@ -141,8 +141,8 @@ class ReservationResource(Resource):
     def seats(self, rsv_id: str | None = None) -> SeatDetail:
         """예약의 좌석 상세와 발매창구 번호(``wct_no``).
 
-        조회 결과가 없으면 ``([], None)`` 을 돌려줍니다 — 호출부가 항상 튜플로
-        풀 수 있어야 하므로 실패해도 모양을 유지합니다. 환승 예약처럼 여정이 여럿이면
+        조회 결과가 없으면 빈 좌석 목록과 ``None`` 을 담은 :class:`~pykorail.models.reservation.SeatDetail`
+        을 돌려줍니다 — 호출부가 항상 풀 수 있는 모양을 유지합니다. 환승 예약처럼 여정이 여럿이면
         **첫 여정의 좌석**입니다 — 구간별 좌석은 :meth:`all` 이 돌려주는 예약에 있습니다.
         """
         journeys, wct_no = self._journeys(rsv_id)
