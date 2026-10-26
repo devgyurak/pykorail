@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from functools import reduce as _reduce
 from itertools import groupby
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -15,18 +16,29 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
+@dataclass(frozen=True, init=False, repr=False)
 class Passenger:
     """승객 묶음 한 종류. 직접 쓰지 말고 하위 타입을 쓰세요.
 
     하위 타입은 ``TYPE_CODE`` 와 ``DEFAULT_DISCOUNT`` 만 채웁니다 — 생성자
     시그니처가 계층 전체에서 같아야 :meth:`reduce` 가 합칠 때 같은 방식으로
     다시 만들 수 있습니다.
+
+    불변입니다. 인원을 바꾸려면 새 승객을 만드세요 (``a + b`` 가 그렇게 합칩니다).
+    동등 비교는 같은 유형과 같은 값끼리 참입니다. ``repr`` 은 카드번호와 비밀번호를
+    찍지 않도록 직접 씁니다 — 데이터클래스 기본 ``repr`` 을 쓰면 그 값이 로그에 나갑니다.
     """
 
     #: 코레일 승객 유형 코드 (``txtPsgTpCd``). 1=어른, 3=어린이 계열.
     TYPE_CODE: ClassVar[str] = "1"
     #: 유형별 기본 할인 코드 (``txtDiscKndCd``).
     DEFAULT_DISCOUNT: ClassVar[str] = "000"
+
+    count: int
+    discount_type: str
+    card: str
+    card_no: str
+    card_pw: str
 
     def __init__(
         self,
@@ -36,11 +48,16 @@ class Passenger:
         card_no: str = "",
         card_pw: str = "",
     ) -> None:
-        self.count = count
-        self.discount_type = self.DEFAULT_DISCOUNT if discount_type is None else discount_type
-        self.card = card
-        self.card_no = card_no
-        self.card_pw = card_pw
+        # 음수 인원은 합치기에서 조용히 버려지던 값입니다. 0 은 reduce 가 버리는 것이 기존
+        # 동작이라 그대로 두고, 음수만 생성 시점에 막습니다.
+        if count < 0:
+            raise ValueError(f"passenger count must not be negative, got {count}")
+        # 불변 객체라 대입은 object.__setattr__ 로 합니다.
+        object.__setattr__(self, "count", count)
+        object.__setattr__(self, "discount_type", self.DEFAULT_DISCOUNT if discount_type is None else discount_type)
+        object.__setattr__(self, "card", card)
+        object.__setattr__(self, "card_no", card_no)
+        object.__setattr__(self, "card_pw", card_pw)
 
     @property
     def typecode(self) -> str:
@@ -52,7 +69,7 @@ class Passenger:
 
     @staticmethod
     def reduce(passengers: Sequence[Passenger]) -> list[Passenger]:
-        """같은 조건의 승객을 합치고, 인원이 0 이하인 항목은 버립니다.
+        """같은 조건의 승객을 합치고, 인원이 0 인 항목은 버립니다. 음수 인원은 생성 시점에 막힙니다.
 
         ``itertools.groupby`` 는 **연속된** 같은 키만 묶으므로 먼저 키로 정렬합니다 —
         정렬 없이는 ``[어른, 어린이, 어른]`` 이 어른 블록 두 개로 나가 버립니다.

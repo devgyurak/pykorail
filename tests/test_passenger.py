@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 from typing import cast
 
 import pytest
@@ -103,9 +104,9 @@ class TestReduce:
         # then
         assert len(merged) == 2
 
-    def test_drops_zero_and_negative_counts(self) -> None:
+    def test_drops_zero_counts(self) -> None:
         # given
-        passengers = [AdultPassenger(0), ChildPassenger(2), SeniorPassenger(-1)]
+        passengers = [AdultPassenger(0), ChildPassenger(2)]
 
         # when
         merged = Passenger.reduce(passengers)
@@ -178,3 +179,44 @@ class TestFormSerialization:
 
         # then
         assert not set(first) & set(second)
+
+
+class TestValueObject:
+    def test_rejects_a_negative_count(self) -> None:
+        # when & then
+        with pytest.raises(ValueError, match="must not be negative"):
+            AdultPassenger(-1)
+
+    def test_allows_a_zero_count(self) -> None:
+        # when
+        passenger = AdultPassenger(0)
+
+        # then
+        assert passenger.count == 0
+
+    def test_is_immutable(self) -> None:
+        # given
+        passenger = AdultPassenger(1)
+
+        # when & then
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            passenger.count = 2  # ty: ignore[invalid-assignment]  # 불변 검사가 목적이라 타입 검사기의 경고를 억제합니다
+
+    def test_equal_by_type_and_value(self) -> None:
+        # when & then
+        assert AdultPassenger(2) == AdultPassenger(2)
+        assert AdultPassenger(2) != AdultPassenger(1)
+
+    def test_different_types_are_never_equal(self) -> None:
+        # when & then
+        assert AdultPassenger(1) != ChildPassenger(1)
+
+    def test_repr_hides_card_details(self) -> None:
+        # given
+        passenger = AdultPassenger(1, card="A", card_no="1234567812345678", card_pw="9012")
+
+        # when
+        rendered = repr(passenger)
+
+        # then
+        assert [secret for secret in ("1234567812345678", "9012") if secret in rendered] == []
