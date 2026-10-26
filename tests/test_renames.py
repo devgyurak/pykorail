@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from operator import attrgetter
 from typing import Any
 
 import pytest
@@ -26,32 +25,15 @@ CASES: list[tuple[Callable[[], Any], str, str]] = [
 ]
 
 
-class TestDeprecatedNames:
-    @pytest.mark.parametrize(("make", "old", "new"), CASES, ids=[f"{old}->{new}" for _, old, new in CASES])
-    def test_old_name_warns_and_reads_the_new_value(self, make: Callable[[], Any], old: str, new: str) -> None:
+class TestRemovedNames:
+    @pytest.mark.parametrize(("make", "old"), [(make, old) for make, old, _ in CASES], ids=[old for _, old, _ in CASES])
+    def test_old_name_is_gone(self, make: Callable[[], Any], old: str) -> None:
+        """0.6.0 에서 폐기 예고한 옛 이름은 0.7.0 에서 지웠습니다 — 읽으면 AttributeError 입니다."""
         # given
         obj = make()
 
-        # when
-        with pytest.warns(DeprecationWarning, match=old) as record:
-            value = attrgetter(old)(obj)
-
-        # then
-        assert value == attrgetter(new)(obj)
-        assert record[0].filename == __file__, "경고는 옛 이름을 읽은 사용자 코드의 줄을 가리켜야 합니다"
-
-    @pytest.mark.parametrize(("make", "old", "new"), CASES, ids=[f"{old}->{new}" for _, old, new in CASES])
-    def test_new_name_does_not_warn(
-        self, make: Callable[[], Any], old: str, new: str, recwarn: pytest.WarningsRecorder
-    ) -> None:
-        # given
-        obj = make()
-
-        # when
-        attrgetter(new)(obj)
-
-        # then
-        assert [w for w in recwarn if issubclass(w.category, DeprecationWarning)] == []
+        # when & then
+        assert not hasattr(obj, old)
 
 
 class TestSeatDetail:

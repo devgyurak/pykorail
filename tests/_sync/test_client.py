@@ -179,18 +179,13 @@ class TestLogin:
         assert client.email == "me@example.com"
         assert client.phone_number == "010-1234-5678"
 
-    def test_deprecated_logined_reads_the_login_state(self, make_korail) -> None:
-        """옛 이름 ``logined`` 는 새 이름과 같은 값을 주고 폐기 예고를 냅니다."""
+    def test_old_logined_name_is_gone(self, make_korail) -> None:
+        """0.6.0 에서 폐기 예고한 ``logined`` 는 0.7.0 에서 지웠습니다."""
         # given
         client, _ = make_korail({"code": CIPHER_PAYLOAD, "login": LOGIN_OK})
-        client.login("me@example.com", "pw")
 
-        # when
-        with pytest.warns(DeprecationWarning, match="logined"):
-            logged = client.logined
-
-        # then
-        assert (logged, client.is_logged_in) == (True, True)
+        # when & then
+        assert not hasattr(client, "logined")
 
     def test_rejected_credentials_raise(self, make_korail) -> None:
         """반환값으로 알려 주면 확인하지 않은 호출자가 로그인 없이 진행합니다."""

@@ -6,7 +6,6 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, NamedTuple
 
-from pykorail._shared.deprecation import renamed
 from pykorail.models.parsing import hhmm, integer, kst_date, kst_datetime, text
 from pykorail.models.schedule import Train
 
@@ -71,10 +70,6 @@ class Reservation:
     seats: tuple[Seat, ...] = ()
     #: 발매창구 번호. 좌석 상세 조회에서 함께 옵니다.
     wct_no: str | None = None
-
-    # 옛 이름(0.6.0 까지). 0.7.0 에서 지웁니다.
-    rsv_id = renamed("rsv_id", "pnr_no")
-    seat_no_count = renamed("seat_no_count", "seat_count")
 
     @classmethod
     def from_response(

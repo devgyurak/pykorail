@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from pykorail._shared.deprecation import renamed
 from pykorail.models.parsing import integer, text
 
 if TYPE_CHECKING:
@@ -26,12 +25,6 @@ class Seat:
     price: int
     original_price: int
     discount: int
-
-    # 옛 이름(0.6.0 까지). 0.7.0 에서 지웁니다.
-    car = renamed("car", "car_no")
-    seat = renamed("seat", "seat_no")
-    seat_type = renamed("seat_type", "seat_class_name")
-    passenger_type = renamed("passenger_type", "passenger_type_name")
 
     @classmethod
     def from_response(cls, data: dict[str, Any]) -> Self:

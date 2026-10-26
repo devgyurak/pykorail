@@ -932,9 +932,9 @@ korail.trains.search("서울", "부산", passengers=[GuideDogPassenger(1)])
 | `USE` | `2` | 사용 |
 
 
-## 이름 변경 (0.6.0)
+## 이름 변경 (0.7.0)
 
-옛 이름은 0.6.0 에서도 같은 값을 돌려줍니다. 읽으면 `DeprecationWarning` 이 나가고, 0.7.0 에서 지웁니다.
+0.6.0 에서 옛 이름에 폐기 예고(`DeprecationWarning`)를 붙였고, 0.7.0 에서 옛 이름을 지웠습니다. 옛 이름을 읽으면 `AttributeError` 입니다.
 
 | 옛 이름 | 새 이름 |
 | --- | --- |

@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from datetime import date
 from typing import TYPE_CHECKING, Any
 
-from pykorail._shared.deprecation import renamed
 from pykorail.models.parsing import integer, kst_date, text
 from pykorail.models.schedule import Train
 
@@ -64,13 +63,6 @@ class Ticket:
     original_refund_sale_date: str
     original_sale_seq_no: str
     original_refund_pwd: str
-
-    # 옛 이름(0.6.0 까지). 0.7.0 에서 지웁니다.
-    seat_no_count = renamed("seat_no_count", "seat_count")
-    sale_info1 = renamed("sale_info1", "original_wct_no")
-    sale_info2 = renamed("sale_info2", "original_refund_sale_date")
-    sale_info3 = renamed("sale_info3", "original_sale_seq_no")
-    sale_info4 = renamed("sale_info4", "original_refund_pwd")
 
     @classmethod
     def from_response(cls, data: dict[str, Any], *, seat_no: str | None = None) -> Self:
