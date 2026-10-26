@@ -12,7 +12,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
 
 from pykorail._shared.clock import to_kst
-from pykorail.models.parsing import text
+from pykorail.models.parsing import kst_date, text
 from pykorail.options import NetFunnelAction
 
 if TYPE_CHECKING:
@@ -69,6 +69,11 @@ class RunDate:
         )
 
     @property
+    def day(self) -> date | None:
+        """운행일을 날짜로. 형식이 틀리면 ``None``."""
+        return kst_date(self.run_date)
+
+    @property
     def is_peak_season(self) -> bool:
         """성수기 운행일인지. ``biz_dd_stg_cd`` 가 ``"5"`` 일 때 참입니다 (#117)."""
         return self.biz_dd_stg_cd == _PEAK_SEASON
@@ -85,8 +90,8 @@ def netfunnel_action_for(run_dates: Sequence[RunDate], departure: date | datetim
 
         aid = netfunnel_action_for(korail.trains.run_dates(), departure)
     """
-    wanted = _kst_date(departure).strftime("%Y%m%d")
-    matched = next((day for day in run_dates if day.run_date == wanted), None)
+    wanted = _kst_date(departure)
+    matched = next((day for day in run_dates if day.day == wanted), None)
     if matched is not None and matched.is_peak_season:
         return NetFunnelAction.TRAIN_SEARCH_PEAK
     return NetFunnelAction.TRAIN_SEARCH

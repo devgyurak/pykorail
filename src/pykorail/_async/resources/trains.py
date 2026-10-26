@@ -130,7 +130,7 @@ class AsyncTrainResource(AsyncResource):
             if not fresh:
                 break
             found.update(fresh)
-            following = self._departure(page[-1])
+            following = page[-1].departure
             # 시각을 못 읽거나 앞으로 나아가지 못하면 같은 쪽을 다시 받게 되므로 멈춥니다.
             if following is None or following <= cursor:
                 break
@@ -211,14 +211,6 @@ class AsyncTrainResource(AsyncResource):
     def _identity(train: Train) -> tuple[str, ...]:
         """쪽 사이에서 같은 열차를 알아보는 키. 인근역 조회는 한 열차가 역 쌍만 달리해 여러 번 나옵니다."""
         return (train.train_no, train.dep_date, train.dep_time, train.dep_code, train.arr_code)
-
-    @staticmethod
-    def _departure(train: Train) -> datetime | None:
-        """열차의 출발 일시(KST). 서버가 날짜·시각을 빼먹었으면 ``None``."""
-        try:
-            return datetime.strptime(train.dep_date + train.dep_time, "%Y%m%d%H%M%S").replace(tzinfo=KST)
-        except ValueError:
-            return None
 
     async def transfer_stations(self, dep: str, arr: str) -> list[TransferStation]:
         """두 역 사이에서 갈아탈 수 있는 역들을 조회합니다. 로그인하지 않아도 됩니다.

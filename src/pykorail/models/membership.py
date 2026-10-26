@@ -9,9 +9,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from typing import TYPE_CHECKING, Any
 
-from pykorail.models.parsing import amount, integer, records, text
+from pykorail.models.parsing import amount, integer, kst_date, records, text
 
 if TYPE_CHECKING:
     from typing import Self
@@ -34,6 +35,11 @@ class MileageEntry:
     #: 증감 (``pontAmt``). 적립은 양수, 사용은 음수입니다 — 서버가 부호와 쉼표를 붙여
     #: ``"+2,990"`` · ``"-1,000"`` 으로 줍니다.
     amount: int
+
+    @property
+    def day(self) -> date | None:
+        """날짜를 ``date`` 로. 형식이 틀리면 ``None``."""
+        return kst_date(self.date)
 
     @classmethod
     def from_response(cls, data: dict[str, Any]) -> Self:
@@ -124,6 +130,16 @@ class Coupon:
             valid_until=text(data, "h_fdcert_mg_cls_dt"),
             guide=text(data, "guide"),
         )
+
+    @property
+    def starts_on(self) -> date | None:
+        """쓸 수 있는 첫날. 형식이 틀리면 ``None``."""
+        return kst_date(self.valid_from)
+
+    @property
+    def ends_on(self) -> date | None:
+        """쓸 수 있는 마지막 날(승차일 기준). 형식이 틀리면 ``None``."""
+        return kst_date(self.valid_until)
 
     def __repr__(self) -> str:
         """쿠폰번호는 뒤 4자리만 남깁니다 — 로그·트레이스백에 전체가 찍히면 안 됩니다."""
