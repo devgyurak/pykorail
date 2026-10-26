@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from pykorail.models.parsing import hhmm, integer, kst_datetime, text
+from pykorail.models.parsing import hhmm, integer, kst_date, kst_datetime, text
 from pykorail.models.schedule import Train
 
 if TYPE_CHECKING:
@@ -24,6 +24,9 @@ _WAITING_BUY_LIMIT_TIME = "235959"
 _SINGLE_JOURNEY_NO = "001"
 _SINGLE_JOURNEY_CNT = "01"
 _SINGLE_JOURNEY_CHG_NO = "00000"
+
+#: 시각만 비교할 때 쓰는 임의의 날짜. 날짜는 버리고 시각의 앞뒤만 봅니다.
+_ANY_DAY = "20000101"
 
 
 @dataclass(frozen=True)
@@ -68,10 +71,16 @@ class Reservation:
         journey_no: str | None = None,
         journey_cnt: str | None = None,
         rsv_chg_no: str | None = None,
+        dep_date: str | None = None,
+        arr_date: str | None = None,
     ) -> Self:
-        # 예약 응답에는 출발·도착일이 따로 오지 않고 운행일 하나만 옵니다.
+        # 예약 목록 응답에는 운행일 하나만 있습니다(코레일+ 7.0.8 ``ReservationViewOutTrainInfo``).
+        # 출발·도착 날짜는 여정 상세(``ReservationOutJrnyInfo``)가 주므로 넘어오면 그 값을 씁니다.
+        # 없으면 운행일을 출발일로 두고, 도착 시각이 출발보다 이르면 다음 날로 봅니다.
         train = Train.from_response(data)
-        train = replace(train, dep_date=train.run_date, arr_date=train.run_date)
+        departure_day = dep_date or train.run_date
+        arrival_day = arr_date or (_next_day(departure_day) if _crosses_midnight(train) else departure_day)
+        train = replace(train, dep_date=departure_day, arr_date=arrival_day)
 
         return cls(
             train=train,
@@ -108,3 +117,16 @@ class Reservation:
         if len(limit_date) >= 8 and limit_date.isdigit():
             limit_date = f"{int(limit_date[4:6])}월 {int(limit_date[6:8])}일"
         return f"{repr_str}, 구입기한 {limit_date} {hhmm(self.buy_limit_time)}"
+
+
+def _crosses_midnight(train: Train) -> bool:
+    """도착 시각이 출발 시각보다 이르면 자정을 넘긴 것입니다. 시각을 못 읽으면 넘기지 않은 것으로 봅니다."""
+    departure = kst_datetime(_ANY_DAY, train.dep_time)
+    arrival = kst_datetime(_ANY_DAY, train.arr_time)
+    return departure is not None and arrival is not None and arrival < departure
+
+
+def _next_day(day: str) -> str:
+    """``YYYYMMDD`` 의 다음 날. 형식이 틀리면 그대로 돌려줍니다."""
+    moment = kst_date(day)
+    return day if moment is None else f"{moment + timedelta(days=1):%Y%m%d}"
