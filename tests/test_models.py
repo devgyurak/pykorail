@@ -244,9 +244,9 @@ class TestReservation:
         rsv = Reservation.from_response(RESERVATION_INFO)
 
         # then
-        assert rsv.rsv_id == "1234567890"
+        assert rsv.pnr_no == "1234567890"
         assert rsv.price == 119600
-        assert rsv.seat_no_count == 2
+        assert rsv.seat_count == 2
         assert not rsv.is_waiting
 
     def test_composes_a_train_rather_than_inheriting(self) -> None:
@@ -320,7 +320,7 @@ class TestTicket:
         assert ticket is not None
         assert ticket.seat_no == "5A"
         assert ticket.price == 119600
-        assert ticket.seat_no_count == 2
+        assert ticket.seat_count == 2
 
     @pytest.mark.parametrize(
         ("entry", "reason"),
