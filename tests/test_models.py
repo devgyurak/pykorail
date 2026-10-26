@@ -54,9 +54,9 @@ class TestImmutability:
         ("model", "field"),
         [
             (Train.from_response(TRAIN_INFO), "train_no"),
-            (Seat.from_response(SEAT_INFO), "seat"),
+            (Seat.from_response(SEAT_INFO), "seat_no"),
             (Ticket.from_response(TICKET_RAW), "seat_no"),
-            (Reservation.from_response(RESERVATION_INFO), "rsv_id"),
+            (Reservation.from_response(RESERVATION_INFO), "pnr_no"),
             (RunDate.from_response(RUN_DATE_ITEM), "run_date"),
             (Transfer.from_response([FIRST_LEG_INFO, SECOND_LEG_INFO]), "legs"),
         ],

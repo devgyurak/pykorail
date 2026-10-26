@@ -78,7 +78,7 @@ class Station:
     @property
     def major_rank(self) -> int | None:
         """주요역 정렬 순번을 정수로. 주요역이 아니면 ``None``."""
-        return int(self.major) if self.major.isdigit() else None
+        return int(self.major) if self.major.isdecimal() else None
 
     def __repr__(self) -> str:
         return f"{self.name}({self.code})"
