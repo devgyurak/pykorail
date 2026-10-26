@@ -213,3 +213,35 @@ class TestCalendarDays:
 
         # when & then
         assert (coupon.starts_on, coupon.ends_on) == (date(2026, 10, 1), None)
+
+
+class TestReservationDays:
+    RUN_DAY_TRAIN = {**RESERVATION_INFO, "h_run_dt": "20260401", "h_dpt_tm": "233000", "h_arv_tm": "004000"}
+
+    def test_journey_dates_win_over_the_run_date(self) -> None:
+        # when
+        reservation = Reservation.from_response(self.RUN_DAY_TRAIN, dep_date="20260401", arr_date="20260402")
+
+        # then
+        assert (reservation.train.arrival, reservation.train.duration_minutes) == (
+            datetime(2026, 4, 2, 0, 40, tzinfo=KST),
+            70,
+        )
+
+    def test_without_journey_dates_arrival_before_departure_is_next_day(self) -> None:
+        """목록 응답만 있을 때: 도착 시각이 출발보다 이르면 다음 날로 봅니다."""
+        # when
+        reservation = Reservation.from_response(self.RUN_DAY_TRAIN)
+
+        # then
+        assert (reservation.train.dep_date, reservation.train.arr_date) == ("20260401", "20260402")
+
+    def test_without_journey_dates_same_day_arrival_stays_on_the_run_date(self) -> None:
+        # given
+        train = {**RESERVATION_INFO, "h_run_dt": "20260401", "h_dpt_tm": "090000", "h_arv_tm": "123000"}
+
+        # when
+        reservation = Reservation.from_response(train)
+
+        # then
+        assert (reservation.train.dep_date, reservation.train.arr_date) == ("20260401", "20260401")
