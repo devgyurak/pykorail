@@ -187,8 +187,10 @@ exceptions/ · constants.py · options.py · device/   ← 누구나 의존 가�
   하는 AES-CBC — 전부 서버가 그 모양을 기대합니다.
   로그인 비밀번호는 안쪽 NO_WRAP(2), 바깥쪽 URL_SAFE(8)의 76자 LF 래핑을 지킵니다.
 
-현재 7.0.8 기준의 APK·캡처 근거, 변경별 검증 범위와 한계는
-`docs/protocol-evidence-7.0.8.json`에 있습니다. 비밀번호 골든 벡터는 AOSP Java
+7.0.8 기준의 APK·캡처 근거, 변경별 검증 범위와 한계는
+`docs/protocol-evidence-7.0.8.json`에 있고, 그 뒤 버전에서 바뀐 것만
+`docs/protocol-evidence-7.0.10.json`(DynaPath v2)·`docs/protocol-evidence-7.1.0.json`
+(앱 신원값·예약 대기열 `act_14_2`)에 있습니다. 비밀번호 골든 벡터는 AOSP Java
 인코더로 생성했고, 로그인 폼 전체는 `tests/payloads.py::LOGIN_FORM_GOLDEN`과 비교합니다.
 
 리팩터링으로 이 영역을 건드렸다면, **요청 페이로드가 그대로인지 증명**하세요.

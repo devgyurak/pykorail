@@ -31,6 +31,7 @@ from pykorail.models import (
 )
 from pykorail.models.parsing import amount, optional_text, records
 from pykorail.models.schedule import WAITING_NOT_APPLICABLE, format_duration
+from pykorail.options import NetFunnelAction, NetFunnelActionCode
 from tests.payloads import (
     CAR_INFO,
     CAR_SEAT_INFO,
@@ -882,32 +883,71 @@ class TestAmount:
 
 
 class TestNetfunnelActionFor:
-    """출발일의 NetFunnel ``aid`` 선택 — 성수기 판정은 #117."""
+    """기준일의 NetFunnel ``aid`` 선택 — 성수기 판정은 #117, 예약 대기열은 7.1.0."""
 
     @pytest.mark.parametrize(
-        ("biz_dd_stg_cd", "expected"),
-        [("5", "act_8_2"), ("1", "act_8"), ("2", "act_8"), ("3", "act_8"), ("4", "act_8"), ("", "act_8")],
-        ids=["peak", "stage-1", "stage-2", "stage-3", "stage-4", "blank"],
+        ("action", "biz_dd_stg_cd", "expected"),
+        [
+            (NetFunnelAction.TRAIN_SEARCH, "5", "act_8_2"),
+            (NetFunnelAction.TRAIN_SEARCH, "1", "act_8"),
+            (NetFunnelAction.TRAIN_SEARCH, "2", "act_8"),
+            (NetFunnelAction.TRAIN_SEARCH, "3", "act_8"),
+            (NetFunnelAction.TRAIN_SEARCH, "4", "act_8"),
+            (NetFunnelAction.TRAIN_SEARCH, "", "act_8"),
+            (NetFunnelAction.RESERVE, "5", "act_14_2"),
+            (NetFunnelAction.RESERVE, "1", "act_14"),
+            (NetFunnelAction.RESERVE, "", "act_14"),
+            (NetFunnelAction.PAY, "5", "act_18"),
+        ],
+        ids=[
+            "search-peak",
+            "search-stage-1",
+            "search-stage-2",
+            "search-stage-3",
+            "search-stage-4",
+            "search-blank",
+            "reserve-peak",
+            "reserve-stage-1",
+            "reserve-blank",
+            "pay-has-no-peak-queue",
+        ],
     )
-    def test_peak_code_picks_the_peak_queue(self, biz_dd_stg_cd: str, expected: str) -> None:
+    def test_peak_code_picks_the_peak_queue(
+        self, action: NetFunnelActionCode, biz_dd_stg_cd: str, expected: str
+    ) -> None:
         # given
         day = RunDate.from_response({**RUN_DATE_ITEM, "bizDdStgCd": biz_dd_stg_cd})
 
         # when
-        aid = netfunnel_action_for([day], date(2026, 10, 16))
+        aid = netfunnel_action_for([day], date(2026, 10, 16), action=action)
 
         # then
         assert aid == expected
 
-    def test_missing_date_falls_back_to_the_default_queue(self) -> None:
+    def test_search_is_the_default_action(self) -> None:
+        # given
+        calendar = [RunDate.from_response(PEAK_RUN_DATE_ITEM)]  # 2026-10-17 성수기
+
+        # when
+        aid = netfunnel_action_for(calendar, date(2026, 10, 17))
+
+        # then
+        assert aid == "act_8_2"
+
+    @pytest.mark.parametrize(
+        ("action", "expected"),
+        [(NetFunnelAction.TRAIN_SEARCH, "act_8"), (NetFunnelAction.RESERVE, "act_14")],
+        ids=["search", "reserve"],
+    )
+    def test_missing_date_falls_back_to_the_default_queue(self, action: NetFunnelActionCode, expected: str) -> None:
         # given
         calendar = [RunDate.from_response(PEAK_RUN_DATE_ITEM)]  # 2026-10-17
 
         # when
-        aid = netfunnel_action_for(calendar, date(2026, 10, 16))
+        aid = netfunnel_action_for(calendar, date(2026, 10, 16), action=action)
 
         # then
-        assert aid == "act_8"
+        assert aid == expected
 
     def test_empty_calendar_falls_back_to_the_default_queue(self) -> None:
         # when
@@ -927,3 +967,25 @@ class TestNetfunnelActionFor:
 
         # then
         assert aid == "act_8_2"
+
+    def test_reserve_is_judged_by_the_run_date_string(self) -> None:
+        """자정을 넘겨 출발하는 열차 — 운행일(성수기)과 출발일(평시)이 다르면 운행일을 봅니다."""
+        # given
+        calendar = [
+            RunDate.from_response(PEAK_RUN_DATE_ITEM),  # 2026-10-17 성수기
+            RunDate.from_response({**RUN_DATE_ITEM, "runDt": "20261018", "bizDdStgCd": "1"}),
+        ]
+        run_date = "20261017"  # Train.run_date — 출발(Train.dep_date)은 다음 날 00:20
+
+        # when
+        aid = netfunnel_action_for(calendar, run_date, action=NetFunnelAction.RESERVE)
+
+        # then
+        assert aid == "act_14_2"
+
+    @pytest.mark.parametrize("value", ["", "2026-10-17", "20261340"], ids=["blank", "dashed", "no-such-day"])
+    def test_malformed_date_string_is_rejected(self, value: str) -> None:
+        """형식이 틀린 날짜를 '달력에 없음' 으로 넘기면 조용히 평시 대기열로 갑니다."""
+        # when & then
+        with pytest.raises(ValueError, match="YYYYMMDD"):
+            netfunnel_action_for([], value, action=NetFunnelAction.RESERVE)

@@ -17,8 +17,8 @@ model: sonnet
 `src/pykorail/constants.py` 에서 확인:
 ```
 USER_AGENT   = "korailtalk"
-APP_VERSION  = "250722001"
-APP_DISPLAY_VERSION = "7.0.10"
+APP_VERSION  = "261028001"
+APP_DISPLAY_VERSION = "7.1.0"
 API_KEY      = "korail1234567890"
 SID_KEY      = b"2485dd54d9deaa36"
 IMPERSONATE  = "chrome131_android"

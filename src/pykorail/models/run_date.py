@@ -79,25 +79,61 @@ class RunDate:
         return self.biz_dd_stg_cd == _PEAK_SEASON
 
 
-def netfunnel_action_for(run_dates: Sequence[RunDate], departure: date | datetime) -> NetFunnelActionCode:
-    """출발일의 NetFunnel 대기열 ``aid`` 를 운행 달력에서 고릅니다.
+#: 성수기에 따로 서는 대기열. 키는 평시 aid, 값은 그 성수기 aid 입니다. 열차 조회는
+#: 7.0.8 부터, 예약은 7.1.0 부터 갈립니다(``docs/protocol-evidence-7.1.0.json``).
+#: 할인상품 조회 · 결제 · 내 예약 조회는 앱이 성수기와 무관하게 같은 aid 를 씁니다.
+_PEAK_QUEUES: dict[NetFunnelActionCode, NetFunnelActionCode] = {
+    NetFunnelAction.TRAIN_SEARCH: NetFunnelAction.TRAIN_SEARCH_PEAK,
+    NetFunnelAction.RESERVE: NetFunnelAction.RESERVE_PEAK,
+}
 
-    출발일이 성수기면 ``TRAIN_SEARCH_PEAK``(``act_8_2``), 그 밖이거나 달력에 그날이
-    없으면 ``TRAIN_SEARCH``(``act_8``) 입니다. ``datetime`` 은 KST 로 바꿔 날짜만 보므로
-    tz 가 붙어 있어도 한국 시간 기준 날짜로 판정합니다.
 
-    :meth:`Korail.trains.run_dates` 의 결과를 그대로 넘기세요::
+def netfunnel_action_for(
+    run_dates: Sequence[RunDate],
+    departure: date | datetime | str,
+    *,
+    action: NetFunnelActionCode = NetFunnelAction.TRAIN_SEARCH,
+) -> NetFunnelActionCode:
+    """기준일이 성수기인지 운행 달력에서 보고 ``action`` 의 NetFunnel ``aid`` 를 고릅니다.
 
-        aid = netfunnel_action_for(korail.trains.run_dates(), departure)
+    성수기면 ``action`` 의 성수기 대기열, 그 밖이거나 달력에 그날이 없으면 ``action``
+    그대로입니다. 성수기 대기열이 따로 있는 동작은 둘입니다.
+
+    - 열차 조회(``TRAIN_SEARCH``, 기본) → ``TRAIN_SEARCH_PEAK``(``act_8_2``). 기준일은
+      **조회 조건의 출발일**입니다 — 앱 ``TrainScheduleViewModel.netFunnelTrainSchedule``.
+    - 예약(``RESERVE``) → ``RESERVE_PEAK``(``act_14_2``, 7.1.0 부터). 기준일은 **첫
+      여정 열차의 운행일**(``Train.run_date``)입니다 — 앱
+      ``NetFunnelHelper.reserveNetFunnelActionId`` 가 ``txtRunDt`` 로 판정하고, 그것이
+      비었을 때만 ``txtDptDt`` 를 씁니다. 자정을 넘겨 출발하는 열차는 운행일과 출발일이
+      다르므로 출발일을 넘기면 틀린 대기열을 고를 수 있습니다.
+
+    그 밖의 동작은 성수기 대기열이 없어 ``action`` 을 그대로 돌려줍니다.
+
+    ``departure`` 는 ``date`` · ``datetime`` · ``"YYYYMMDD"`` 문자열을 받습니다. 문자열은
+    응답 모델의 날짜 필드(``Train.run_date`` 등)를 그대로 넘기라고 받으며, 비었거나 형식이
+    틀리면 ``ValueError`` 입니다. **앱과 다른 점입니다** — 앱은 운행일·출발일이 모두 비면
+    달력에서 그날을 못 찾은 것으로 보고 평시 대기열(``act_14``)로 갑니다. 여기서는 잘못된
+    입력이 조용히 평시 줄에 서지 않도록 일부러 막습니다. ``datetime`` 은 KST 로 바꿔 날짜만
+    봅니다::
+
+        calendar = korail.trains.run_dates()
+        aid = netfunnel_action_for(calendar, departure)
+        reserve_aid = netfunnel_action_for(calendar, train.run_date or train.dep_date, action=NetFunnelAction.RESERVE)
     """
     wanted = _kst_date(departure)
     matched = next((day for day in run_dates if day.day == wanted), None)
     if matched is not None and matched.is_peak_season:
-        return NetFunnelAction.TRAIN_SEARCH_PEAK
-    return NetFunnelAction.TRAIN_SEARCH
+        return _PEAK_QUEUES.get(action, action)
+    return action
 
 
-def _kst_date(departure: date | datetime) -> date:
-    """``datetime`` 은 KST 로 변환한 날짜, ``date`` 는 그대로."""
+def _kst_date(departure: date | datetime | str) -> date:
+    """``datetime`` 은 KST 로 변환한 날짜, ``"YYYYMMDD"`` 는 그 날짜, ``date`` 는 그대로."""
+    if isinstance(departure, str):
+        day = kst_date(departure)
+        if day is None:
+            # 형식이 틀린 날짜를 "달력에 없음" 으로 넘기면 조용히 평시 대기열로 갑니다.
+            raise ValueError(f"기준일은 YYYYMMDD 형식이어야 합니다: {departure!r}")
+        return day
     # ``datetime`` 이 ``date`` 의 하위 타입이라 순서를 지켜야 합니다.
     return to_kst(departure).date() if isinstance(departure, datetime) else departure
