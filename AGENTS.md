@@ -135,8 +135,9 @@ exceptions/ · constants.py · options.py · device/   ← 누구나 의존 가�
   SHA256-CTR 키스트림 XOR + SHA256 태그 앞 3바이트를 워드별 커스텀 base62 로 인코딩한
   `201…` 문자열입니다(단일 대정수가 아니라 4바이트 워드별). 하드웨어 키·기기 난수 비밀이
   없어 (op_id+기기 사실+nonce+ts)의 **결정·순수 함수**이고, 2026-10-28 알고리즘 전체를
-  역분석해 **순수 파이썬으로 바이트 동일 재현**했고(에뮬레이터 대비 5/5), 2026-10-28
-  실서버 로그인(본인 계정, 읽기 전용)에서 이 토큰이 **수용**됨을 확인했습니다(근거·봉투·한계는
+  역분석해 **순수 파이썬으로 바이트 동일 재현**했고(기록된 에뮬레이터 출력 대비), 2026-10-28
+  승인된 실서버 흐름에서 이 엔진의 토큰이 **수용**됐습니다 — 다만 키스트림 수정 전 토큰이었으므로
+  프리픽스-only 검사의 증거일 뿐 본문 검증 통과의 증거는 아닙니다(근거·봉투·한계는
   `docs/protocol-evidence-7.0.10.json` 의 `v2-codec-byte-exact`). 그래서 **기본 엔진이
   `auth/dynapath.py::DeclarationDynaPathEngine`** 입니다 — 순수 파이썬 코덱 재구현이라 `.so`
   가 실행 시 필요 없습니다. 프로파일이 있으면 model·release·sdk 를 끌어오고(`from_profile`),
@@ -150,14 +151,17 @@ exceptions/ · constants.py · options.py · device/   ← 누구나 의존 가�
   아니라 SDK 상태로 정해집니다(로그인·조회가 **같은 op**, 엔드포인트별 아님). 토큰 생성 알고리즘
   전체 — 프레임(LE32(nonce)‖MAC3‖eor)·SECRET·MAC(SHA256(SECRET‖LE32(nonce)‖eor)[:3])·base62·
   **키스트림 SHA256(SECRET‖LE32(nonce)‖BE32(block))** — 은 기록된 .so 에뮬 출력(r0 nonce=0 /
-  r1 nonce=5)과 실기기 캡처로 검증됐다(`test_codec_matches_native_recorded`,
-  `test_decrypts_real_captured_token_to_expected_envelope`). (이력: 카운터를 BE_u64(nonce+i)로 뒀던
+  r1 nonce=5)과 바이트 동일로 검증됐다(`test_codec_matches_native_recorded`). 앱이 보낸 캡처
+  토큰 2개도 이 코덱으로 로컬 복호해 봉투가 나옴을 교차 확인했지만, 원본 캡처는 기기 ID 를 담아
+  저장소에 두지 않으므로 테스트로 고정돼 있지는 않다. (이력: 카운터를 BE_u64(nonce+i)로 뒀던
   건 에뮬 골든이 nonce=0 이라 BE/LE 구분 불가였기 때문이고, nonce=5 인 r1·실측으로
   LE32(nonce)‖BE32(block) 확정·수정함.) 기본 엔진의 남는 변수는 **입력 수준**(알고리즘 아님):
   (a) `es`(op)·봉투 필드 집합이 operation/상태/앱버전마다 다름 — **캡처된 실기기 토큰 2개(로그인
   324·데이터 222)는 둘 다 선언 토큰**이고 `es=893617653734745139`(로그인은 `…&kl` 까지, 데이터는
   `…&iid` 까지; 짧은 쪽도 Flow-2 가 아니라 필드 적은 선언, `sb=0` 미enroll 에뮬). 이 엔진 기본은
-  `es=288904575606514493`·`ec` 포함(실서버 전체 예매 흐름 수용 확인)이라 캡처와 다름 — 맞추는 건
+  `es=288904575606514493`·`ec` 포함이라 캡처와 다름(2026-10-28 승인된 실서버 흐름 — 로그인→조회→
+  예약→즉시 취소→로그아웃 — 은 통과했으나 키스트림 수정 **전** 토큰이었으므로 서버가 프리픽스만
+  본다는 증거일 뿐 본문 검증 통과의 증거는 아님) — 맞추는 건
   wire 변경 결정. (b) `kl`=990094375841594426 은 캡처로 실측 확인된 상수, `ec` 는 op 에 따라 유무.
   (c) `board` 는 프로파일에 없어 placeholder(삼성 SoC 코드명)라 model↔board 가 어긋날 수 있다 —
   서버가 대조하면 커스텀 엔진으로 실기기 board 를 주입하라. enroll 된 실기기가 per-request 하드웨어
@@ -171,7 +175,8 @@ exceptions/ · constants.py · options.py · device/   ← 누구나 의존 가�
   "안 쓰는 것 같으니 지운다" 는 회귀입니다.
 - **기본 엔진의 DynaPath 토큰에는 기기 신원이 실립니다** — 봉투의 `dm/mf/bd/iid/os` 로
   model·manufacturer·board·android_id·release 가 나갑니다. `android_id` 는 서명기의
-  `device_id`(프로파일의 `android_id` 또는 생성값, 16진수)가 `iid` 로 디코드돼 실립니다 —
+  `device_id`(프로파일의 `android_id` 또는 생성값, 16자리 16진수 문자열)의 ASCII 바이트가
+  그대로 `iid` 로 실립니다(16진수 디코드 아님) —
   `Korail.android_id` 의 저장·복원 계약이 그래서 wire 값과 직결됩니다. 프로파일이 바꾸는
   것은 이제 토큰의 model·release·sdk 와 NetFunnel 대기열의 Dalvik User-Agent 둘 다입니다.
   `manufacturer`·`board` 는 프로파일에 없어 기본값(삼성 자급제 카탈로그 기준 `samsung` +

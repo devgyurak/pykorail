@@ -312,7 +312,7 @@ def test_from_profile_pulls_model_release_and_sdk() -> None:
 
 @pytest.mark.parametrize(
     ("android", "expected"),
-    [("13", 33), ("16", 36), ("17", 37), ("12", 35), ("foo", 35)],
+    [("13", 33), ("16", 36), ("17", 37), ("12", 31), ("10", 29), ("9", 35), ("foo", 35)],
 )
 def test_sdk_for_maps_known_extrapolates_13plus_and_falls_back(android: str, expected: int) -> None:
     """알려진 버전은 표로, 13+ 미지 버전은 +20 외삽, 그 밖은 현행 기본값(35)."""

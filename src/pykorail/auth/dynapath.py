@@ -1,18 +1,21 @@
 """DynaPath 요청 서명 (``x-dynapath-m-token``) — 코레일톡+ 7.0.10 (SDK 2.0.1).
 
 7.0.10 의 토큰은 네이티브 ``libdp_ffi_android.so`` 가 만듭니다. 2026-10-28 알고리즘을 **완전히
-역분석**했고, 실기기(에뮬레이터) 앱이 보낸 **캡처 토큰 2개를 복호→재인코딩해 바이트 동일**함을
-확인했습니다(근거: ``docs/protocol-evidence-7.0.10.json`` ``v2-codec-byte-exact``). 구조:
+역분석**했고, 기록된 ``.so`` 에뮬레이터 출력(nonce 0·5)과 **바이트 동일**함을 확인했습니다. 앱이 보낸
+캡처 토큰 2개도 이 코덱으로 복호하면 선언 봉투가 나옵니다(근거: ``docs/protocol-evidence-7.0.10.json``
+``v2-codec-byte-exact``). 구조:
 ``201`` + (``LE32(nonce)`` ‖ ``MAC3`` ‖ ``eor``)를 4바이트 워드별 커스텀 base62 로 인코딩한 것이고,
 ``MAC3 = SHA256(SECRET ‖ LE32(nonce) ‖ eor)[:3]``, ``eor = 평문봉투 XOR 키스트림``,
 **키스트림 = SHA256(SECRET ‖ LE32(nonce) ‖ BE32(block_index))** (블록 카운터는 빅엔디언 u32 —
 네이티브 ``sub_35f84`` 의 ``rev`` + 4바이트 append). 기본 엔진 :class:`DeclarationDynaPathEngine`
-가 이 형식으로 ``201…`` 토큰을 만들며 ``.so`` 는 실행 시 필요 없습니다. 2026-10-28 실서버 전체
-흐름(로그인→조회→예약→취소→로그아웃)에서 수용됨을 확인했습니다.
+가 이 형식으로 ``201…`` 토큰을 만들며 ``.so`` 는 실행 시 필요 없습니다. 2026-10-28 사용자가 승인한
+실서버 흐름(로그인→조회→예약→즉시 취소→로그아웃)이 통과했지만, 그때 토큰은 아래 키스트림 수정
+**전**의 것이었습니다 — 서버가 지금은 ``201`` 프리픽스만 본다는 증거이지, 본문 검증을 통과한다는
+증거는 아닙니다.
 
-(이력: 예전엔 키스트림 카운터를 ``BE_u64(nonce+i)`` 로 뒀는데, 모든 에뮬레이터 캡처가 nonce=0 이라
-BE/LE 를 구분할 수 없어 틀렸습니다. nonce≠0 인 실측 캡처로 ``LE32(nonce)‖BE32(block)`` 임을
-확정해 바로잡았고, 그 결과 실기기 토큰과 평문까지 일치합니다.)
+(이력: 예전엔 키스트림 카운터를 ``BE_u64(nonce+i)`` 로 뒀습니다. nonce=0 이면 두 형식이 같은 바이트를
+내서 nonce=0 골든으로는 구분되지 않았고, nonce=5 인 에뮬레이터 기록과 앱 캡처 복호로
+``LE32(nonce)‖BE32(block)`` 임을 확정해 바로잡았습니다.)
 
 남는 입력-수준 변수(알고리즘이 아니라 operation/상태에 달림): ``es``(op)와 봉투 필드 집합이
 요청 종류마다 다릅니다. 캡처된 실기기 토큰 둘(로그인 324자·데이터 222자)은 **모두 선언 토큰**이고
@@ -71,7 +74,8 @@ _DEFAULT_MANUFACTURER: Final = b"samsung"
 _DEFAULT_SDK_INT: Final = 35
 _DEFAULT_STRONGBOX: Final = 1
 #: 안드로이드 메이저 버전 → ``Build.VERSION.SDK_INT``.
-_SDK_BY_ANDROID: Final[dict[str, int]] = {"13": 33, "14": 34, "15": 35, "16": 36}
+#: 12 는 폰 기준 31 입니다(12L 기기도 RELEASE 가 "12" 라 32 일 수 있지만, 기본값 35 보다는 훨씬 가깝습니다).
+_SDK_BY_ANDROID: Final[dict[str, int]] = {"10": 29, "11": 30, "12": 31, "13": 33, "14": 34, "15": 35, "16": 36}
 
 
 class DynaPathEngine(Protocol):
@@ -122,8 +126,8 @@ def _v2_b62_word(value: int, width: int) -> str:
 def _sdk_for(android: str) -> int:
     """안드로이드 메이저 버전 문자열 → SDK_INT.
 
-    카탈로그 밖 버전은 안드로이드 13+ 의 규칙(API = 버전 + 20)으로 외삽하고, 숫자가
-    아니거나 13 미만이면(매핑이 모호함) 현행 기본값을 씁니다.
+    표에 없는 버전은 안드로이드 13+ 의 규칙(API = 버전 + 20)으로 외삽하고, 숫자가
+    아니거나 표에 없는 13 미만 버전이면(규칙이 성립하지 않음) 현행 기본값을 씁니다.
     """
     if android in _SDK_BY_ANDROID:
         return _SDK_BY_ANDROID[android]

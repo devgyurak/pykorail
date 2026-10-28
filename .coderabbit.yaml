@@ -62,16 +62,19 @@ reviews:
 
     - path: "src/pykorail/auth/**"
       instructions: >-
-        DynaPath 서명 코드입니다. 7.0.10 토큰은 네이티브 서명이 아니라 `201` 프리픽스 +
-        임의 영숫자라, 서버가 프리픽스만 검사하는 동안만 유효합니다 — 근거는
-        `docs/protocol-evidence-7.0.10.json`. `TOKEN_PREFIX`·`DYNAPATH_LOGIN_OP`나 본문
-        길이(로그인 324/그 외 222)·문자셋을 바꿨다면 최우선 지적입니다.
+        DynaPath 서명 코드입니다. 기본 엔진 `DeclarationDynaPathEngine` 은 7.0.10 네이티브
+        선언 토큰 코덱을 순수 파이썬으로 재현합니다 — `201` + base62(LE32(nonce)‖MAC3‖eor),
+        키스트림 SHA256(SECRET‖LE32(nonce)‖BE32(block)). 근거는
+        `docs/protocol-evidence-7.0.10.json` 의 `v2-codec-byte-exact`. 키스트림·MAC 입력·프레임
+        순서·base62 알파벳·`TOKEN_PREFIX`·`DYNAPATH_LOGIN_OP`·`SECRET`·`kl` 을 바꿨다면 최우선
+        지적입니다. 토큰 길이는 기기 사실 길이에 따라 달라지므로 고정 길이를 기대하지 마세요.
 
-        토큰에는 기기 신원이 실리지 않습니다. 프로파일이 바꾸는 wire 값은 NetFunnel
-        Dalvik UA 뿐입니다.
+        토큰 봉투에는 기기 신원(`dm`·`mf`·`bd`·`iid`·`os`)이 실립니다 — `iid` 는 android_id
+        문자열의 ASCII 바이트입니다. 프로파일이 바꾸는 wire 값은 봉투의 model·release·sdk 와
+        NetFunnel Dalvik UA 입니다.
 
-        `tests/test_dynapath.py` 의 속성 검증(프리픽스·길이·문자셋·요청별 변화)이 함께
-        통과하는지 확인하세요.
+        `tests/test_dynapath.py` 의 `test_codec_matches_native_recorded`(기록된 네이티브 출력과
+        바이트 동일)가 함께 통과하는지 확인하세요. 기대값을 자동 갱신한 흔적이 있으면 지적하세요.
 
     - path: "src/pykorail/_async/**"
       instructions: >-

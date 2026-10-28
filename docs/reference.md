@@ -18,6 +18,7 @@ Korail(
     validate_stations: bool = True,
     *,
     android_id: str | None = None,
+    dynapath_engine: DynaPathEngine | None = None,
 )
 ```
 
@@ -27,10 +28,11 @@ Korail(
 | `device_profile` | DynaPath의 ID·모델·OS를 지정합니다. UA는 `korailtalk`으로 고정됩니다. [기기 프로파일](#기기-프로파일) 참조. |
 | `android_id` | 저장한 ID를 복원합니다. 프로파일에도 ID가 있으면 같은 값이어야 하며, 형식 오류·충돌 시 세션 생성 전에 `ValueError`가 납니다. |
 | `validate_stations` | `trains.search` 전에 역 이름을 검증합니다. 끄면 역 마스터 조회 1회를 아낍니다. |
+| `dynapath_engine` | DynaPath 토큰을 만드는 엔진입니다. 기본은 `DeclarationDynaPathEngine`(프로파일이 있으면 `from_profile`). 실기기 `board`·attestation 값이 필요하면 `DynaPathEngine` 계약을 만족하는 엔진을 넘기세요. [기기 프로파일](#기기-프로파일) 참조. |
 
 | 메서드 · 속성 | 반환 | 설명 |
 | --- | --- | --- |
-| `Korail.logged_in(id, pw, *, verbose=False, device_profile=None, validate_stations=True, android_id=None)` | `Korail` | 생성 + 로그인. ID 검증 오류는 `ValueError`, 로그인 실패는 `LoginFailedError`입니다. |
+| `Korail.logged_in(id, pw, *, verbose=False, device_profile=None, validate_stations=True, android_id=None, dynapath_engine=None)` | `Korail` | 생성 + 로그인. ID 검증 오류는 `ValueError`, 로그인 실패는 `LoginFailedError`입니다. |
 | `android_id` | `str` | 실제 서명에 사용하는 ID. 프로파일이 없어도 저장할 수 있는 읽기 전용 속성입니다. |
 | `login(korail_id, korail_pw)` | `None` | 실패는 전부 `LoginFailedError`. 성공 여부를 반환하지 않습니다. 비밀번호 변경 안내에 걸린 계정은 그 하위 타입 [`PasswordChangeRequiredError`](#예외). |
 | `logout()` | `None` | **서버 세션만** 끊습니다. HTTP 연결은 살아 있어 재로그인할 수 있습니다. |
@@ -1010,12 +1012,19 @@ sdk)을 함께 정합니다. `android_id` 는 토큰의 `iid` 로 실리고 저�
 > **기본 DynaPath 토큰은 Flow-1 선언 토큰입니다(하드웨어 서명 아님).** 기본 엔진
 > `DeclarationDynaPathEngine` 은 네이티브 `libdp_ffi_android.so` 의 선언 토큰 코덱을 순수
 > 파이썬으로 바이트 단위 재현한 것으로(`.so` 불필요), 평문 봉투를 SHA256-CTR 로 XOR 하고
-> 워드별 커스텀 base62 로 인코딩한 `201…` 문자열입니다. 2026-10-28 실서버 로그인에서 수용을
-> 확인했습니다. 실제 앱과 op(`es`)·필드 구성이 다를 수 있고 하드웨어 서명(Flow-2, StrongBox/TEE)은
-> 재현하지 못하지만, 코레일+가 현재 `201` 프리픽스만 검사해 로그인 포함 통과합니다. 서버가 하드웨어
-> 서명 토큰(enroll 챌린지에 `beginRequest`→`finishRequest` 로 응답)만 허용하게 되면 무효가
-> 됩니다. 실기기 `board`·attestation 값이 필요하면 `Korail(dynapath_engine=...)` 로 커스텀
-> 엔진을 주입하세요. 자세한 근거는 `docs/protocol-evidence-7.0.10.json` 에 있습니다.
+> 워드별 커스텀 base62 로 인코딩한 `201…` 문자열입니다. 실제 앱과 op(`es`)·필드 구성이 다를 수
+> 있고 하드웨어 서명(Flow-2, StrongBox/TEE)은 재현하지 못합니다. 그래도 동작하는 것은 서버가
+> 본문을 검사하지 않기 때문입니다 — `seatMovie.ScheduleView` 에서 `201` 프리픽스만 보는 것이
+> 관측됐고, 2026-10-28 승인된 실서버 흐름(로그인→조회→예약→즉시 취소→로그아웃)도 통과했습니다.
+> 서버가 본문이나 하드웨어 서명 토큰(enroll 챌린지에 `beginRequest`→`finishRequest` 로 응답)을
+> 검사하게 되면 무효가 될 수 있습니다. 실기기 `board`·attestation 값이 필요하면
+> `Korail(dynapath_engine=...)` 로 커스텀 엔진을 주입하세요. 자세한 근거는
+> `docs/protocol-evidence-7.0.10.json` 에 있습니다.
+>
+> 이전 버전의 `pykorail.auth.DynaPathMasterEngine`(`201` + 임의 영숫자)은 제거됐습니다. 직접
+> 쓰던 코드는 `pykorail.auth.DeclarationDynaPathEngine` 으로 바꾸세요 — 토큰은
+> `generate_token(op_id=..., device_id=...)` 로 만들고, 클라이언트에 넣으려면
+> `Korail(dynapath_engine=DeclarationDynaPathEngine(...))` 를 씁니다.
 
 ```python
 from pykorail import Korail

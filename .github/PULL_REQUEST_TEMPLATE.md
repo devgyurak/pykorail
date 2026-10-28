@@ -67,12 +67,11 @@ constants.py · auth/ · crypto.py · 리소스의 폼 필드를 건드렸다면
 - [ ] 앱 신원값(`USER_AGENT` · `APP_VERSION` · `APP_DISPLAY_VERSION` · `API_KEY` ·
       `SID_KEY`)을 바꾸지 않았습니다. 바꿨다면 APK·캡처 근거를
       `docs/protocol-evidence-7.0.8.json` 형식으로 남겼습니다
-- [ ] DynaPath 토큰이 여전히 `201` 프리픽스 + 62자 영숫자 본문인지 확인했습니다
-      (`tests/test_dynapath.py` 의 속성 검증이 통과합니다)
-- [ ] 서명 상수(`TOKEN_PREFIX` · `DYNAPATH_LOGIN_OP`)나 본문
-      길이를 바꿨다면 APK·실서버 근거를 `docs/protocol-evidence-7.0.10.json` 형식으로
-      남겼습니다. 이 토큰은 네이티브 서명이 아니라 `201` + 임의 영숫자임을
-      문서에 유지했습니다
+- [ ] DynaPath 선언 토큰 코덱이 기록된 네이티브 출력과 여전히 바이트 동일합니다
+      (`tests/test_dynapath.py` 의 `test_codec_matches_native_recorded` 가 통과합니다)
+- [ ] 서명 상수(`TOKEN_PREFIX` · `DYNAPATH_LOGIN_OP`)나 코덱(키스트림 · MAC · base62)을
+      바꿨다면 APK·에뮬레이터·실서버 근거를 `docs/protocol-evidence-7.0.10.json` 형식으로
+      남겼습니다
 
 ### 새 엔드포인트라면 — APK 근거
 

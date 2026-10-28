@@ -113,9 +113,10 @@ print(sorted((S.calls[-1][2].get('params') or {}).keys()))
   `tests/payloads.py` 의 `NETFUNNEL_HEADERS_GOLDEN`·`NETFUNNEL_CALLS_GOLDEN` 이 지킵니다.
 
 ### 5. 앱 UA와 프로파일 신원
-User-Agent는 프로파일 유무와 무관하게 `korailtalk`입니다. DynaPath 토큰에는 기기
-신원이 실리지 않습니다. 프로파일이 바꾸는 wire 값은 NetFunnel Dalvik UA
-(모델·OS·빌드ID)뿐입니다. 공유 하드코딩 ID를 요구하지 마세요. 생성된 ID는
+User-Agent는 프로파일 유무와 무관하게 `korailtalk`입니다. 기본 엔진의 DynaPath 토큰
+봉투에는 기기 신원(`dm`·`mf`·`bd`·`iid`·`os`)이 실립니다 — `iid` 는 android_id 16자 문자열의
+ASCII 바이트입니다. 프로파일이 바꾸는 wire 값은 이 봉투의 기기 필드(model·release·sdk)와
+NetFunnel Dalvik UA(모델·OS·빌드ID)입니다. 공유 하드코딩 ID를 요구하지 마세요. 생성된 ID는
 `Korail.android_id`와 `Korail(android_id=...)`로 저장·복원 가능해야 합니다.
 `tests/_async/test_client.py::TestDeviceProfile`(과 생성된 `tests/_sync`)과 로그인 폼
 전체 골든 테스트를 확인하세요.
