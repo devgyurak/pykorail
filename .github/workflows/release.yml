@@ -336,10 +336,24 @@ jobs:
           set -euo pipefail
           # 훅 응답이 2xx 라도 빌드가 옛 값을 읽었거나 캐시 비우기가 실패할 수 있습니다. 그래서
           # 실제 페이지에 버전이 보이는지 봅니다. 페이지의 VERSION 은 `>0.5.1</a>` 로 나옵니다.
-          # grep -q 를 파이프로 쓰면 pipefail 아래에서 curl 의 SIGPIPE 가 실패로 잡히므로 변수에 받습니다.
-          for _ in $(seq 1 30); do
-            page="$(curl -fs --max-time 20 https://pykorail.devgyurak.com/ || true)"
-            if [[ "$page" == *">${VERSION}</a>"* ]]; then
+          #
+          # 커스텀 도메인(pykorail.devgyurak.com)이 아니라 같은 Worker 의 workers.dev 주소를 봅니다.
+          # devgyurak.com 존의 Bot Fight Mode 가 러너(데이터센터 IP)의 curl 에 Managed Challenge 를
+          # 내서, 배포가 끝났는데도 v0.6.0 에서 15분 내내 실패했습니다(2026-10-28, Security Events 로
+          # 확인). Free 플랜의 Bot Fight Mode 는 WAF 규칙으로 건너뛸 수 없습니다. workers.dev 는 같은
+          # 배포를 서빙하므로 빌드·배포 여부는 그대로 확인됩니다. 커스텀 도메인 엣지 캐시는 보지 않습니다.
+          # 이 주소가 꺼지지 않게 site/wrangler.jsonc 에 workers_dev 를 명시해 두었습니다.
+          url="https://pykorail.devgyurak.workers.dev/"
+          for attempt in $(seq 1 30); do
+            # 시도마다 다른 쿼리로 엣지 캐시를 피합니다. 상태 코드와 읽은 버전을 남겨, 다시 막히면
+            # (챌린지는 403) 로그만 보고 원인을 알 수 있게 합니다. 본문은 변수에 받습니다 — grep -q
+            # 파이프는 pipefail 아래에서 curl 의 SIGPIPE 를 실패로 잡습니다.
+            response="$(curl -s --max-time 20 -w '\n%{http_code}' "${url}?v=${VERSION}&t=${attempt}-$(date +%s)" || true)"
+            status="${response##*$'\n'}"
+            page="${response%$'\n'*}"
+            seen="$(sed -n 's|.*>VERSION</dt><dd[^>]*><a [^>]*>\([^<]*\)</a>.*|\1|p' <<<"$page" | head -n 1)"
+            echo "시도 ${attempt}: HTTP ${status:-없음}, 페이지 VERSION=${seen:-못 읽음}"
+            if [[ "$status" == "200" && "$page" == *">${VERSION}</a>"* ]]; then
               echo "사이트에 ${VERSION} 이 나타났습니다."
               exit 0
             fi

@@ -6,6 +6,10 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "pykorail",
   "compatibility_date": "2026-10-01",
+  // workers.dev 주소를 켜 둡니다. release.yml 의 `site` 잡이 릴리스 뒤 새 버전을 이 주소로
+  // 확인합니다 — 커스텀 도메인은 Bot Fight Mode 가 러너의 요청에 챌린지를 내서 확인할 수 없습니다
+  // (docs/site.md). 끄면 확인 단계가 매 릴리스마다 실패합니다.
+  "workers_dev": true,
   "assets": {
     "directory": "./dist",
     // Starlight 가 dist/404.html 을 만듭니다. 없는 경로에는 그것을 404 상태로 돌려줍니다.
