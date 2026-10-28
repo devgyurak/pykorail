@@ -29,7 +29,7 @@ def api_replying(reply: Any, *, verbose: bool = False) -> ApiClient:
     """조회 엔드포인트가 ``reply`` 를 돌려주는 저수준 클라이언트."""
     # FakeSession.headers 는 평범한 dict 라 프로토콜의 MutableMapping 속성과 불변성이 어긋납니다.
     session = cast(HttpSession, FakeSession({"search_schedule": reply}))
-    return ApiClient(session, RequestSigner(device_id="fixture-device"), verbose=verbose)
+    return ApiClient(session, RequestSigner(device_id="0123456789abcdef"), verbose=verbose)
 
 
 class TestSharedParsingIsWired:

@@ -26,15 +26,22 @@ DEVICE       = "AD"
 TOKEN_PREFIX = "201"
 DYNAPATH_LOGIN_OP = 288904575606514493
 ```
-`src/pykorail/auth/dynapath.py` 에서 토큰의 형식이 그대로인지 확인하세요:
+`src/pykorail/auth/dynapath.py` 에서 토큰 코덱이 그대로인지 확인하세요. 기본 엔진은
+**`DeclarationDynaPathEngine`**(순수 파이썬 실토큰 코덱, `.so` 불필요)입니다:
 ```
-TOKEN_PREFIX = "201"          # 로그인 324 / 그 외 222자
-_ALPHABET    = 0-9A-Za-z (62자 영숫자)
+token = "201" + base62( LE32(nonce) ‖ MAC3 ‖ eor )     # 워드별 커스텀 알파벳
+MAC3  = SHA256(SECRET ‖ LE32(nonce) ‖ eor)[:3]
+eor   = 평문봉투 XOR SHA256(SECRET ‖ LE32(nonce) ‖ BE32(block_index))   # 키스트림
+봉투   = !v=2&es={op}&ts&st=Android&sv=2.0.1&ai=korailplus&os&dm&iid&mf&bd&sl&sb&kl[&ec]
+        (os/dm/mf/bd=Build.* UTF-8, iid=android_id 16자 ASCII, kl=990094375841594426)
 ```
-7.0.10 토큰은 네이티브 서명이 아니라 **`201` + 임의 영숫자** 입니다 — 서버가
-프리픽스만 보는 동안만 유효합니다(근거:
-`docs/protocol-evidence-7.0.10.json`). `TOKEN_PREFIX`·`DYNAPATH_LOGIN_OP`·본문
-길이·문자셋이 바뀌었다면 최우선으로 지적하세요.
+이 코덱(프레임·SECRET·MAC·base62·키스트림 카운터)은 기록된 `.so` 에뮬레이터 출력 r0·r1
+(nonce 0·5)과 **바이트 동일**로 검증됩니다(`test_codec_matches_native_recorded`). 토큰 **본문 길이는
+기기 사실 문자열 길이에 따라 달라지며**(과거의 고정 324/222 는 앱 실측값이지 이 패키지 출력이
+아님), `es`(op)·`ec` 유무는 operation/상태 의존입니다. 키스트림 카운터 엔디언·MAC 입력·프레임
+바이트 순서·base62 알파벳·`TOKEN_PREFIX`·`DYNAPATH_LOGIN_OP`·`SECRET`·`kl` 상수가 바뀌었다면
+최우선으로 지적하세요(이들은 기록된 네이티브 출력으로 못박혀 있습니다). 실토큰 엔진은
+`Korail(dynapath_engine=...)` 로 주입 가능합니다.
 
 근거 없는 차이는 **심각으로 보고**하세요. 의도한 대응이라면 APK·실서버 근거를 함께
 검토하고, 변경 자체만으로 서버 거부를 단정하지 마세요.
@@ -43,10 +50,10 @@ _ALPHABET    = 0-9A-Za-z (62자 영숫자)
 ```bash
 uv run pytest tests/test_dynapath.py
 ```
-`tests/test_dynapath.py` 가 `201` 프리픽스·62자 영숫자 문자셋·길이(로그인 324/
-그 외 222)·요청별 변화를 검증합니다. 실제 네이티브 서명이나 서버 수용 증거는
-아닙니다 — 한계는 `docs/protocol-evidence-7.0.10.json` 에 있습니다. 실패하면
-바뀐 이유를 조사하세요. 통과시키려고 기대값을 자동 갱신하지 마세요.
+`tests/test_dynapath.py` 가 기록된 네이티브 출력(r0·r1), 자체 생성 엔진 스냅샷,
+요청별 변화, 기기 사실 반영을 검증합니다. 실서버 수용 증거는 아닙니다 — 한계는
+`docs/protocol-evidence-7.0.10.json` 에 있습니다. 실패하면 바뀐 이유를 조사하세요.
+통과시키려고 기대값을 자동 갱신하지 마세요.
 
 `RequestSigner` 는 엔진이 반환한 시각으로 `Sid` 를 만듭니다
 (`test_sid_uses_the_token_timestamp`). 토큰 본문은 요청마다 새로 뽑히므로 서로

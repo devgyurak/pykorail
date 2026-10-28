@@ -128,21 +128,56 @@ exceptions/ · constants.py · options.py · device/   ← 누구나 의존 가�
 - **작동하는 값을 근거 없이 바꾸지 마세요**: `constants.py` 의 `USER_AGENT`,
   `APP_VERSION`, `APP_DISPLAY_VERSION`, `API_KEY`, `SID_KEY`, `IMPERSONATE` 와
   `TOKEN_PREFIX`·`DYNAPATH_LOGIN_OP`.
-- **DynaPath 토큰은 네이티브 서명이 아닙니다.** 7.0.10 의 실제 토큰은 네이티브
-  `libdp_ffi_android.so` 에서만 만들어지고 그 알고리즘은 미복원입니다.
-  `auth/dynapath.py` 는 서버가 `201` 프리픽스만 검사하는 동안만 통하는
-  `201` + 임의 영숫자 토큰을 냅니다 — 근거·한계·네이티브 입력 계약은
-  `docs/protocol-evidence-7.0.10.json`. 이 방식은 per-request 토큰의 Flow 2
-  (하드웨어 서명 챌린지-응답: beginRequest→clientDataHash→StrongBox/TEE 서명→
-  finishRequest)를 재현하지 못합니다 — 코레일이 지금은 소프트웨어 declaration
-  토큰도 통과시키지만, 서버가 하드웨어 서명 토큰만 허용하는 때가 오면 동작하지 않습니다.
+- **DynaPath 토큰은 네이티브 "서명"이 아니라 기기-사실 선언입니다.** 7.0.10 의 실제
+  토큰은 네이티브 `libdp_ffi_android.so` 가 만들며, 평문 봉투
+  (`v=2&es={op_id}&ts&st=Android&sv=2.0.1&ai=korailplus&os=b64url(release)
+  &dm=b64url(model)&iid=b64url(android_id)&mf=..&bd=..&sl=sdk_int&sb=strongbox&kl&ec`)를
+  SHA256-CTR 키스트림 XOR + SHA256 태그 앞 3바이트를 워드별 커스텀 base62 로 인코딩한
+  `201…` 문자열입니다(단일 대정수가 아니라 4바이트 워드별). 하드웨어 키·기기 난수 비밀이
+  없어 (op_id+기기 사실+nonce+ts)의 **결정·순수 함수**이고, 2026-10-28 알고리즘 전체를
+  역분석해 **순수 파이썬으로 바이트 동일 재현**했고(에뮬레이터 대비 5/5), 2026-10-28
+  실서버 로그인(본인 계정, 읽기 전용)에서 이 토큰이 **수용**됨을 확인했습니다(근거·봉투·한계는
+  `docs/protocol-evidence-7.0.10.json` 의 `v2-codec-byte-exact`). 그래서 **기본 엔진이
+  `auth/dynapath.py::DeclarationDynaPathEngine`** 입니다 — 순수 파이썬 코덱 재구현이라 `.so`
+  가 실행 시 필요 없습니다. 프로파일이 있으면 model·release·sdk 를 끌어오고(`from_profile`),
+  없으면 현행 플래그십 기본값을 씁니다. 토큰 엔진은 **교체 가능**합니다(`DynaPathEngine`
+  계약): 실기기 `board`·attestation 값을 담은 다른 엔진을 `Korail(dynapath_engine=...)` 로
+  주입할 수 있습니다. 네이티브 바이너리(`.so`)는 저작권·속도상 패키지에 **번들하지 않습니다.**
+  봉투 필드는 APK 7.0.10 Java(`a/J0.java`, `a/C3907n.java`)로 확정했습니다: `os/dm/mf/bd`=
+  `Build.VERSION.RELEASE/MODEL/MANUFACTURER/BOARD` 의 UTF-8, `sl`=`SDK_INT`, `sb`=
+  `hasSystemFeature("strongbox_keystore")`, **`iid`=`Settings.Secure "android_id"` 문자열의
+  UTF-8(16자리 16진수 → 16바이트)** — 16진수 디코드(8바이트) 아님. `es`(op)는 엔드포인트가
+  아니라 SDK 상태로 정해집니다(로그인·조회가 **같은 op**, 엔드포인트별 아님). 토큰 생성 알고리즘
+  전체 — 프레임(LE32(nonce)‖MAC3‖eor)·SECRET·MAC(SHA256(SECRET‖LE32(nonce)‖eor)[:3])·base62·
+  **키스트림 SHA256(SECRET‖LE32(nonce)‖BE32(block))** — 은 기록된 .so 에뮬 출력(r0 nonce=0 /
+  r1 nonce=5)과 실기기 캡처로 검증됐다(`test_codec_matches_native_recorded`,
+  `test_decrypts_real_captured_token_to_expected_envelope`). (이력: 카운터를 BE_u64(nonce+i)로 뒀던
+  건 에뮬 골든이 nonce=0 이라 BE/LE 구분 불가였기 때문이고, nonce=5 인 r1·실측으로
+  LE32(nonce)‖BE32(block) 확정·수정함.) 기본 엔진의 남는 변수는 **입력 수준**(알고리즘 아님):
+  (a) `es`(op)·봉투 필드 집합이 operation/상태/앱버전마다 다름 — **캡처된 실기기 토큰 2개(로그인
+  324·데이터 222)는 둘 다 선언 토큰**이고 `es=893617653734745139`(로그인은 `…&kl` 까지, 데이터는
+  `…&iid` 까지; 짧은 쪽도 Flow-2 가 아니라 필드 적은 선언, `sb=0` 미enroll 에뮬). 이 엔진 기본은
+  `es=288904575606514493`·`ec` 포함(실서버 전체 예매 흐름 수용 확인)이라 캡처와 다름 — 맞추는 건
+  wire 변경 결정. (b) `kl`=990094375841594426 은 캡처로 실측 확인된 상수, `ec` 는 op 에 따라 유무.
+  (c) `board` 는 프로파일에 없어 placeholder(삼성 SoC 코드명)라 model↔board 가 어긋날 수 있다 —
+  서버가 대조하면 커스텀 엔진으로 실기기 board 를 주입하라. enroll 된 실기기가 per-request 하드웨어
+  서명을 쓰는 Flow-2 경로는 별개이며 재현 불가다.
+  이 선언 토큰은 per-request
+  토큰의 Flow 2(하드웨어 서명 챌린지-응답: beginRequest→clientDataHash→StrongBox/TEE
+  서명→finishRequest)와는 별개이며, 서버가 하드웨어 서명 토큰만 허용하는 때가 오면 어느
+  엔진으로도 동작하지 않습니다.
 - **폼 필드를 정리하지 마세요.** 빈 문자열로 보내는 필드(`txtChgFlg2` 등)나 조회
   엔드포인트만 `Key` 없이 빈 `Sid` 를 보내는 것은 앱 동작을 그대로 옮긴 것입니다.
   "안 쓰는 것 같으니 지운다" 는 회귀입니다.
-- **DynaPath 토큰에는 기기 신원이 실리지 않습니다.** 서버가 프리픽스만 보므로
-  프로파일이 실제로 바꾸는 wire 값은 NetFunnel 대기열의 Dalvik User-Agent
-  (모델·OS·빌드ID)뿐입니다. `Korail.android_id` 는 저장·복원 계약을 위해 남아 있고
-  요청 값에는 들어가지 않습니다. 공유 하드코딩 ID를 재도입하지 마세요.
+- **기본 엔진의 DynaPath 토큰에는 기기 신원이 실립니다** — 봉투의 `dm/mf/bd/iid/os` 로
+  model·manufacturer·board·android_id·release 가 나갑니다. `android_id` 는 서명기의
+  `device_id`(프로파일의 `android_id` 또는 생성값, 16진수)가 `iid` 로 디코드돼 실립니다 —
+  `Korail.android_id` 의 저장·복원 계약이 그래서 wire 값과 직결됩니다. 프로파일이 바꾸는
+  것은 이제 토큰의 model·release·sdk 와 NetFunnel 대기열의 Dalvik User-Agent 둘 다입니다.
+  `manufacturer`·`board` 는 프로파일에 없어 기본값(삼성 자급제 카탈로그 기준 `samsung` +
+  서버 미검증 `board` placeholder)을 쓰므로, 실기기 정확도가 필요하면 커스텀 엔진을
+  주입하세요. **기기별로 유일한 `android_id` 를 공유 하드코딩 값으로 되돌리지 마세요** —
+  이제 토큰에 실리므로 더더욱 안 됩니다.
 - **암호화 형태를 "고치지" 마세요.** 이중 base64, `Sid` 끝의 개행, 키를 IV 로 재사용
   하는 AES-CBC — 전부 서버가 그 모양을 기대합니다.
   로그인 비밀번호는 안쪽 NO_WRAP(2), 바깥쪽 URL_SAFE(8)의 76자 LF 래핑을 지킵니다.

@@ -58,11 +58,11 @@ uv run ruff format && uv run ruff check --fix && uv run ty check && uv run pytes
 - `test_no_control_flow_statements[...]` — 테스트에 `if`/`for`/`while` **문**이
   들어갔습니다. `@pytest.mark.parametrize` 로 펼치거나, 컴프리헨션으로 위반 목록을
   만들어 `== []` 와 비교하세요. 이 규칙은 `tests/test_style.py` 가 강제합니다.
-- `tests/test_dynapath.py` 실패 — `201` 프리픽스·길이(로그인 324/그 외 222)·문자셋
-  같은 토큰 속성이 바뀌었습니다. 서명 상수(`TOKEN_PREFIX`·`DYNAPATH_LOGIN_OP`)를
-  확인하세요. 실패만으로 서버 거부를 단정하거나 기대값을 자동 갱신하지 마세요.
-  이 토큰은 네이티브 서명이 아니라 `201` + 임의 영숫자입니다 —
-  `docs/protocol-evidence-7.0.10.json`.
+- `tests/test_dynapath.py` 실패 — 선언 토큰 코덱(프레임·SECRET·MAC·키스트림·base62
+  알파벳)이나 봉투 입력이 바뀌었습니다. `test_codec_matches_native_recorded` 가 깨졌다면
+  기록된 `.so` 에뮬레이터 출력과 어긋난 것이니 최우선으로 원인을 찾으세요. 서명
+  상수(`TOKEN_PREFIX`·`DYNAPATH_LOGIN_OP`)도 확인하세요. 실패만으로 서버 거부를
+  단정하거나 기대값을 자동 갱신하지 마세요 — `docs/protocol-evidence-7.0.10.json`.
 - `예상하지 못한 요청: <url>` — `FakeSession` 에 라우트가 없습니다. 픽스처의
   `routes` dict 에 해당 엔드포인트를 추가하세요.
 

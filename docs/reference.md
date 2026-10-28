@@ -1002,16 +1002,20 @@ korail.trains.search("서울역", "부산")
 ## 기기 프로파일
 
 User-Agent는 프로파일 유무와 무관하게 `korailtalk`입니다. 프로파일은 NetFunnel 대기열의
-Dalvik User-Agent(모델·OS·빌드ID)를 정합니다. DynaPath 토큰에는 기기 신원이 실리지
-않고(서버가 `201` 프리픽스만 검사) `android_id` 는 저장·복원용으로만 쓰입니다.
+Dalvik User-Agent(모델·OS·빌드ID)와, DynaPath 선언 토큰에 실리는 기기 사실(model·release·
+sdk)을 함께 정합니다. `android_id` 는 토큰의 `iid` 로 실리고 저장·복원에도 쓰입니다 —
+두 ID를 함께 저장해 재시작 후에도 같은 기기로 보이게 하세요.
 
 > [!IMPORTANT]
-> **DynaPath 토큰은 네이티브 하드웨어 서명을 재현하지 않습니다.** 이 클라이언트는 `201`
-> 프리픽스 + 임의 영숫자 본문(declaration 경로)만 냅니다. 코레일+가 BlueStacks·Nox 처럼
-> 하드웨어 서명자(StrongBox/TEE)가 없는 환경을 **현재 declaration 토큰으로 통과**시키기
-> 때문에 동작하며, pykorail 도 같은 경로입니다. 서버가 하드웨어 서명 토큰(enroll 챌린지에
-> `beginRequest`→`finishRequest` 로 응답)만 허용하게 되면 이 방식은 무효가 됩니다.
-> 자세한 근거는 `docs/protocol-evidence-7.0.10.json` 에 있습니다.
+> **기본 DynaPath 토큰은 Flow-1 선언 토큰입니다(하드웨어 서명 아님).** 기본 엔진
+> `DeclarationDynaPathEngine` 은 네이티브 `libdp_ffi_android.so` 의 선언 토큰 코덱을 순수
+> 파이썬으로 바이트 단위 재현한 것으로(`.so` 불필요), 평문 봉투를 SHA256-CTR 로 XOR 하고
+> 워드별 커스텀 base62 로 인코딩한 `201…` 문자열입니다. 2026-10-28 실서버 로그인에서 수용을
+> 확인했습니다. 실제 앱과 op(`es`)·필드 구성이 다를 수 있고 하드웨어 서명(Flow-2, StrongBox/TEE)은
+> 재현하지 못하지만, 코레일+가 현재 `201` 프리픽스만 검사해 로그인 포함 통과합니다. 서버가 하드웨어
+> 서명 토큰(enroll 챌린지에 `beginRequest`→`finishRequest` 로 응답)만 허용하게 되면 무효가
+> 됩니다. 실기기 `board`·attestation 값이 필요하면 `Korail(dynapath_engine=...)` 로 커스텀
+> 엔진을 주입하세요. 자세한 근거는 `docs/protocol-evidence-7.0.10.json` 에 있습니다.
 
 ```python
 from pykorail import Korail

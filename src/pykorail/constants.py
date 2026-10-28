@@ -82,9 +82,17 @@ SID_KEY: Final = b"2485dd54d9deaa36"
 # --------------------------------------------------------------- DynaPath (7.0.10)
 #: 7.0.10 ``x-dynapath-m-token`` 의 버전 프리픽스. 서버는 이 프리픽스로 버전을 가릅니다.
 TOKEN_PREFIX: Final = "201"
-#: 네이티브 ``declarationToken`` 의 로그인 op id(``kr.scripters.dynapath.sdk.android.a.J0``).
-#: 요청 바인딩이 실리는 유일한 op 이며, 그래서 로그인 토큰만 더 깁니다(실측 324 vs 222).
+#: 네이티브 ``declarationToken`` 의 소프트웨어 선언 op id(``kr.scripters.dynapath.sdk.android.a.J0``).
+#: 이 엔진이 기본으로 쓰는 선언 op. 캡처된 실측 토큰은 다른 op(893617653734745139)를 썼지만, 이 op
+#: 는 실서버 전체 흐름에서 수용 확인됐고 J0 분석의 소프트웨어 선언 op 다(ec=978212327729758430 동반).
+#: ``es``(op)·봉투 필드 집합은 operation/상태에 따라 달라집니다 — 토큰 생성 알고리즘(키스트림·MAC·
+#: base62)은 실측 캡처로 바이트 동일 재현을 확인했습니다(``auth/dynapath.py`` 참조). 엔드포인트별
+#: 선언 op 는 없습니다(``auth/signer.py``).
 DYNAPATH_LOGIN_OP: Final = 288904575606514493
+#: v2 선언 봉투의 ``sv=``(DynaPath SDK 버전)·``ai=``(앱 식별자). 실토큰 엔진이 쓰는
+#: wire 값으로, APP_VERSION(API Version)과는 별개입니다. 근거: ``docs/protocol-evidence-7.0.10.json``.
+DYNAPATH_SDK_VERSION: Final = "2.0.1"
+DYNAPATH_APP_ID: Final = "korailplus"
 
 #: curl_cffi의 기존 TLS 타깃입니다. HTTP 헤더는 앱 기준으로 별도 지정합니다.
 IMPERSONATE: Final = "chrome131_android"

@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from types import TracebackType
     from typing import Self
 
+    from pykorail.auth.dynapath import DynaPathEngine
     from pykorail.device import DeviceProfileLike
 
 
@@ -88,6 +89,7 @@ class Korail:
         validate_stations: bool = True,
         *,
         android_id: str | None = None,
+        dynapath_engine: DynaPathEngine | None = None,
     ) -> None:
         if android_id is not None:
             validate_android_id(android_id)
@@ -95,7 +97,7 @@ class Korail:
             if profile_id is not None and profile_id != android_id:
                 raise ValueError("android_id가 device_profile.android_id와 다릅니다")
         # 유효성 오류가 나면 HTTP 세션을 만들지 않습니다.
-        signer = RequestSigner(device_profile, device_id=android_id)
+        signer = RequestSigner(device_profile, device_id=android_id, engine=dynapath_engine)
         self._android_id = signer.android_id
         headers = dict(DEFAULT_HEADERS)
         self._api = ApiClient(create_session(headers), signer, verbose)
@@ -119,6 +121,7 @@ class Korail:
         device_profile: DeviceProfileLike | None = None,
         validate_stations: bool = True,
         android_id: str | None = None,
+        dynapath_engine: DynaPathEngine | None = None,
     ) -> Self:
         """클라이언트를 만들고 곧바로 로그인합니다.
 
@@ -130,7 +133,11 @@ class Korail:
             ValueError: android_id 형식이 잘못됐거나 프로파일의 ID와 충돌합니다.
         """
         korail = cls(
-            verbose=verbose, device_profile=device_profile, validate_stations=validate_stations, android_id=android_id
+            verbose=verbose,
+            device_profile=device_profile,
+            validate_stations=validate_stations,
+            android_id=android_id,
+            dynapath_engine=dynapath_engine,
         )
         try:
             korail.login(korail_id, korail_pw)
