@@ -98,7 +98,8 @@ class NetFunnelAction:
     ``TRAIN_SEARCH_SPECIAL_OFFER`` 중 하나를, 예약은 7.1.0 부터 ``RESERVE`` ·
     ``RESERVE_PEAK`` 중 하나를 고릅니다. 성수기 판정은 ``schedule.runDt`` 응답의
     성수기 플래그에 달려 있어 호출자가 정합니다 —
-    :func:`~pykorail.models.run_date.netfunnel_action_for` 를 쓰세요.
+    :func:`~pykorail.models.run_date.netfunnel_action_for` 에 평시 aid 를 ``action`` 으로
+    넘기세요(조회는 출발일, 예약은 운행일 기준).
     """
 
     #: 열차 조회 (평시). 앱 ``TrainScheduleViewModel.netFunnelTrainSchedule``.
@@ -108,11 +109,13 @@ class NetFunnelAction:
     TRAIN_SEARCH_PEAK: Final = "act_8_2"
     #: 열차 조회 (할인상품). 앱에서 ``ACCOMPANY_4`` 가 아닌 할인상품을 골랐을 때.
     TRAIN_SEARCH_SPECIAL_OFFER: Final = "act_6"
-    #: 예약. ``TrainScheduleViewModel`` · ``TrainSeatMapViewModel`` ·
-    #: ``ReservationWaitViewModel`` · ``HomeViewModel``.
+    #: 예약 (평시). 7.0.10 까지는 예약 화면 네 곳(``TrainScheduleViewModel`` ·
+    #: ``TrainSeatMapViewModel`` · ``ReservationWaitViewModel`` · ``HomeViewModel``)이 이
+    #: 값을 직접 넣었고, 7.1.0 부터는 네 곳 모두 ``NetFunnelHelper.reserveNetFunnelActionId``
+    #: 를 거칩니다 — 첫 여정의 운행일이 성수기가 아니거나 달력에 그날이 없을 때의 값입니다.
     RESERVE: Final = "act_14"
-    #: 예약 (성수기). 7.1.0 의 ``NetFunnelHelper.reserveNetFunnelActionId`` 가 첫 여정의
-    #: 운행일이 성수기면 ``RESERVE`` 대신 이 값을 씁니다(``docs/protocol-evidence-7.1.0.json``).
+    #: 예약 (성수기). 7.1.0 의 ``reserveNetFunnelActionId`` 가 첫 여정의 운행일
+    #: (``txtRunDt``)이 성수기면 쓰는 값입니다(``docs/protocol-evidence-7.1.0.json``).
     RESERVE_PEAK: Final = "act_14_2"
     #: 결제. ``PayViewModel`` · ``FPayViewModel``.
     PAY: Final = "act_18"

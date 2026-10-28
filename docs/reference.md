@@ -333,7 +333,7 @@ print([seat.label for seat in seats if seat.is_available])
 ```python
 run_dates() -> list[RunDate]
 
-netfunnel_action_for(run_dates: Sequence[RunDate], departure: date | datetime, *, reserve: bool = False) -> NetFunnelActionCode
+netfunnel_action_for(run_dates: Sequence[RunDate], departure: date | datetime | str, *, action: NetFunnelActionCode = NetFunnelAction.TRAIN_SEARCH) -> NetFunnelActionCode
 ```
 
 `RunDate` 는 하루입니다. `run_date`(운행일 `YYYYMMDD`)와 `day`(그 날짜), 성수기 여부
@@ -345,16 +345,22 @@ netfunnel_action_for(run_dates: Sequence[RunDate], departure: date | datetime, *
 `act_6`(`TRAIN_SEARCH_SPECIAL_OFFER`), 관광열차는 대기열을 거치지 않으므로 이 판정을
 쓰지 않습니다 — 자세한 규칙은 [NetFunnel 대기열](#netfunnel-대기열) 참고.
 `netfunnel_action_for()` 가 그 판정을 대신합니다 — 성수기면 `act_8_2`, 그 밖이거나
-달력에 그날이 없으면 `act_8` 입니다. 코레일톡+ 7.1.0 부터는 **예약** 대기열도 같은
-규칙으로 갈리므로, `reserve=True` 를 주면 `act_14_2`(성수기) 또는 `act_14` 를 돌려줍니다.
-`datetime` 을 넘기면 KST 로 바꿔 날짜만 봅니다.
+달력에 그날이 없으면 `act_8` 입니다. `datetime` 을 넘기면 KST 로 바꿔 날짜만 봅니다.
+
+코레일톡+ 7.1.0 부터는 **예약** 대기열도 성수기에 갈립니다. `action=NetFunnelAction.RESERVE`
+를 주면 `act_14_2`(성수기) 또는 `act_14` 를 돌려줍니다. 다만 기준일이 다릅니다 — 열차
+조회는 **조회 조건의 출발일**, 예약은 **첫 여정 열차의 운행일**(`Train.run_date`)입니다.
+자정을 넘겨 출발하는 열차는 둘이 달라서, 예약에 출발일을 넘기면 틀린 대기열에 섭니다.
+그래서 `departure` 자리에 `Train.run_date` 같은 `"YYYYMMDD"` 문자열도 받습니다(형식이
+틀리면 `ValueError`). 성수기 대기열이 없는 동작(결제 등)은 `action` 을 그대로 돌려줍니다.
 
 ```python
-from pykorail import netfunnel_action_for
+from pykorail import NetFunnelAction, netfunnel_action_for
 
 calendar = korail.trains.run_dates()  # 비동기에서는 await korail.trains.run_dates()
-aid = netfunnel_action_for(calendar, departure)
-reserve_aid = netfunnel_action_for(calendar, departure, reserve=True)
+aid = netfunnel_action_for(calendar, departure)  # 열차 조회 — 출발일 기준
+# 예약 — 운행일 기준. 앱은 운행일이 비었을 때만 출발일을 씁니다.
+reserve_aid = netfunnel_action_for(calendar, train.run_date or train.dep_date, action=NetFunnelAction.RESERVE)
 ```
 
 > [!NOTE]
@@ -1157,9 +1163,10 @@ with NetFunnelHelper() as nf:
    [`korail.trains.run_dates()`](#운행-달력-조회) 로 운행 달력을 받아
    `netfunnel_action_for()` 에 넘기면 됩니다.
 
-예약은 7.1.0 부터 앱(`NetFunnelHelper.reserveNetFunnelActionId`)이 첫 여정의 운행일로
-같은 성수기 판정을 해 `act_14_2` 또는 `act_14` 를 고릅니다 —
-`netfunnel_action_for(calendar, departure, reserve=True)` 가 그 판정입니다.
+예약은 7.1.0 부터 앱(`NetFunnelHelper.reserveNetFunnelActionId`)이 첫 여정의 운행일
+(`txtRunDt`, 비었으면 `txtDptDt`)로 같은 성수기 판정을 해 `act_14_2` 또는 `act_14` 를
+고릅니다 — `netfunnel_action_for(calendar, train.run_date, action=NetFunnelAction.RESERVE)`
+가 그 판정입니다. 열차 조회와 달리 출발일이 아니라 운행일입니다.
 
 비동기 코드에서는 `AsyncNetFunnelHelper` 를 `await` 합니다. 리소스와 달리
 `AsyncKorail` 에 엮여 있지 않은 것은 동기판과 같습니다.

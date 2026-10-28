@@ -21,6 +21,8 @@ WAIT = "201:key=TICKET-1&nwait=42"
 COMPLETE = "200:key=TICKET-1"
 ALREADY = "502:key=TICKET-1"
 BROKEN = "200"
+#: aid 를 하나하나 적으면 새 대기열(7.1.0 의 act_14_2 처럼)을 빠뜨려도 드러나지 않습니다.
+ALL_ACTIONS = [value for name, value in vars(NetFunnelAction).items() if not name.startswith("_")]
 
 
 class FakeResponse:
@@ -243,13 +245,23 @@ class TestCache:
         # then
         assert len(session.calls) == 4
 
-    def test_different_actions_do_not_share_the_cache(self, make_helper) -> None:
+    @pytest.mark.parametrize(
+        ("first", "second"),
+        [
+            (NetFunnelAction.TRAIN_SEARCH, NetFunnelAction.PAY),
+            (NetFunnelAction.TRAIN_SEARCH, NetFunnelAction.TRAIN_SEARCH_PEAK),
+            (NetFunnelAction.RESERVE, NetFunnelAction.RESERVE_PEAK),
+        ],
+        ids=["search-vs-pay", "search-off-peak-vs-peak", "reserve-off-peak-vs-peak"],
+    )
+    def test_different_actions_do_not_share_the_cache(self, make_helper, first: str, second: str) -> None:
+        """평시·성수기 대기열도 서로 다른 줄입니다 — 티켓을 섞어 쓰면 안 됩니다."""
         # given
         helper, session = make_helper([PASS, COMPLETE, PASS, COMPLETE])
-        helper.run(NetFunnelAction.TRAIN_SEARCH)
+        helper.run(first)
 
         # when
-        helper.run(NetFunnelAction.PAY)
+        helper.run(second)
 
         # then
         assert len(session.calls) == 4, "aid 가 다르면 같은 티켓을 재사용하면 안 됩니다"
@@ -369,17 +381,7 @@ class TestParams:
         assert params["sid"] == "service_1"
         assert params["aid"] == NetFunnelAction.TRAIN_SEARCH, "aid 를 생략하면 열차 조회가 기본입니다"
 
-    @pytest.mark.parametrize(
-        "aid",
-        [
-            NetFunnelAction.TRAIN_SEARCH,
-            NetFunnelAction.TRAIN_SEARCH_PEAK,
-            NetFunnelAction.TRAIN_SEARCH_SPECIAL_OFFER,
-            NetFunnelAction.RESERVE,
-            NetFunnelAction.PAY,
-            NetFunnelAction.RESERVATION_VIEW,
-        ],
-    )
+    @pytest.mark.parametrize("aid", ALL_ACTIONS)
     def test_enter_carries_the_requested_action(self, make_helper, aid: str) -> None:
         # given
         helper, _ = make_helper([])

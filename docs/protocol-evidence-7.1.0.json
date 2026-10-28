@@ -14,11 +14,108 @@
  "compared_with": "7.0.10 (docs/protocol-evidence-7.0.10.json). 이 문서는 7.0.10 → 7.1.0 차이만 담는다 — 7.1.0 에서 그대로인 프로토콜 근거는 7.0.8 · 7.0.10 문서가 여전히 유효하다.",
  "scope": "APK 정적 분석(jadx) + 사용자가 이 건에 한해 승인한 korail_clean 에뮬레이터의 7.1.0 앱 시작 요청 캡처 1회(로그인·조회·예약·결제 없음). 키·쿠키·토큰 값은 저장소에 넣지 않고 길이만 봄.",
  "status": "앱 신원값 두 개(Version·AppVersion)와 예약 NetFunnel aid 한 개(act_14_2)가 바뀌었다. DynaPath(네이티브·Java SDK)·엔드포인트·폼 필드·비밀번호 암호화·예약 응답 코드 분류는 그대로다.",
+ "app_identity": {
+  "what": "7.1.0 공통 폼의 앱 신원값과 그 APK 암호문. tests/test_app_identity.py 가 constants.py 의 값이 캡처값과 같은지, 각 암호문이 그 값으로 4바이트 반복 XOR 에 정합하는지 본다.",
+  "capture": "capture/korail-20261028-215500.mitm — 시작 요청(common.code.do · schedule.runDt 등)의 공통 폼",
+  "fields": [
+   {
+    "form": "Version",
+    "pykorail": "constants.APP_VERSION",
+    "captured": "261028001",
+    "ciphertexts": [
+     {
+      "apk": "NetworkConstants.VERSION",
+      "ciphertext": [
+       222,
+       94,
+       41,
+       95,
+       222,
+       80,
+       40,
+       95,
+       221
+      ]
+     },
+     {
+      "apk": "BuildConfig.API_VERSION",
+      "ciphertext": [
+       67,
+       122,
+       14,
+       27,
+       67,
+       116,
+       15,
+       27,
+       64
+      ]
+     }
+    ]
+   },
+   {
+    "form": "AppVersion",
+    "pykorail": "constants.APP_DISPLAY_VERSION",
+    "captured": "7.1.0",
+    "ciphertexts": [
+     {
+      "apk": "CommonIn.appVersion (기본값)",
+      "ciphertext": [
+       224,
+       152,
+       179,
+       175,
+       231
+      ]
+     },
+     {
+      "apk": "BuildConfig.VERSION_NAME",
+      "ciphertext": [
+       25,
+       127,
+       152,
+       178,
+       30
+      ]
+     }
+    ]
+   },
+   {
+    "form": "Key",
+    "pykorail": "constants.API_KEY",
+    "captured": "korail1234567890",
+    "ciphertexts": [
+     {
+      "apk": "CommonIn.key (기본값)",
+      "ciphertext": [
+       144,
+       212,
+       134,
+       191,
+       146,
+       215,
+       197,
+       236,
+       200,
+       143,
+       193,
+       232,
+       204,
+       131,
+       205,
+       238
+      ]
+     }
+    ]
+   }
+  ],
+  "guard_limit": "키를 평문 앞 4바이트에서 뽑으므로 각 암호문의 앞 4바이트는 이 검사로 검증되지 않는다. 검증되는 것은 5번째 바이트부터가 같은 키의 반복으로 그 평문이 된다는 점이다(AppVersion '7.1.0' 은 한 바이트, Version 은 다섯 바이트, Key 는 열두 바이트). 값 자체의 근거는 캡처다."
+ },
  "verified_findings": [
   {
    "id": "app-identity-values",
    "statement": "7.1.0 앱의 공통 폼은 Device=AD · Version=261028001 · AppVersion=7.1.0 · Key=korail1234567890 이다. 7.0.8·7.0.10 의 Version=250722001 이 처음으로 바뀌었고 AppVersion 은 7.0.10 → 7.1.0 이다. User-Agent(korailtalk)·Device·Key 는 그대로다.",
-   "basis": "capture/korail-20261028-215500.mitm (2026-10-28 21:55 KST, 흐름 12건): MobileService.cache · common.code.do · prdMobilePlusMain.cache · schedule.runDt 폼이 모두 위 값. 정적 근거: NetworkConstants.<clinit> 의 VERSION 암호문과 CommonIn 의 AppVersion·Key 기본값 암호문이 4바이트 반복 XOR 로 같은 평문에 정합(아래 netfunnel.actions.known_plaintexts). 매니페스트 versionName=7.1.0 · versionCode=70100000."
+   "basis": "capture/korail-20261028-215500.mitm (2026-10-28 21:55 KST, 흐름 12건): MobileService.cache · common.code.do · prdMobilePlusMain.cache · schedule.runDt 폼이 모두 위 값. 정적 근거: NetworkConstants.<clinit> 의 VERSION 암호문과 CommonIn 의 AppVersion·Key 기본값 암호문이 4바이트 반복 XOR 로 같은 평문에 정합(위 app_identity). 매니페스트 versionName=7.1.0 · versionCode=70100000."
   },
   {
    "id": "version-static-inference",
@@ -60,85 +157,7 @@
   "actions": {
    "source": "com.korail.talk.common.NetworkConstants (7.1.0 jadx-src, 패치한 dex) 와 common/helper/NetFunnelHelperKt. 7.1.0 에서 새로 생긴 aid 만 담는다 — 나머지 aid 의 근거는 docs/protocol-evidence-7.0.8.json 의 netfunnel.actions.",
    "algorithm": "7.0.8 과 같은 4바이트 반복 XOR(AlienGuard). 키는 호출마다 다르다.",
-   "known_plaintexts": [
-    {
-     "constant": "NetworkConstants.VERSION",
-     "plaintext": "261028001",
-     "ciphertext": [
-      222,
-      94,
-      41,
-      95,
-      222,
-      80,
-      40,
-      95,
-      221
-     ],
-     "wire": "폼 Version — 캡처로 확인"
-    },
-    {
-     "constant": "BuildConfig.API_VERSION",
-     "plaintext": "261028001",
-     "ciphertext": [
-      67,
-      122,
-      14,
-      27,
-      67,
-      116,
-      15,
-      27,
-      64
-     ]
-    },
-    {
-     "constant": "CommonIn.appVersion",
-     "plaintext": "7.1.0",
-     "ciphertext": [
-      224,
-      152,
-      179,
-      175,
-      231
-     ],
-     "wire": "폼 AppVersion 기본값 — 캡처로 확인"
-    },
-    {
-     "constant": "BuildConfig.VERSION_NAME",
-     "plaintext": "7.1.0",
-     "ciphertext": [
-      25,
-      127,
-      152,
-      178,
-      30
-     ]
-    },
-    {
-     "constant": "CommonIn.key",
-     "plaintext": "korail1234567890",
-     "ciphertext": [
-      144,
-      212,
-      134,
-      191,
-      146,
-      215,
-      197,
-      236,
-      200,
-      143,
-      193,
-      232,
-      204,
-      131,
-      205,
-      238
-     ],
-     "wire": "폼 Key 기본값"
-    }
-   ],
+   "known_plaintexts": [],
    "constants": [
     {
      "apk": "ACTION_PEAK_SEASON_RESERVE_ID",
@@ -188,7 +207,7 @@
     }
    ],
    "selection_rule": {
-    "reserve": "첫 여정의 txtRunDt(빈 문자열이면 txtDptDt) 날짜를 schedule.runDt 응답에서 찾아 isPeakSeason() 이 참이면 act_14_2, 아니면 act_14. 응답에 그날 항목이 없거나 조회가 실패해도 act_14. pykorail: netfunnel_action_for(run_dates, departure, reserve=True)."
+    "reserve": "첫 여정의 txtRunDt(운행일, 빈 문자열이면 txtDptDt) 날짜를 schedule.runDt 응답에서 찾아 isPeakSeason() 이 참이면 act_14_2, 아니면 act_14. 응답에 그날 항목이 없거나 조회가 실패해도 act_14. 열차 조회(act_8/act_8_2)는 운행일이 아니라 조회 조건의 출발일(TrainScheduleViewModel: trainOptionData.getDepartureDateTime().getYyyyMMdd())로 판정한다 — 자정을 넘겨 출발하는 열차는 둘이 다르다. pykorail: netfunnel_action_for(run_dates, train.run_date or train.dep_date, action=NetFunnelAction.RESERVE)."
    },
    "callers": [
     "HomeViewModel.java:6480",
@@ -196,7 +215,8 @@
     "TrainScheduleViewModel.java:6376,6537",
     "ReservationWaitViewModel.java:655"
    ],
-   "guard": "tests/test_netfunnel_actions.py 가 7.0.8 · 7.1.0 문서의 netfunnel.actions 를 합쳐, known_plaintexts 로 4바이트 반복 키를, constants·call_sites 암호문을 NetFunnelAction 상수와 대조한다. 한계는 7.0.8 과 같다 — 각 암호문의 앞 4바이트는 접두(act_)에서 키를 뽑으므로 이 테스트로 검증되지 않는다."
+   "guard": "tests/test_netfunnel_actions.py 가 7.0.8 · 7.1.0 문서의 netfunnel.actions 를 합쳐 constants·call_sites 암호문을 NetFunnelAction 상수와 대조한다. 한계는 7.0.8 과 같다 — 각 암호문의 앞 4바이트는 접두(act_)에서 키를 뽑으므로 이 테스트로 검증되지 않는다.",
+   "known_plaintexts_note": "7.1.0 의 알려진 평문(앱 신원값)은 최상위 app_identity 에 있다 — NetFunnel 근거를 정리해도 APP_VERSION 의 정적 검사가 함께 사라지지 않게 분리했다."
   }
  },
  "capture": {
@@ -221,7 +241,7 @@
  ],
  "actionable": [
   "constants.APP_VERSION=261028001, APP_DISPLAY_VERSION=7.1.0 (tests/payloads.py::LOGIN_FORM_GOLDEN 의 두 값 포함).",
-  "NetFunnelAction.RESERVE_PEAK=act_14_2 와 netfunnel_action_for(..., reserve=True).",
+  "NetFunnelAction.RESERVE_PEAK=act_14_2 와 netfunnel_action_for(..., action=NetFunnelAction.RESERVE) — 예약은 운행일(Train.run_date) 기준.",
   "DynaPath·엔드포인트·폼 필드는 손대지 않는다."
  ]
 }

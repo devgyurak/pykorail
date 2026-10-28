@@ -168,9 +168,13 @@ TICKET_SEAT_PAYLOAD = {
     "ticket_infos": {"ticket_info": [{"tk_seat_info": [{"h_seat_no": "7C"}]}]},
 }
 
-#: 승인된 7.0.10 로그인 폼. 동적 암호문과 키 발급 인덱스만 정규화합니다.
-#: ``Version`` · ``AppVersion`` 만 7.1.0 실측값입니다 — 7.1.0 은 시작 요청만 캡처했고
-#: 로그인 폼 구성(``LoginIn``)은 APK 상 바뀌지 않았습니다(``docs/protocol-evidence-7.1.0.json``).
+#: 로그인 폼 골든. **필드 구성과 나머지 값은 승인된 7.0.10 로그인 캡처**이고, 동적 암호문과
+#: 키 발급 인덱스만 정규화합니다. ``Version`` · ``AppVersion`` 두 값만 7.1.0 으로 올렸는데,
+#: 7.1.0 은 시작 요청만 캡처해 **로그인 폼으로는 관측하지 못했습니다** — 그래서 이 두 필드는
+#: ``constants.py`` 와 같은지만 보고 독립적인 근거가 되지 못합니다. 그 값의 근거는
+#: ``tests/test_app_identity.py``(7.1.0 시작 요청 캡처 · APK 암호문)입니다. 로그인 폼 구성
+#: (``LoginIn``)이 7.1.0 에서 바뀌지 않았다는 것은 정적 분석뿐입니다
+#: (``docs/protocol-evidence-7.1.0.json``).
 LOGIN_FORM_GOLDEN = {
     "Device": "AD",
     "Version": "261028001",
