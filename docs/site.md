@@ -68,6 +68,13 @@ npm run dev        # http://localhost:4321/
   `release.yml` 의 `site` 잡이 PyPI 업로드 뒤 배포 훅(아래 5번)으로 `main` 을 다시 빌드시킵니다.
   `site` 잡은 훅을 부른 뒤 실제 페이지에 새 버전이 보일 때까지 확인합니다(최대 15분). 보이지 않으면
   잡이 빨갛게 실패하므로, 그때는 대시보드에서 최신 빌드를 다시 실행하면 됩니다.
+- 확인은 커스텀 도메인이 아니라 같은 Worker 의 `https://pykorail.devgyurak.workers.dev/` 로 합니다.
+  `devgyurak.com` 존의 Bot Fight Mode 가 GitHub 러너(데이터센터 IP)의 요청에 Managed Challenge 를
+  내기 때문입니다. v0.6.0 에서 배포가 끝났는데도 확인이 15분 내내 실패한 원인이 이것이었고,
+  Security → Events 에 러너 IP 의 챌린지가 30초마다 찍혀 있었습니다. Free 플랜의 Bot Fight Mode 는
+  WAF 규칙으로 건너뛸 수 없어 확인 주소를 바꿨습니다. 그래서 `site/wrangler.jsonc` 의
+  `workers_dev: true` 를 끄지 마세요. 이 확인은 빌드·배포 여부만 보고, 커스텀 도메인의 엣지 캐시는
+  보지 않습니다. 잡 로그에는 시도마다 HTTP 상태와 페이지에서 읽은 VERSION 이 찍힙니다(챌린지면 403).
 - 누적 다운로드는 pepy.tech 의 `total_downloads` 입니다 (pepy 배지와 같은 숫자). PyPI 는
   설치가 아니라 다운로드를 세므로 "설치 수" 라고 부르지 않습니다.
 - **pepy.tech API 는 키가 필요합니다** (`PEPY_API_KEY`). <https://pepy.tech> 에 로그인해
