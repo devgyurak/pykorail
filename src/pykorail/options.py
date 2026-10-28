@@ -28,7 +28,7 @@ MileageTypeCode = Literal["1", "2"]
 MileageInquiryCode = Literal["0", "1", "2"]
 
 #: 유효한 NetFunnel 대기열 동작 코드(``aid``). :class:`NetFunnelAction` 의 상수들이 이 집합을 이룹니다.
-NetFunnelActionCode = Literal["act_8", "act_8_2", "act_6", "act_14", "act_18", "act_21"]
+NetFunnelActionCode = Literal["act_8", "act_8_2", "act_6", "act_14", "act_14_2", "act_18", "act_21"]
 
 
 class TrainType:
@@ -95,9 +95,10 @@ class NetFunnelAction:
     섞어 쓸 수 없습니다.
 
     열차 조회는 조건에 따라 ``TRAIN_SEARCH`` · ``TRAIN_SEARCH_PEAK`` ·
-    ``TRAIN_SEARCH_SPECIAL_OFFER`` 중 하나를 고릅니다. 어느 것을 쓸지는
-    ``schedule.runDt`` 응답(이 패키지에는 없는 엔드포인트)의 성수기 플래그에
-    달려 있어 호출자가 정합니다.
+    ``TRAIN_SEARCH_SPECIAL_OFFER`` 중 하나를, 예약은 7.1.0 부터 ``RESERVE`` ·
+    ``RESERVE_PEAK`` 중 하나를 고릅니다. 성수기 판정은 ``schedule.runDt`` 응답의
+    성수기 플래그에 달려 있어 호출자가 정합니다 —
+    :func:`~pykorail.models.run_date.netfunnel_action_for` 를 쓰세요.
     """
 
     #: 열차 조회 (평시). 앱 ``TrainScheduleViewModel.netFunnelTrainSchedule``.
@@ -110,6 +111,9 @@ class NetFunnelAction:
     #: 예약. ``TrainScheduleViewModel`` · ``TrainSeatMapViewModel`` ·
     #: ``ReservationWaitViewModel`` · ``HomeViewModel``.
     RESERVE: Final = "act_14"
+    #: 예약 (성수기). 7.1.0 의 ``NetFunnelHelper.reserveNetFunnelActionId`` 가 첫 여정의
+    #: 운행일이 성수기면 ``RESERVE`` 대신 이 값을 씁니다(``docs/protocol-evidence-7.1.0.json``).
+    RESERVE_PEAK: Final = "act_14_2"
     #: 결제. ``PayViewModel`` · ``FPayViewModel``.
     PAY: Final = "act_18"
     #: 내 예약 조회. ``MyReservationViewModel``.

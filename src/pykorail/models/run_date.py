@@ -79,22 +79,30 @@ class RunDate:
         return self.biz_dd_stg_cd == _PEAK_SEASON
 
 
-def netfunnel_action_for(run_dates: Sequence[RunDate], departure: date | datetime) -> NetFunnelActionCode:
+def netfunnel_action_for(
+    run_dates: Sequence[RunDate], departure: date | datetime, *, reserve: bool = False
+) -> NetFunnelActionCode:
     """출발일의 NetFunnel 대기열 ``aid`` 를 운행 달력에서 고릅니다.
 
-    출발일이 성수기면 ``TRAIN_SEARCH_PEAK``(``act_8_2``), 그 밖이거나 달력에 그날이
-    없으면 ``TRAIN_SEARCH``(``act_8``) 입니다. ``datetime`` 은 KST 로 바꿔 날짜만 보므로
-    tz 가 붙어 있어도 한국 시간 기준 날짜로 판정합니다.
+    열차 조회(기본)는 출발일이 성수기면 ``TRAIN_SEARCH_PEAK``(``act_8_2``), 그 밖이거나
+    달력에 그날이 없으면 ``TRAIN_SEARCH``(``act_8``) 입니다. ``reserve=True`` 면 예약
+    대기열을 같은 규칙으로 골라 ``RESERVE_PEAK``(``act_14_2``) 또는 ``RESERVE``(``act_14``)
+    입니다 — 코레일톡+ 7.1.0 의 ``NetFunnelHelper.reserveNetFunnelActionId`` 가 첫 여정의
+    운행일로 이렇게 판정합니다. ``datetime`` 은 KST 로 바꿔 날짜만 보므로 tz 가 붙어
+    있어도 한국 시간 기준 날짜로 판정합니다.
 
     :meth:`Korail.trains.run_dates` 의 결과를 그대로 넘기세요::
 
-        aid = netfunnel_action_for(korail.trains.run_dates(), departure)
+        calendar = korail.trains.run_dates()
+        aid = netfunnel_action_for(calendar, departure)
+        reserve_aid = netfunnel_action_for(calendar, departure, reserve=True)
     """
     wanted = _kst_date(departure)
     matched = next((day for day in run_dates if day.day == wanted), None)
-    if matched is not None and matched.is_peak_season:
-        return NetFunnelAction.TRAIN_SEARCH_PEAK
-    return NetFunnelAction.TRAIN_SEARCH
+    peak = matched is not None and matched.is_peak_season
+    if reserve:
+        return NetFunnelAction.RESERVE_PEAK if peak else NetFunnelAction.RESERVE
+    return NetFunnelAction.TRAIN_SEARCH_PEAK if peak else NetFunnelAction.TRAIN_SEARCH
 
 
 def _kst_date(departure: date | datetime) -> date:

@@ -73,10 +73,12 @@ API_ENDPOINTS: Final[dict[str, str]] = {
 
 # --------------------------------------------------------------- 앱 신원값
 DEVICE: Final = "AD"
-APP_VERSION: Final = "250722001"
+#: 폼의 ``Version``. 7.0.8·7.0.10 은 250722001 이었고 7.1.0 에서 바뀌었습니다
+#: (2026-10-28 7.1.0 앱 캡처 실측, ``docs/protocol-evidence-7.1.0.json``).
+APP_VERSION: Final = "261028001"
 #: API의 Version과 별개인 공식 앱 표시 버전입니다.
 #: 서버가 이 값으로 최신 버전을 강제하므로(AppVersion), 오래된 값은 -8204로 거절됩니다.
-APP_DISPLAY_VERSION: Final = "7.0.10"
+APP_DISPLAY_VERSION: Final = "7.1.0"
 API_KEY: Final = "korail1234567890"
 SID_KEY: Final = b"2485dd54d9deaa36"
 

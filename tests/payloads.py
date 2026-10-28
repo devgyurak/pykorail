@@ -169,10 +169,12 @@ TICKET_SEAT_PAYLOAD = {
 }
 
 #: 승인된 7.0.10 로그인 폼. 동적 암호문과 키 발급 인덱스만 정규화합니다.
+#: ``Version`` · ``AppVersion`` 만 7.1.0 실측값입니다 — 7.1.0 은 시작 요청만 캡처했고
+#: 로그인 폼 구성(``LoginIn``)은 APK 상 바뀌지 않았습니다(``docs/protocol-evidence-7.1.0.json``).
 LOGIN_FORM_GOLDEN = {
     "Device": "AD",
-    "Version": "250722001",
-    "AppVersion": "7.0.10",
+    "Version": "261028001",
+    "AppVersion": "7.1.0",
     "Key": "korail1234567890",
     "txtInputFlg": "4",
     "txtMemberNo": "01012345678",

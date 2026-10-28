@@ -899,6 +899,32 @@ class TestNetfunnelActionFor:
         # then
         assert aid == expected
 
+    @pytest.mark.parametrize(
+        ("biz_dd_stg_cd", "expected"),
+        [("5", "act_14_2"), ("1", "act_14"), ("", "act_14")],
+        ids=["peak", "stage-1", "blank"],
+    )
+    def test_reserve_picks_the_reserve_queue(self, biz_dd_stg_cd: str, expected: str) -> None:
+        """7.1.0 부터 예약 대기열도 성수기에 갈립니다."""
+        # given
+        day = RunDate.from_response({**RUN_DATE_ITEM, "bizDdStgCd": biz_dd_stg_cd})
+
+        # when
+        aid = netfunnel_action_for([day], date(2026, 10, 16), reserve=True)
+
+        # then
+        assert aid == expected
+
+    def test_reserve_missing_date_falls_back_to_the_default_reserve_queue(self) -> None:
+        # given
+        calendar = [RunDate.from_response(PEAK_RUN_DATE_ITEM)]  # 2026-10-17
+
+        # when
+        aid = netfunnel_action_for(calendar, date(2026, 10, 16), reserve=True)
+
+        # then
+        assert aid == "act_14"
+
     def test_missing_date_falls_back_to_the_default_queue(self) -> None:
         # given
         calendar = [RunDate.from_response(PEAK_RUN_DATE_ITEM)]  # 2026-10-17

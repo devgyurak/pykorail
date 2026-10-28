@@ -1,6 +1,7 @@
 """NetFunnel 동작별 ``aid`` 가 APK 근거와 어긋나지 않는지 지킵니다.
 
-``docs/protocol-evidence-7.0.8.json`` 의 ``netfunnel.actions`` 를 세 방향에서 봅니다.
+``docs/protocol-evidence-7.0.8.json`` 과 그 뒤 버전에서 늘어난 aid 를 담은
+``docs/protocol-evidence-7.1.0.json`` 의 ``netfunnel.actions`` 를 합쳐 세 방향에서 봅니다.
 
 1. **XOR 방식 자체** — 평문을 아는 값(``https`` · ``nf.letskorail.com`` · ``service_1``
    등)이 4바이트 반복 키로 풀리는지. 4바이트를 넘는 값의 꼬리까지 맞아야 하므로
@@ -26,11 +27,15 @@ import pytest
 from pykorail.options import NetFunnelAction, NetFunnelActionCode
 
 ROOT = Path(__file__).resolve().parent.parent
-EVIDENCE = json.loads((ROOT / "docs" / "protocol-evidence-7.0.8.json").read_text(encoding="utf-8"))
-ACTIONS: dict[str, Any] = EVIDENCE["netfunnel"]["actions"]
-KNOWN_PLAINTEXTS: list[dict[str, Any]] = ACTIONS["known_plaintexts"]
-CONSTANTS: list[dict[str, Any]] = ACTIONS["constants"]
-CALL_SITES: list[dict[str, Any]] = ACTIONS["call_sites"]
+#: aid 가 추가된 버전의 근거 파일들. 각 파일은 **그 버전 APK 의 암호문**을 담습니다 —
+#: 7.1.0 파일에는 7.1.0 에서 생긴 ``act_14_2`` 와 그 호출 지점만 있습니다.
+EVIDENCE_FILES = ("protocol-evidence-7.0.8.json", "protocol-evidence-7.1.0.json")
+ACTIONS: list[dict[str, Any]] = [
+    json.loads((ROOT / "docs" / name).read_text(encoding="utf-8"))["netfunnel"]["actions"] for name in EVIDENCE_FILES
+]
+KNOWN_PLAINTEXTS: list[dict[str, Any]] = [entry for actions in ACTIONS for entry in actions["known_plaintexts"]]
+CONSTANTS: list[dict[str, Any]] = [entry for actions in ACTIONS for entry in actions["constants"]]
+CALL_SITES: list[dict[str, Any]] = [entry for actions in ACTIONS for entry in actions["call_sites"]]
 PREFIX = b"act_"
 
 

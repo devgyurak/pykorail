@@ -92,7 +92,7 @@ class TestMileage:
         # then
         data = session.kwargs_for("mileage")["data"]
         sent = {key: data[key] for key in ("AppVersion", "pontTpVal", "qryDvVal", "pgPrCnt", "nowPgNo")}
-        assert sent == {"AppVersion": "7.0.10", "pontTpVal": "1", "qryDvVal": "0", "pgPrCnt": "20", "nowPgNo": "1"}
+        assert sent == {"AppVersion": "7.1.0", "pontTpVal": "1", "qryDvVal": "0", "pgPrCnt": "20", "nowPgNo": "1"}
 
     @pytest.mark.parametrize(
         ("kind", "inquiry", "expected"),
@@ -333,7 +333,7 @@ class TestCoupons:
 
         # then
         data = session.kwargs_for("coupons")["data"]
-        assert (data["AppVersion"], data["txtSelPage"]) == ("7.0.10", sent)
+        assert (data["AppVersion"], data["txtSelPage"]) == ("7.1.0", sent)
 
     @pytest.mark.parametrize(
         "body",

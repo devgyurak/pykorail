@@ -1,0 +1,227 @@
+{
+ "app": {
+  "package": "com.korail.talk",
+  "version": "7.1.0",
+  "version_code": 70100000,
+  "apk_source": "Korail+_7.1.0_APKPure.xapk (split: com.korail.talk.apk + config.arm64_v8a.apk · config.en.apk · config.xxhdpi.apk — 7.0.10 과 달리 config.ko split 이 없다)",
+  "xapk_sha256": "12136d00348731b9fbfe43875fb8654a017241e2058bf7d7bceefaed409e40d1",
+  "base_apk_sha256": "53584e5239c6244069953f7791113d5ff00b750268f6ccef5e2353eb466823ca",
+  "native_library": "lib/arm64-v8a/libdp_ffi_android.so",
+  "native_library_sha256": "a884a4971dda8b7a1b05f90d331631ea95f65028dc51aba55e2699ac90ed7129",
+  "native_build_tag": "dp-prime-v2/01/5adc5bfb",
+  "dynapath_sdk_version": "2.0.1"
+ },
+ "compared_with": "7.0.10 (docs/protocol-evidence-7.0.10.json). 이 문서는 7.0.10 → 7.1.0 차이만 담는다 — 7.1.0 에서 그대로인 프로토콜 근거는 7.0.8 · 7.0.10 문서가 여전히 유효하다.",
+ "scope": "APK 정적 분석(jadx) + 사용자가 이 건에 한해 승인한 korail_clean 에뮬레이터의 7.1.0 앱 시작 요청 캡처 1회(로그인·조회·예약·결제 없음). 키·쿠키·토큰 값은 저장소에 넣지 않고 길이만 봄.",
+ "status": "앱 신원값 두 개(Version·AppVersion)와 예약 NetFunnel aid 한 개(act_14_2)가 바뀌었다. DynaPath(네이티브·Java SDK)·엔드포인트·폼 필드·비밀번호 암호화·예약 응답 코드 분류는 그대로다.",
+ "verified_findings": [
+  {
+   "id": "app-identity-values",
+   "statement": "7.1.0 앱의 공통 폼은 Device=AD · Version=261028001 · AppVersion=7.1.0 · Key=korail1234567890 이다. 7.0.8·7.0.10 의 Version=250722001 이 처음으로 바뀌었고 AppVersion 은 7.0.10 → 7.1.0 이다. User-Agent(korailtalk)·Device·Key 는 그대로다.",
+   "basis": "capture/korail-20261028-215500.mitm (2026-10-28 21:55 KST, 흐름 12건): MobileService.cache · common.code.do · prdMobilePlusMain.cache · schedule.runDt 폼이 모두 위 값. 정적 근거: NetworkConstants.<clinit> 의 VERSION 암호문과 CommonIn 의 AppVersion·Key 기본값 암호문이 4바이트 반복 XOR 로 같은 평문에 정합(아래 netfunnel.actions.known_plaintexts). 매니페스트 versionName=7.1.0 · versionCode=70100000."
+  },
+  {
+   "id": "version-static-inference",
+   "statement": "캡처 전 정적 분석만으로는 Version 을 확정할 수 없었다. 9바이트 암호문은 250722001 과 정합하지 않았고(바뀐 것은 확실), 4바이트 키를 모르는 채로 YYMMDDNNN 날짜 꼴에 맞는 후보가 24개 남았다. 그중 7.0.x 의 NNN=001 패턴에 맞는 것은 261028001 하나였고 캡처가 그 값을 확인했다.",
+   "basis": "~/Downloads/korail-analysis/apk-7.1.0/jadx-src: com/korail/talk/BuildConfig.java(API_VERSION), com/korail/talk/common/NetworkConstants.java:141(VERSION). 두 암호문은 키가 달라도 평문 관계(c0=c4, c2^c6=1, c1^c5=0x0E, c3=c7, c8^c0=3)가 같다."
+  },
+  {
+   "id": "netfunnel-reserve-peak",
+   "statement": "예약 대기열 aid 에 성수기 변종 act_14_2 가 생겼다. 새 NetFunnelHelper.reserveNetFunnelActionId 가 첫 여정(TicketReservationInJrny)의 txtRunDt(비었으면 txtDptDt)를 schedule.runDt 응답에서 찾아 RunDateOutItem.isPeakSeason() 이 참이면 act_14_2, 아니면(항목 없음 포함) act_14 를 돌려준다. 7.0.10 에서 각 화면이 직접 act_14 를 넣던 네 곳(TrainScheduleViewModel · TrainSeatMapViewModel · ReservationWaitViewModel · HomeViewModel)이 모두 이 헬퍼를 부른다. 열차 조회(act_8/act_8_2)·결제(act_18)·내 예약(act_21)·할인상품(act_6)은 그대로다.",
+   "basis": "jadx-src com/korail/talk/common/helper/NetFunnelHelperKt.java:77-79(운행일 선택), :111(isPeakSeason), :118(return z ? act_14_2 : act_14). 호출부 HomeViewModel.java:6480, TrainSeatMapViewModel.java:3356,3627, TrainScheduleViewModel.java:6376,6537, ReservationWaitViewModel.java:655. 새 Kotlin 파일 NetFunnelHelper.kt(@DebugMetadata). isPeakSeason() 은 7.0.10 과 구조가 같다(bizDdStgCd 와 한 글자 상수 비교)."
+  },
+  {
+   "id": "dynapath-unchanged",
+   "statement": "DynaPath 는 바뀌지 않았다. libdp_ffi_android.so 가 7.0.10 과 바이트 동일(sha256 a884a497…, 빌드 태그 dp-prime-v2/01/5adc5bfb)이고, Java SDK(kr.scripters.dynapath)의 op id(288904575606514493 · 893617653734745139)·kl(990094375841594426)·ec(978212327729758430) 상수와 문자열 리터럴도 같다. 메서드 집합 차이는 jadx 의 클래스 이름 재배치뿐이다. 그래서 TOKEN_PREFIX · DYNAPATH_* 와 auth/dynapath.py 의 순수 파이썬 코덱은 7.1.0 에도 그대로 유효하다.",
+   "basis": "split config.arm64_v8a.apk 의 lib/ 9개 중 libAppSuit.so 만 해시가 다르다. kr/scripters 아래 6자리 이상 숫자 상수 비교에서 추가된 9223372036854775L 하나는 7.0.10 jadx 가 f2.java 메서드를 디컴파일하지 못해 생긴 착시다. 시작 때의 /dp_mobile/v2/enroll/admit · /enroll 은 7.0.10 캡처(korail-20261021-180110)에도 있었다."
+  },
+  {
+   "id": "wire-surface-unchanged",
+   "statement": "엔드포인트·폼 필드·암호화·인터셉터는 그대로다. Retrofit 어노테이션 177개(@POST/@GET 경로)와 @Field 계열 78종이 같고, network/model 의 *In·*Out 1181개 파일의 필드 선언 차이는 AppHolidayPopup(popupBgImg · subBgUrl · subUrl) 셋뿐이다. LoginIn 필드와 LoginRepository.kt 의 코루틴 소스 줄 번호도 같다. AESCrypto 의 Cipher·IvParameterSpec·SecretKeySpec 사용은 변수 이름만 다르고, DynaPathInterceptor·RequestParamLogInterceptor 의 시그니처와 암호화 문자열 길이 집합도 같다.",
+   "basis": "~/Downloads/korail-analysis/apk-7.1.0/cmp/ 의 비교 산출물(sig.py · cmp_sig.py · dbg-*.txt). NetworkRepository.kt 의 @DebugMetadata 줄 번호는 443행 앞에 한 줄이 들어가 한 칸씩 밀렸을 뿐 메서드 형태는 같다."
+  },
+  {
+   "id": "reservation-error-codes-unchanged",
+   "statement": "예약 응답 코드 분류(TicketReservationKt.getTicketReservationOutCustomErrorType)는 그대로다. 이 함수는 String.hashCode() 로 switch 하는데, sparse-switch 키 15개가 7.0.10 과 7.1.0 에서 똑같다. 7.1.0 에서 보이는 TicketReservationOutCustomErrorType.NONE 은 7.0.10 jadx 가 기본 분기를 놓쳐 생긴 착시다.",
+   "basis": "7.0.10 classes5.dex 0xb52964 의 sparse-switch-data(dexdump)와 7.1.0 jadx-src 의 case 라벨 비교."
+  },
+  {
+   "id": "anti-decompile-junk-nop",
+   "statement": "7.1.0 부터 dex 메서드 첫머리에 goto 를 두고, 도달하지 않는 자리에 상위 바이트가 0 이 아닌 nop(0x7400 · 0xF300 등)을 끼워 넣는다. 실행 의미는 없지만 jadx 는 대부분의 메서드 본문을 풀지 못한다(오류 약 122만 건, com.korail.talk.network 1234개 중 1224개 파일). 그 유닛을 0000 으로 덮고 dex 체크섬·서명을 다시 계산하면 오류가 614건으로 7.0.10(572건) 수준이 된다.",
+   "basis": "dexdump -d 의 'nop // spacer' 표시. 패치 스크립트 ~/Downloads/korail-analysis/apk-7.1.0/dexfix/dejunk.py(7개 dex 에서 약 133만 유닛). 이 문서의 줄 번호는 패치한 dex 를 디컴파일한 apk-7.1.0/jadx-src 기준이다."
+  },
+  {
+   "id": "appsuit-additions",
+   "statement": "앱 보호 계층(AppSuit)이 늘었다. libAppSuit.so 가 갱신됐고(sha256 1c421391…), 128자 hex 자산 assets/appsuit/mimi 가 추가됐으며, 매니페스트에 <queries><intent action=MAIN/></queries>(런처 앱 목록 조회)가 들어갔다. 새 com.korail.talk.appsuit 패키지(GlobalDialogKt · TopActivityProviderKt)는 탐지 결과를 최상단 Activity 의 대화상자로 띄우는 UI 다. 서버로 나가는 요청에는 영향이 보이지 않는다.",
+   "basis": "base.apk 파일 목록·매니페스트 diff, jadx-src com/korail/talk/appsuit/."
+  }
+ ],
+ "netfunnel": {
+  "actions": {
+   "source": "com.korail.talk.common.NetworkConstants (7.1.0 jadx-src, 패치한 dex) 와 common/helper/NetFunnelHelperKt. 7.1.0 에서 새로 생긴 aid 만 담는다 — 나머지 aid 의 근거는 docs/protocol-evidence-7.0.8.json 의 netfunnel.actions.",
+   "algorithm": "7.0.8 과 같은 4바이트 반복 XOR(AlienGuard). 키는 호출마다 다르다.",
+   "known_plaintexts": [
+    {
+     "constant": "NetworkConstants.VERSION",
+     "plaintext": "261028001",
+     "ciphertext": [
+      222,
+      94,
+      41,
+      95,
+      222,
+      80,
+      40,
+      95,
+      221
+     ],
+     "wire": "폼 Version — 캡처로 확인"
+    },
+    {
+     "constant": "BuildConfig.API_VERSION",
+     "plaintext": "261028001",
+     "ciphertext": [
+      67,
+      122,
+      14,
+      27,
+      67,
+      116,
+      15,
+      27,
+      64
+     ]
+    },
+    {
+     "constant": "CommonIn.appVersion",
+     "plaintext": "7.1.0",
+     "ciphertext": [
+      224,
+      152,
+      179,
+      175,
+      231
+     ],
+     "wire": "폼 AppVersion 기본값 — 캡처로 확인"
+    },
+    {
+     "constant": "BuildConfig.VERSION_NAME",
+     "plaintext": "7.1.0",
+     "ciphertext": [
+      25,
+      127,
+      152,
+      178,
+      30
+     ]
+    },
+    {
+     "constant": "CommonIn.key",
+     "plaintext": "korail1234567890",
+     "ciphertext": [
+      144,
+      212,
+      134,
+      191,
+      146,
+      215,
+      197,
+      236,
+      200,
+      143,
+      193,
+      232,
+      204,
+      131,
+      205,
+      238
+     ],
+     "wire": "폼 Key 기본값"
+    }
+   ],
+   "constants": [
+    {
+     "apk": "ACTION_PEAK_SEASON_RESERVE_ID",
+     "aid": "act_14_2",
+     "pykorail": "NetFunnelAction.RESERVE_PEAK",
+     "ciphertext": [
+      182,
+      225,
+      143,
+      85,
+      230,
+      182,
+      164,
+      56
+     ]
+    }
+   ],
+   "call_sites_note": "7.1.0 에서는 예약 화면 네 곳이 aid 를 직접 넣지 않고 NetFunnelHelperKt.reserveNetFunnelActionId 를 부른다. 그래서 예약 aid 의 호출 지점 근거는 그 헬퍼의 반환문 하나다.",
+   "call_sites": [
+    {
+     "where": "NetFunnelHelperKt:118 (성수기)",
+     "aid": "act_14_2",
+     "pykorail": "NetFunnelAction.RESERVE_PEAK",
+     "ciphertext": [
+      114,
+      213,
+      9,
+      95,
+      34,
+      130,
+      34,
+      50
+     ]
+    },
+    {
+     "where": "NetFunnelHelperKt:118 (평시·항목 없음)",
+     "aid": "act_14",
+     "pykorail": "NetFunnelAction.RESERVE",
+     "ciphertext": [
+      250,
+      81,
+      240,
+      183,
+      170,
+      6
+     ]
+    }
+   ],
+   "selection_rule": {
+    "reserve": "첫 여정의 txtRunDt(빈 문자열이면 txtDptDt) 날짜를 schedule.runDt 응답에서 찾아 isPeakSeason() 이 참이면 act_14_2, 아니면 act_14. 응답에 그날 항목이 없거나 조회가 실패해도 act_14. pykorail: netfunnel_action_for(run_dates, departure, reserve=True)."
+   },
+   "callers": [
+    "HomeViewModel.java:6480",
+    "TrainSeatMapViewModel.java:3356,3627",
+    "TrainScheduleViewModel.java:6376,6537",
+    "ReservationWaitViewModel.java:655"
+   ],
+   "guard": "tests/test_netfunnel_actions.py 가 7.0.8 · 7.1.0 문서의 netfunnel.actions 를 합쳐, known_plaintexts 로 4바이트 반복 키를, constants·call_sites 암호문을 NetFunnelAction 상수와 대조한다. 한계는 7.0.8 과 같다 — 각 암호문의 앞 4바이트는 접두(act_)에서 키를 뽑으므로 이 테스트로 검증되지 않는다."
+  }
+ },
+ "capture": {
+  "file": "capture/korail-20261028-215500.mitm",
+  "observed_at_kst": "2026-10-28 21:55",
+  "device": "korail_clean 에뮬레이터 (Android 14, sdk_gphone64_arm64). 7.0.10 을 uninstall -k 로 데이터를 남기고 지운 뒤 7.1.0 설치.",
+  "flows": [
+   "POST smart.letskorail.com/dp_mobile/v2/enroll/admit · /dp_mobile/v2/enroll (JSON, 200)",
+   "POST /file/CACHE/MobileService.cache (Version=261028001 · AppVersion=7.1.0, S100)",
+   "POST /classes/com.korail.mobile.common.specificDateData.do (SUCC)",
+   "POST /classes/com.korail.mobile.common.code.do (Version=261028001 · AppVersion=7.1.0, API.I00000)",
+   "POST /file/CACHE/prdMobilePlusMain.cache · /classes/com.korail.mobile.schedule.runDt (같은 공통값, runDt API.I00000)",
+   "POST common.stationinfo · GET goods.meta.do",
+   "웹뷰: POST www.korail.com/global/eng/ticket/reservation (Device · Version=261028001 · Key, AppVersion 없음) · GET /dynaPath.do"
+  ]
+ },
+ "limits": [
+  "7.1.0 은 앱 시작 요청만 캡처했다. 로그인 폼과 DynaPath 서명 대상 요청(x-dynapath-m-token)은 이번 캡처에 없다 — 둘 다 APK 상 바뀌지 않았다는 정적 근거(wire-surface-unchanged · dynapath-unchanged)에 기댄다.",
+  "서버가 지금 AppVersion=7.0.10 · Version=250722001 을 거절하는지는 확인하지 않았다(이번 승인 범위 밖). 이 변경은 앱 실측값에 맞추는 것이다.",
+  "act_14_2 는 정적 분석으로만 확인했다. 캡처 시점(10월 말)에는 성수기 출발일로 예약하는 흐름을 만들지 않았고, 서버가 예약 대기열에서 act_14 · act_14_2 를 실제로 구분하는지도 보지 않았다.",
+  "isPeakSeason() 의 비교 상수는 7.0.10 처럼 한 바이트라 직접 복호하지 못했다. 구조가 같아 7.0.8 에서 유도한 \"5\" 를 그대로 쓴다."
+ ],
+ "actionable": [
+  "constants.APP_VERSION=261028001, APP_DISPLAY_VERSION=7.1.0 (tests/payloads.py::LOGIN_FORM_GOLDEN 의 두 값 포함).",
+  "NetFunnelAction.RESERVE_PEAK=act_14_2 와 netfunnel_action_for(..., reserve=True).",
+  "DynaPath·엔드포인트·폼 필드는 손대지 않는다."
+ ]
+}

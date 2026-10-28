@@ -163,7 +163,7 @@ class TestLogin:
         client.login("me@example.com", "pw")
 
         # then
-        assert session.kwargs_for("login")["data"]["AppVersion"] == "7.0.10"
+        assert session.kwargs_for("login")["data"]["AppVersion"] == "7.1.0"
 
     def test_successful_login_populates_account(self, make_korail) -> None:
         # given
