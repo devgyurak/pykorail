@@ -354,6 +354,11 @@ netfunnel_action_for(run_dates: Sequence[RunDate], departure: date | datetime | 
 그래서 `departure` 자리에 `Train.run_date` 같은 `"YYYYMMDD"` 문자열도 받습니다(형식이
 틀리면 `ValueError`). 성수기 대기열이 없는 동작(결제 등)은 `action` 을 그대로 돌려줍니다.
 
+> [!NOTE]
+> 빈 문자열에서는 앱과 다르게 동작합니다. 앱은 운행일·출발일이 모두 비면 달력에서 그날을
+> 못 찾은 것으로 보고 평시 대기열(`act_14`)로 가지만, `netfunnel_action_for()` 는
+> `ValueError` 를 냅니다. 잘못된 입력이 조용히 평시 줄에 서지 않도록 일부러 엄격하게 했습니다.
+
 ```python
 from pykorail import NetFunnelAction, netfunnel_action_for
 
@@ -1165,7 +1170,7 @@ with NetFunnelHelper() as nf:
 
 예약은 7.1.0 부터 앱(`NetFunnelHelper.reserveNetFunnelActionId`)이 첫 여정의 운행일
 (`txtRunDt`, 비었으면 `txtDptDt`)로 같은 성수기 판정을 해 `act_14_2` 또는 `act_14` 를
-고릅니다 — `netfunnel_action_for(calendar, train.run_date, action=NetFunnelAction.RESERVE)`
+고릅니다 — `netfunnel_action_for(calendar, train.run_date or train.dep_date, action=NetFunnelAction.RESERVE)`
 가 그 판정입니다. 열차 조회와 달리 출발일이 아니라 운행일입니다.
 
 비동기 코드에서는 `AsyncNetFunnelHelper` 를 `await` 합니다. 리소스와 달리

@@ -237,7 +237,8 @@
   "7.1.0 은 앱 시작 요청만 캡처했다. 로그인 폼과 DynaPath 서명 대상 요청(x-dynapath-m-token)은 이번 캡처에 없다 — 둘 다 APK 상 바뀌지 않았다는 정적 근거(wire-surface-unchanged · dynapath-unchanged)에 기댄다.",
   "서버가 지금 AppVersion=7.0.10 · Version=250722001 을 거절하는지는 확인하지 않았다(이번 승인 범위 밖). 이 변경은 앱 실측값에 맞추는 것이다.",
   "act_14_2 는 정적 분석으로만 확인했다. 캡처 시점(10월 말)에는 성수기 출발일로 예약하는 흐름을 만들지 않았고, 서버가 예약 대기열에서 act_14 · act_14_2 를 실제로 구분하는지도 보지 않았다.",
-  "isPeakSeason() 의 비교 상수는 7.0.10 처럼 한 바이트라 직접 복호하지 못했다. 구조가 같아 7.0.8 에서 유도한 \"5\" 를 그대로 쓴다."
+  "isPeakSeason() 의 비교 상수는 7.0.10 처럼 한 바이트라 직접 복호하지 못했다. 구조가 같아 7.0.8 에서 유도한 \"5\" 를 그대로 쓴다.",
+  "pykorail 의 netfunnel_action_for 는 비었거나 형식이 틀린 날짜 문자열에 ValueError 를 낸다. 앱은 txtRunDt·txtDptDt 가 모두 비면 달력에서 그날을 못 찾은 것으로 보고 act_14 로 간다 — 잘못된 입력이 조용히 평시 대기열에 서지 않게 하려고 일부러 다르게 했다(PR #158 리뷰)."
  ],
  "actionable": [
   "constants.APP_VERSION=261028001, APP_DISPLAY_VERSION=7.1.0 (tests/payloads.py::LOGIN_FORM_GOLDEN 의 두 값 포함).",

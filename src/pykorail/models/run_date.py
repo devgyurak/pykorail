@@ -110,8 +110,11 @@ def netfunnel_action_for(
     그 밖의 동작은 성수기 대기열이 없어 ``action`` 을 그대로 돌려줍니다.
 
     ``departure`` 는 ``date`` · ``datetime`` · ``"YYYYMMDD"`` 문자열을 받습니다. 문자열은
-    응답 모델의 날짜 필드(``Train.run_date`` 등)를 그대로 넘기라고 받으며, 형식이 틀리면
-    ``ValueError`` 입니다. ``datetime`` 은 KST 로 바꿔 날짜만 봅니다::
+    응답 모델의 날짜 필드(``Train.run_date`` 등)를 그대로 넘기라고 받으며, 비었거나 형식이
+    틀리면 ``ValueError`` 입니다. **앱과 다른 점입니다** — 앱은 운행일·출발일이 모두 비면
+    달력에서 그날을 못 찾은 것으로 보고 평시 대기열(``act_14``)로 갑니다. 여기서는 잘못된
+    입력이 조용히 평시 줄에 서지 않도록 일부러 막습니다. ``datetime`` 은 KST 로 바꿔 날짜만
+    봅니다::
 
         calendar = korail.trains.run_dates()
         aid = netfunnel_action_for(calendar, departure)
